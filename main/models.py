@@ -1,6 +1,5 @@
-from django.db import models
 from django.utils.safestring import mark_safe
-from django.core.cache import cache
+from django.contrib.gis.db import models
 from django.conf import settings
 
 
@@ -13,23 +12,35 @@ class CPCSection(models.Model):
     section = models.CharField(primary_key=True, max_length=100, help_text="The section of the CPC classification. E.g 'A'")
     title = models.TextField(help_text="The title of the section. E.g 'Human Necessities'")
 
+    def __str__(self):
+        return self.section
+
 
 class CPCClass(models.Model):
     section = models.ForeignKey(CPCSection, on_delete=models.PROTECT, related_name="classes")
     _class = models.CharField("class", primary_key=True, max_length=100, help_text="The class of the CPC classification. E.g 'A63'")
     title = models.TextField(help_text="The title of the class. E.g 'sports; games; amusements'")
 
+    def __str__(self):
+        return self._class
+
 
 class CPCSubclass(models.Model):
     _class = models.ForeignKey(CPCClass, on_delete=models.PROTECT, related_name="subclasses")
-    cpc_subclass = models.CharField(primary_key=True, max_length=100, help_text="The subclass of the CPC classification. E.g 'A63B'")
+    subclass = models.CharField(primary_key=True, max_length=100, help_text="The subclass of the CPC classification. E.g 'A63B'")
     title = models.TextField(help_text="The title of the subclass. E.g 'apparatus for physical training, gymnastics, swimming, climbing, or fencing; ball games; training equipment'")
+
+    def __str__(self):
+        return self.subclass
 
 
 class CPCGroup(models.Model):
     cpc_subclass = models.ForeignKey(CPCSubclass, on_delete=models.PROTECT, related_name="groups")
     cpc_group = models.CharField(primary_key=True, max_length=100, help_text="The group of the CPC classification. E.g 'A63B71/146'")
     title = models.TextField(help_text="The title of the group. E.g 'Golf gloves'")
+
+    def __str__(self):
+        return self.cpc_group
 
 
 class Patent(models.Model):  
@@ -67,16 +78,17 @@ class PCTData(models.Model):
     patent = models.OneToOneField(Patent, primary_key=True, on_delete=models.PROTECT, related_name="pct_date")
     published_or_filled_date = models.DateField(help_text="The date when the patent was published or filed in the PCT database.")
     application_number = models.CharField(max_length=100, help_text="The application number of the patent in the PCT database.")
-    filled_country = models.CharField(max_length=100, help_text="The country where the patent was filed in the PCT database.")
+    filled_countrypy = models.CharField(max_length=100, help_text="The country where the patent was filed in the PCT database.")
     granted = models.BooleanField(help_text="Whether the patent is granted or it's just an application.")
 
 
 class Location(models.Model):
-    country = models.CharField(max_length=100, help_text="The country of the location.")
-    state = models.CharField(max_length=100, help_text="The state of the location.")
-    city = models.CharField(max_length=100, help_text="The city of the location.")
-    latitude = models.FloatField(help_text="The latitude of the location.")
-    longitude = models.FloatField(help_text="The longitude of the location.")
+    country_code = models.CharField(null=True, max_length=100, help_text="The country of the location.")
+    state = models.CharField(null=True, max_length=100, help_text="The state of the location.")
+    city = models.CharField(null=True, max_length=100, help_text="The city of the location.")
+    point = models.PointField(null=True, help_text="The point (lat and lon) of the location.")
+    county_fips = models.IntegerField(null=True, help_text="The FIPS code of the county.")
+    state_fips = models.IntegerField(null=True, help_text="The FIPS code of the state.")
 
 
 class Inventor(models.Model):
@@ -84,7 +96,7 @@ class Inventor(models.Model):
     location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="inventors")
     first_name = models.CharField(max_length=100, help_text="The first name of the inventor.")
     last_name = models.CharField(max_length=100, help_text="The last name of the inventor.")
-    male = models.BooleanField(null=True, help_text="Where the inventor is male, if false is female, if null then no gender attributed.")
+    male = models.BooleanField(null=True, help_text="Whether the inventor is male, if false is female, if null then no gender attributed.")
 
 
 class Assignee(models.Model):

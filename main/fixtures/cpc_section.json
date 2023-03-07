@@ -1,0 +1,65 @@
+[  
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "A",
+            "title": "HUMAN NECESSITIES"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "B",
+            "title": "PERFORMING OPERATIONS; TRANSPORTING"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "C",
+            "title": "CHEMISTRY; METALLURGY"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "D",
+            "title": "TEXTILES; PAPER"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "E",
+            "title": "FIXED CONSTRUCTIONS"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "F",
+            "title": "MECHANICAL ENGINEERING; LIGHTING; HEATING; WEAPONS; BLASTING"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "G",
+            "title": "PHYSICS"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "H",
+            "title": "ELECTRICITY"
+        }
+    },
+    {
+        "model": "main.CPCSection",
+        "fields": {
+            "section": "Y",
+            "title": "GENERAL TAGGING OF NEW TECHNOLOGICAL DEVELOPMENTS"
+        }
+    }
+]
