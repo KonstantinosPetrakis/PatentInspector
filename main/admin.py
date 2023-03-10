@@ -28,9 +28,19 @@ class CPCSubclassAdmin(admin.ModelAdmin):
     ordering = ("subclass", )
 
 
+class CPCGroupAdmin(admin.ModelAdmin):
+    list_display = ("group", "title")
+    search_fields = ("group", "title")
+    ordering = ("group", )
+
+
+# Location
 admin.site.register(Location, LocationAdmin)
+# CPC Fields
 admin.site.register(CPCSection, CPCSectionAdmin)
 admin.site.register(CPCClass, CPCClassAdmin)
 admin.site.register(CPCSubclass, CPCSubclassAdmin)
+admin.site.register(CPCGroup, CPCGroupAdmin)
+# Unregister Auth related fields
 admin.site.unregister(User)
 admin.site.unregister(Group)

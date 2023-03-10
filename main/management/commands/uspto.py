@@ -39,8 +39,7 @@ class Command(BaseCommand):
     def handle_location(self):
         # self.download_and_unzip("g_location_disambiguated")
         locations = pd.read_csv(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv", sep="\t")
-        locations = locations.astype(object).replace(np.nan, None)
-        locations = locations.to_dict("records")
+        locations = locations.astype(object).replace(np.nan, None).to_dict("records")
 
         for i, location in enumerate(locations):
             location_id_map[location["location_id"]] = None
@@ -61,57 +60,53 @@ class Command(BaseCommand):
     def handle_cpc(self):
         # self.download_and_unzip("g_cpc_title")
         cpcs = pd.read_csv(f"{DATA_DIRECTORY}/g_cpc_title.tsv", sep="\t")
-        cpc_classes = list(cpcs["cpc_class"].unique())
-        cpc_subclasses = list(cpcs["cpc_subclass"].unique())
-        cpc_groups = list(cpcs["cpc_group"].unique())
 
         # Create CPCClasses
-        for i, cpc_class in enumerate(cpc_classes):
-            cpc_class_first_row = cpcs.loc[cpcs["cpc_class"] == cpc_class].iloc[0]
-            cpc_classes[i] = CPCClass(
-                section=CPCSection.objects.get(section__startswith=cpc_class_first_row["cpc_class"][0]),
-                _class=cpc_class,
-                title=cpc_class_first_row["cpc_class_title"],
-            )
+        cpc_classes = cpcs.groupby("cpc_class", as_index=False)[["cpc_class_title"]].first()
+        cpc_classes["section_id"] = cpc_classes["cpc_class"].str[0]
+        cpc_classes = cpc_classes.rename(columns={"cpc_class": "_class", "cpc_class_title": "title"})
+        cpc_classes = [CPCClass(**cpc_class) for cpc_class in cpc_classes.to_dict("records")]
         CPCClass.objects.bulk_create(cpc_classes)
   
-
         # Create CPCSubclasses
-        for i, cpc_subclass in enumerate(cpc_subclasses):
-            cpc_subclass_first_row = cpcs.loc[cpcs["cpc_subclass"] == cpc_subclass].iloc[0]
-            cpc_subclasses[i] = CPCSubclass(
-                _class=CPCClass.objects.get(_class=cpc_subclass_first_row["cpc_class"]),
-                subclass=cpc_subclass,
-                title=cpc_subclass_first_row["cpc_subclass_title"],
-                )
+        cpc_subclasses = cpcs.groupby("cpc_subclass", as_index=False)[["cpc_class", "cpc_subclass_title"]].first()
+        cpc_subclasses = cpc_subclasses.rename(columns={"cpc_class": "_class_id", "cpc_subclass": "subclass", "cpc_subclass_title": "title"})
+        cpc_subclasses = [CPCSubclass(**cpc_subclass) for cpc_subclass in cpc_subclasses.to_dict("records")]
         CPCSubclass.objects.bulk_create(cpc_subclasses)
 
         # Create CPCGroups
-        
+        cpc_groups = cpcs[["cpc_group", "cpc_subclass", "cpc_group_title"]]
+        cpc_groups = cpc_groups.rename(columns={"cpc_group": "group", "cpc_subclass": "subclass_id", "cpc_group_title": "title"})
+        cpc_groups = [CPCGroup(**cpc_group) for cpc_group in cpc_groups.to_dict("records")]
+        CPCGroup.objects.bulk_create(cpc_groups)
 
     def handle_patent(self):
         # self.download_and_unzip("g_patent")
-        patents = pd.read_csv(f"{DATA_DIRECTORY}/patent.tsv", sep="\t")
-        patents = patents.astype(object).replace(np.nan, None)
-        patents = patents.to_dict("records")
+        # self.download_and_unzip("g_cpc_current")
+        patents = pd.read_csv(f"{DATA_DIRECTORY}/g_patent.tsv", sep="\t", usecols=lambda col: col not in ['wipo_kind', 'filename'], dtype={"patent_id": str, "patent_type": str, "patent_date": str, "patent_title": str, "patent_abstract": str, "num_claims": int, "withdrawn": bool}, chunksize=1000000)
+        patents = patents.rename(columns={"patent_id": "office_patent_id", "patent_type": "type", "patent_date": "granted_date", "patent_title": "title", "patent_abstract": "abstract"})
+        patents["office"] = "USPTO"
+        
+        print(patents)
+        # Generally I think I need to load patents into chucks, and the other tables (g_application, g_figures, g_cpc_current) completely.
+        # But I can try to load them all into memory and see if it works because g_application and g_figures ain't that big.
+        
+        # fields need to filled:
+        # - application_filled_date (g_application -> filing_date df.merge on patent_id)
+        # - figures_count (g_figures -> num_figures)
+        # - num_sheets (g_figures -> num_sheets)
+        # - cpc group is another function and table because it's a many to many relationship
 
-        for i, patent in enumerate(patents):
-            patent["location_id"] = location_id_map[patent["location_id"]]
-            patents[i] = Patent(
-                office="USPTO",
-                office_patent_id=patent["patent_id"],
-                type=patent["patent_type"],
-            )
-        # Patent.objects.bulk_create(patents)
+
+    def handle_patent_cpc_group(self):
+        # self.download_and_unzip("g_cpc_current")
+        # This function will handle the relationship of patent and cpc group
+        pass
 
     def handle(self, *args, **options):
         # self.handle_location()
-        # self.handle_patent()
-        # Location.objects.all().delete()
-
-        CPCClass.objects.all().delete()
-        CPCSubclass.objects.all().delete()
-        self.handle_cpc()
+        # self.handle_cpc()
+        self.handle_patent()
         
         # Interesting tables:
         # https://patentsview.org/download/data-download-tables

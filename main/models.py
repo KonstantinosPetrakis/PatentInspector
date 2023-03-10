@@ -35,8 +35,8 @@ class CPCSubclass(models.Model):
 
 
 class CPCGroup(models.Model):
-    cpc_subclass = models.ForeignKey(CPCSubclass, on_delete=models.PROTECT, related_name="groups")
-    cpc_group = models.CharField(primary_key=True, max_length=100, help_text="The group of the CPC classification. E.g 'A63B71/146'")
+    subclass = models.ForeignKey(CPCSubclass, on_delete=models.PROTECT, related_name="groups")
+    group = models.CharField(primary_key=True, max_length=100, help_text="The group of the CPC classification. E.g 'A63B71/146'")
     title = models.TextField(help_text="The title of the group. E.g 'Golf gloves'")
 
     def __str__(self):
@@ -58,7 +58,6 @@ class Patent(models.Model):
     office = models.CharField(max_length=100, choices=office_choices, help_text="The office that granted the patent.")
     office_patent_id = models.CharField(max_length=100, help_text="The ID of the patent in the office's database.")
     type = models.CharField(max_length=100, choices=type_choices, help_text=get_help_text("patent_type"))
-    cpc_subgroup = models.ForeignKey(CPCGroup, on_delete=models.PROTECT, help_text="The CPC subgroup of the patent.", related_name="patents")
     application_filled_date = models.DateField(help_text="The date when the application was filed.")
     granted_date = models.DateField(help_text="The date when the patent was granted.")
     title = models.TextField(help_text="The title of the patent.")
@@ -67,7 +66,15 @@ class Patent(models.Model):
     figures_count = models.IntegerField(help_text="The number of figures included with the patent.")
     num_sheets = models.IntegerField(help_text="The number of sheets included with the patent.")
     withdrawn = models.BooleanField(help_text="Whether the patent has been withdrawn, in other words if it is still valid.")
-    
+
+
+class PatentCPCGroup(models.model):
+    class Meta:
+        unique_together = ("patent", "cpc_group")
+
+    patent = models.ForeignKey(Patent, on_delete=models.PROTECT, related_name="cpc_groups")
+    cpc_group = models.ForeignKey(CPCGroup, on_delete=models.PROTECT, related_name="patents")
+
 
 class PCTData(models.Model):
     pct_state_choices = (

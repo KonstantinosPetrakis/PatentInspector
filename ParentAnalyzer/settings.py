@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.gis',
+    'admin_reorder',
     'leaflet',
     'main',
 ]
@@ -43,6 +44,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'admin_reorder.middleware.ModelAdminReorder'
 ]
 
 ROOT_URLCONF = 'ParentAnalyzer.urls'
@@ -124,6 +126,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Custom apps configuration
+# Leaflet
 LEAFLET_CONFIG = {
     'DEFAULT_CENTER': (44.638569, -63.586262),
     'DEFAULT_ZOOM': 18,
@@ -132,3 +135,16 @@ LEAFLET_CONFIG = {
     'SCALE': 'both',
     'ATTRIBUTION_PREFIX': 'Location Tracker'
 }
+
+# ModelAdmin-Reorder
+ADMIN_REORDER = (
+    {'app': 'main', 'label': 'Location', 'models': (
+        {'model': 'main.Location',  'label': 'Locations'},
+    )}, 
+    {'app': 'main', 'label': 'CPC', 'models': (
+        {'model': 'main.CPCSection',  'label': 'Sections'},
+        {'model': 'main.CPCClass',    'label': 'Classes'},
+        {'model': 'main.CPCSubclass', 'label': 'Subclasses'},
+        {'model': 'main.CPCGroup',    'label': 'Groups'},
+    )}
+)
