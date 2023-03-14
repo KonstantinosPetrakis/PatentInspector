@@ -3,4 +3,4 @@
 PatentAnalyzer is a tool for analyzing patent data. It's written in Python and uses the Django framework. Its priority is to be easy to use and provide a good user interface. It's also designed to be easily extensible. 
 
 # TODO
-Continue with the model extractions and database creations in USPTO command.
+* Before rebuilding database check that patent abstract gets no value "nan"

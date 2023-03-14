@@ -138,10 +138,11 @@ LEAFLET_CONFIG = {
 
 # ModelAdmin-Reorder
 ADMIN_REORDER = (
-    {'app': 'main', 'label': 'Location', 'models': (
-        {'model': 'main.Location',  'label': 'Locations'},
+    {'app': 'main', 'label': 'Patent related', 'models': (
+        {'model': 'main.Patent',      'label': 'Patents'},
+        {'model': 'main.Location',    'label': 'Locations'},
     )}, 
-    {'app': 'main', 'label': 'CPC', 'models': (
+    {'app': 'main', 'label': 'CPC related', 'models': (
         {'model': 'main.CPCSection',  'label': 'Sections'},
         {'model': 'main.CPCClass',    'label': 'Classes'},
         {'model': 'main.CPCSubclass', 'label': 'Subclasses'},

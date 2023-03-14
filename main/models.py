@@ -48,27 +48,29 @@ class Patent(models.Model):
         ("utility", "Utility"),
         ("design", "Design"),
         ("plant", "Plant"),
-        ("reissue", "Reissue")
+        ("reissue", "Reissue"),
     )
 
     office_choices = (
-        ("uspto", "USPTO"),
+        ("USPTO", "USPTO"),
     )
 
     office = models.CharField(max_length=100, choices=office_choices, help_text="The office that granted the patent.")
     office_patent_id = models.CharField(max_length=100, help_text="The ID of the patent in the office's database.")
-    type = models.CharField(max_length=100, choices=type_choices, help_text=get_help_text("patent_type"))
-    application_filled_date = models.DateField(help_text="The date when the application was filed.")
+    type = models.CharField(null=True, blank=True, max_length=100, choices=type_choices,help_text=get_help_text("patent_type"))
+    application_filed_date = models.DateField(null=True, help_text="The date when the application was filed.")
     granted_date = models.DateField(help_text="The date when the patent was granted.")
     title = models.TextField(help_text="The title of the patent.")
-    abstract = models.TextField(help_text="The abstract text of the patent.")
-    num_claims = models.IntegerField(help_text="The number of claims in the patent.")
-    figures_count = models.IntegerField(help_text="The number of figures included with the patent.")
-    num_sheets = models.IntegerField(help_text="The number of sheets included with the patent.")
+    abstract = models.TextField(null=True, blank=True, help_text="The abstract text of the patent.")
+    claims_count = models.IntegerField(help_text="The number of claims in the patent.")
+    figures_count = models.IntegerField(null=True, help_text="The number of figures included with the patent.")
+    sheets_count = models.IntegerField(null=True, help_text="The number of sheets included with the patent.")
     withdrawn = models.BooleanField(help_text="Whether the patent has been withdrawn, in other words if it is still valid.")
 
+    def __str__(self):
+        return f"{self.office} - {self.office_patent_id}"
 
-class PatentCPCGroup(models.model):
+class PatentCPCGroup(models.Model):
     class Meta:
         unique_together = ("patent", "cpc_group")
 

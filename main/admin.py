@@ -1,7 +1,14 @@
+from django.core.paginator import Paginator
 from leaflet.admin import LeafletGeoAdmin
 from django.contrib import admin
 from django.contrib.auth.models import Group, User
 from main.models import *
+
+
+class PatentAdmin(admin.ModelAdmin):
+    list_display = ("id", "office", "office_patent_id", "title", "type")
+    list_filter = ("type", "office")
+    search_fields = ("title", "abstract", "office")
 
 
 class LocationAdmin(LeafletGeoAdmin):
@@ -34,13 +41,16 @@ class CPCGroupAdmin(admin.ModelAdmin):
     ordering = ("group", )
 
 
-# Location
+# Patent related
+admin.site.register(Patent, PatentAdmin)
 admin.site.register(Location, LocationAdmin)
-# CPC Fields
+
+# CPC related
 admin.site.register(CPCSection, CPCSectionAdmin)
 admin.site.register(CPCClass, CPCClassAdmin)
 admin.site.register(CPCSubclass, CPCSubclassAdmin)
 admin.site.register(CPCGroup, CPCGroupAdmin)
+
 # Unregister Auth related fields
 admin.site.unregister(User)
 admin.site.unregister(Group)
