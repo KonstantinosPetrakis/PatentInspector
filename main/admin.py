@@ -5,10 +5,17 @@ from django.contrib.auth.models import Group, User
 from main.models import *
 
 
+class PatentCPCGroupInline(admin.TabularInline):
+    model = PatentCPCGroup
+    autocomplete_fields = ("cpc_group", )
+    extra = 0
+
+
 class PatentAdmin(admin.ModelAdmin):
     list_display = ("id", "office", "office_patent_id", "title", "type")
     list_filter = ("type", "office")
     search_fields = ("title", "abstract", "office")
+    inlines = [PatentCPCGroupInline]
 
 
 class LocationAdmin(LeafletGeoAdmin):
