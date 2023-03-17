@@ -1,8 +1,9 @@
-from django.core.paginator import Paginator
 from leaflet.admin import LeafletGeoAdmin
 from django.contrib import admin
 from django.contrib.auth.models import Group, User
 from main.models import *
+
+
 
 
 class PatentCPCGroupInline(admin.TabularInline):
@@ -11,11 +12,27 @@ class PatentCPCGroupInline(admin.TabularInline):
     extra = 0
 
 
+class PatentPCTDataInline(admin.TabularInline):
+    model = PCTData
+    extra = 0
+
+
 class PatentAdmin(admin.ModelAdmin):
+    class HasPCTApplicationFilter(admin.SimpleListFilter):
+        title = "existence of a PCT application"
+        parameter_name = "has_pct_application"
+
+        def lookups(self, request, model_admin):
+            return (("yes", "Yes"), ("no", "No"))
+
+        def queryset(self, request, queryset):
+            return queryset.filter(pct_data__isnull=self.value() != "yes")
+
+
     list_display = ("id", "office", "office_patent_id", "title", "type")
-    list_filter = ("type", "office")
+    list_filter = ("type", "office", HasPCTApplicationFilter)
     search_fields = ("title", "abstract", "office")
-    inlines = [PatentCPCGroupInline]
+    inlines = [PatentCPCGroupInline, PatentPCTDataInline]
 
 
 class LocationAdmin(LeafletGeoAdmin):

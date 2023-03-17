@@ -1,7 +1,17 @@
 """
+----------------------------------------------------------------------------------------------------
+# What's this?
+----------------------------------------------------------------------------------------------------
 This module defines a command that downloads all the necessary data from the USPTO and inserts it to
 the database.
 
+It's execution takes about 3 hours on a decent computer and internet connection 
+(~16GB RAM [I guess 10GB could also be enough] is required for it to run,
+if you have less you should alter some of the code to use chunks)
+
+----------------------------------------------------------------------------------------------------
+# How does it work?
+----------------------------------------------------------------------------------------------------
 It uses pandas to preprocess the data.
 
 For relatively small tables, it uses django's ORM bulk_create method to insert the data into the
@@ -26,8 +36,12 @@ import os
 DATA_DIRECTORY = f"{settings.BASE_DIR}/main/data"
 ENDPOINT = "https://s3.amazonaws.com/data.patentsview.org/download/"
 os.makedirs(DATA_DIRECTORY, exist_ok=True)
+
 location_id_map = {} # Will be used to map USPTO ids,
                      # to new generated IDs so relationships can be created.
+
+patent_id_map = {} # Will be used to map USPTO ids to new generated IDs
+                   # so relationships can be created.
 
 
 class Command(BaseCommand):
@@ -52,24 +66,32 @@ class Command(BaseCommand):
 
 
     def handle_location(self):
-        # self.download_and_unzip("g_location_disambiguated")
-        locations = pd.read_csv(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv", sep="\t")
-        locations = locations.astype(object).replace(np.nan, None).to_dict("records")
+        global location_id_map
 
-        for i, location in enumerate(locations):
-            location_id_map[location["location_id"]] = None
-            locations[i] = Location(
-                country_code=location["disambig_country"],
-                state=location["disambig_state"],
-                city=location["disambig_city"],
-                point=Point(location["longitude"], location["latitude"]),
-                county_fips=location["county_fips"],
-                state_fips=location["state_fips"],
-            )
+        # self.download_and_unzip("g_location_disambiguated")
+
+        locations = pd.read_csv(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv", sep="\t", 
+            usecols=["location_id", "disambig_country", "disambig_state", "disambig_city", 
+                "longitude", "latitude", "county_fips", "state_fips"],
+            dtype={"location_id": str, "disambig_country": str, "disambig_state": str, 
+                "disambig_city": str, "longitude": float, "latitude": float, "county_fips": "Int64",
+                "state_fips": "Int64"})
+        
+        locations.rename(columns={"disambig_country": "country_code", "disambig_state": "state", 
+            "disambig_city": "city"}, inplace=True)
+        
+        location_old_ids = locations["location_id"].copy()
+        locations.drop(columns=["location_id"], inplace=True)
+
+        locations["point"] = locations.apply(lambda x: Point(x["longitude"], x["latitude"]), axis=1)
+        locations.drop(columns=["longitude", "latitude"], inplace=True)
+        locations = locations.astype(object).replace(np.nan, None).to_dict("records")
+        
+        locations = [Location(**location) for location in locations]
         Location.objects.bulk_create(locations)
 
-        for id, location in zip(location_id_map, locations):
-            location_id_map[id] = location.id
+        for i in range(len(location_old_ids)):
+            location_id_map[location_old_ids[i]] = locations[i].id
 
         # os.remove(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv")
 
@@ -104,7 +126,9 @@ class Command(BaseCommand):
         # os.remove(f"{DATA_DIRECTORY}/g_cpc_title.tsv")
 
 
-    def handle_patent(self): # takes about 20m to run
+    def handle_patent(self):
+        global patent_id_map
+
         # self.download_and_unzip("g_patent")
         # self.download_and_unzip("g_application")
         # self.download_and_unzip("g_figures")
@@ -134,6 +158,8 @@ class Command(BaseCommand):
                 "num_claims": "claims_count"})
         patents["office"] = "USPTO"
 
+        patent_id_map = dict(zip(patents["office_patent_id"], patents["id"]))
+
         patents.to_csv(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv", index=False)
         del patents
         
@@ -146,13 +172,10 @@ class Command(BaseCommand):
         # os.remove(f"{DATA_DIRECTORY}/g_figures.tsv")
 
 
-    def handle_patent_cpc_group(self): # takes about 20m to run
+    def handle_patent_cpc_group(self): 
         # self.download_and_unzip("g_cpc_current")
 
         # Preprocess data
-        patent_id_map = {patent["office_patent_id"]: patent["id"] 
-            for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
-        
         valid_cpcs = CPCGroup.objects.values_list("group", flat=True)
 
         patent_cpc_groups = pd.read_csv(f"{DATA_DIRECTORY}/g_cpc_current.tsv", sep="\t", 
@@ -164,7 +187,6 @@ class Command(BaseCommand):
     
         # About 800 patents have invalid CPC groups, so we need to ignore them 
         patent_cpc_groups = patent_cpc_groups[patent_cpc_groups["cpc_group_id"].isin(valid_cpcs)]
-        # patent_cpc_groups.reset_index(drop=True, inplace=True)        
         
         patent_cpc_groups.to_csv(f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv", index=False)
         del patent_cpc_groups
@@ -176,15 +198,69 @@ class Command(BaseCommand):
         # os.remove(f"{DATA_DIRECTORY}/g_cpc_current.tsv")
 
 
-    def handle_pct_data(self):
-        pass
+    def handle_pct(self):
+        # self.download_and_unzip("g_pct_data")
+
+        pct_data = pd.read_csv(f"{DATA_DIRECTORY}/g_pct_data.tsv", sep="\t", usecols=["patent_id",
+            "published_or_filed_date", "filed_country", "pct_doc_number", "pct_doc_type"],
+            dtype={"patent_id": str, "published_or_filed_date": str, "filed_country": str,
+                "pct_doc_number": str, "pct_doc_type": str})
+
+        pct_data.rename(columns={"pct_doc_number": "pct_id", "pct_doc_type": "granted"}, inplace=True)
+        
+        pct_data["patent_id"] = pct_data["patent_id"].map(patent_id_map)
+        pct_data["granted"] = pct_data["granted"].map({"wo_grant": True, "pct_application": False})
+        pct_data = pct_data[pct_data["published_or_filed_date"].notna()]
+        pct_data = pct_data.to_dict("records")
+
+        PCTData.objects.bulk_create([PCTData(**pct) for pct in pct_data])
+
+        # os.remove(f"{DATA_DIRECTORY}/g_pct_data.tsv")
+
+    # 13.5m CPU = 280mb
+    # 6.5m CPU = 280mb 
+    # Gotta find a faster way, should also check if there are locations of inventors
+    # that are not in the location table
+    def handle_inventor(self):
+        # self.download_and_unzip("g_inventor_disambiguated")
+        
+        # Preprocess data
+        inventors_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv", sep="\t",
+            usecols=["patent_id", "location_id", "disambig_inventor_name_first",
+                "disambig_inventor_name_last", "male_flag"],
+            dtype={"patent_id": str, "location_id": str, "disambig_inventor_name_first": str, 
+                "disambig_inventor_name_last": str, "male_flag": "Int64"}, chunksize=100000)
+
+        first_chunk = True
+        for inventors_chunk in inventors_chunks:
+            # Process chunk
+            inventors_chunk = inventors_chunk.rename(columns=
+                {"disambig_inventor_name_first": "first_name", 
+                    "disambig_inventor_name_last": "last_name", "male_flag": "male"})
+            
+            for _, row in inventors_chunk.iterrows():
+                row["patent_id"] = patent_id_map[row["patent_id"]]
+                # Some inventors have invalid locations or no location at all
+                row["location_id"] = (None if row["location_id"] not in location_id_map
+                    else location_id_map[row["location_id"]])
+            
+            # Store chunk
+            if first_chunk: 
+                inventors_chunk.to_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv",
+                    index=False, header=True)
+                first_chunk = False
+            else:
+                inventors_chunk.to_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv",
+                    mode="a", index=False, header=False)
+        
+        # Load data
+        Inventor.objects.from_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
+        
+        # os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
 
 
     def handle_assignee(self):
-        pass
-
-
-    def handle_inventor(self):
         pass
 
 
@@ -193,12 +269,19 @@ class Command(BaseCommand):
 
 
     def handle(self, *args, **options):
-        from time import time
+        # Todo: double check if location data is correct (admin vs tsv)
+        # Fix error: invalid input syntax for type bigint: "198b0471-16c8-11ed-9b5f-1234bde3cd05"
+        # upon insertion (some mapping went wrong apparently)
+        global patent_id_map
+
+        Inventor.objects.all().delete()
+        Location.objects.all().delete()
+        self.handle_location()   
+
+        patent_id_map = {patent["office_patent_id"]: patent["id"] 
+            for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
         
-        self.handle_cpc()
-        start = time()
-        self.handle_patent_cpc_group()
-        print("handle_patent_cpc_group took", time() - start, "seconds")
+        self.handle_inventor()    
  
         # Interesting tables:
         # https://patentsview.org/download/data-download-tables

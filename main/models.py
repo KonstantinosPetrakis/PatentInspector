@@ -66,7 +66,7 @@ class Patent(models.Model):
     claims_count = models.IntegerField(help_text="The number of claims in the patent.")
     figures_count = models.IntegerField(null=True, help_text="The number of figures included with the patent.")
     sheets_count = models.IntegerField(null=True, help_text="The number of sheets included with the patent.")
-    withdrawn = models.BooleanField(help_text="Whether the patent has been withdrawn, in other words if it is still valid.")
+    withdrawn = models.BooleanField(help_text="Whether the patent has been withdrawn, in other words if it hasn't lost its validity.")
     objects = CopyManager()
 
     def __str__(self):
@@ -88,11 +88,11 @@ class PCTData(models.Model):
         ("application", "Application"),
     )
 
-    patent = models.OneToOneField(Patent, primary_key=True, on_delete=models.PROTECT, related_name="pct_date")
-    published_or_filled_date = models.DateField(help_text="The date when the patent was published or filed in the PCT database.")
-    application_number = models.CharField(max_length=100, help_text="The application number of the patent in the PCT database.")
-    filled_country = models.CharField(max_length=100, help_text="The country where the patent was filed in the PCT database.")
-    granted = models.BooleanField(help_text="Whether the patent is granted or it's just an application.")
+    patent = models.ForeignKey(Patent, on_delete=models.PROTECT, related_name="pct_data")
+    pct_id = models.CharField(max_length=100, help_text="The ID of the patent in the PCT database.")
+    published_or_filed_date = models.DateField(help_text="The date when the patent was published or filed by the office.")
+    filed_country = models.CharField(max_length=100, help_text="The country code where the patent was filed in the PCT database.")
+    granted = models.BooleanField(help_text="Whether the patent is published and granted or it's just filed.")
 
 
 class Location(models.Model):
@@ -106,18 +106,20 @@ class Location(models.Model):
 
 class Inventor(models.Model):
     patent = models.ForeignKey(Patent, on_delete=models.PROTECT, related_name="inventors")
-    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="inventors")
-    first_name = models.CharField(max_length=100, help_text="The first name of the inventor.")
-    last_name = models.CharField(max_length=100, help_text="The last name of the inventor.")
+    location = models.ForeignKey(Location, null=True, on_delete=models.PROTECT, related_name="inventors")
+    first_name = models.CharField(null=True, blank=True, max_length=100, help_text="The first name of the inventor.")
+    last_name = models.CharField(null=True, blank=True, max_length=100, help_text="The last name of the inventor.")
     male = models.BooleanField(null=True, help_text="Whether the inventor is male, if false is female, if null then no gender attributed.")
+    objects = CopyManager()
 
 
 class Assignee(models.Model):
     patent = models.ForeignKey(Patent, on_delete=models.PROTECT, related_name="assignees")
-    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="assignees")
-    first_name = models.CharField(null=True, max_length=100, help_text="The first name of the assignee if the assignee is an individual.")
-    last_name = models.CharField(null=True, max_length=100, help_text="The last name of the assignee if the assignee is an individual.")
+    location = models.ForeignKey(Location, null=True, on_delete=models.PROTECT, related_name="assignees")
+    first_name = models.CharField(null=True, blank=True, max_length=100, help_text="The first name of the assignee if the assignee is an individual.")
+    last_name = models.CharField(null=True, blank=True, max_length=100, help_text="The last name of the assignee if the assignee is an individual.")
     organization = models.CharField(null=True, max_length=100, help_text="The organization name if the assignee is an organization.")
+    objects = CopyManager()
 
 
 class PatentCitation(models.Model):
@@ -127,3 +129,5 @@ class PatentCitation(models.Model):
     record_name = models.CharField(max_length=100, null=True, blank=True, help_text="The name of the record.")
     cited_patent_number = models.CharField(null=True, max_length=100, help_text="The application number of the cited patent if it's not in the database.")
     cited_patent_country = models.CharField(null=True, max_length=100, help_text="The country of the cited patent if it's not in the database.")
+    objects = CopyManager()
+    

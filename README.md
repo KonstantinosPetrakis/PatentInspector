@@ -9,4 +9,5 @@ PatentAnalyzer is a tool for analyzing patent data. It's written in Python and u
 * Index the tables (with goal of speeding up queries of the query builder and django-admin)
     - It's best if data is indexed after insertion
     - I could try Model.objects.db.create_index()
-    - I could also try to use the Model.object.db.execute() 
+    - I could also try to use the Model.object.db.execute() - better for more complex queries (I will need full text indexes for patent.title and patent.abstract)
+    
