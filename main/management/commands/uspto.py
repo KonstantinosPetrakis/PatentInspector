@@ -217,19 +217,16 @@ class Command(BaseCommand):
 
         # os.remove(f"{DATA_DIRECTORY}/g_pct_data.tsv")
 
-    # 13.5m CPU = 280mb
-    # 6.5m CPU = 280mb 
-    # Gotta find a faster way, should also check if there are locations of inventors
-    # that are not in the location table
+
     def handle_inventor(self):
         # self.download_and_unzip("g_inventor_disambiguated")
-        
+
         # Preprocess data
         inventors_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv", sep="\t",
             usecols=["patent_id", "location_id", "disambig_inventor_name_first",
                 "disambig_inventor_name_last", "male_flag"],
             dtype={"patent_id": str, "location_id": str, "disambig_inventor_name_first": str, 
-                "disambig_inventor_name_last": str, "male_flag": "Int64"}, chunksize=100000)
+                "disambig_inventor_name_last": str, "male_flag": object}, chunksize=1000000)
 
         first_chunk = True
         for inventors_chunk in inventors_chunks:
@@ -238,16 +235,17 @@ class Command(BaseCommand):
                 {"disambig_inventor_name_first": "first_name", 
                     "disambig_inventor_name_last": "last_name", "male_flag": "male"})
             
-            for _, row in inventors_chunk.iterrows():
-                row["patent_id"] = patent_id_map[row["patent_id"]]
-                # Some inventors have invalid locations or no location at all
-                row["location_id"] = (None if row["location_id"] not in location_id_map
-                    else location_id_map[row["location_id"]])
+            inventors_chunk["patent_id"] = inventors_chunk["patent_id"].map(patent_id_map)
+            inventors_chunk["location_id"] = inventors_chunk["location_id"].map(location_id_map)
+            # There are some invalid location ids, so we need to remove them
+            inventors_chunk = inventors_chunk[inventors_chunk["location_id"].notna()]
+            inventors_chunk["location_id"] = inventors_chunk["location_id"].astype(int)
+            inventors_chunk["male"] = inventors_chunk["male"].map({1.0: True, 0.0: False})
             
             # Store chunk
             if first_chunk: 
                 inventors_chunk.to_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv",
-                    index=False, header=True)
+                    index=False, header=True, )
                 first_chunk = False
             else:
                 inventors_chunk.to_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv",
@@ -255,9 +253,8 @@ class Command(BaseCommand):
         
         # Load data
         Inventor.objects.from_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
-        
         # os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv")
-        os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
+        # os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
 
 
     def handle_assignee(self):
@@ -269,20 +266,17 @@ class Command(BaseCommand):
 
 
     def handle(self, *args, **options):
-        # Todo: double check if location data is correct (admin vs tsv)
-        # Fix error: invalid input syntax for type bigint: "198b0471-16c8-11ed-9b5f-1234bde3cd05"
-        # upon insertion (some mapping went wrong apparently)
         global patent_id_map
 
         Inventor.objects.all().delete()
         Location.objects.all().delete()
         self.handle_location()   
-
+        
         patent_id_map = {patent["office_patent_id"]: patent["id"] 
             for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
-        
-        self.handle_inventor()    
- 
+
+        self.handle_inventor()
+
         # Interesting tables:
         # https://patentsview.org/download/data-download-tables
         # https://patentsview.org/download/data-download-dictionary
