@@ -103,6 +103,10 @@ class Location(models.Model):
     county_fips = models.IntegerField(null=True, help_text="The FIPS code of the county.")
     state_fips = models.IntegerField(null=True, help_text="The FIPS code of the state.")
 
+    def __str__(self):
+        if self.state: return f"{self.country_code} - {self.state} - {self.city}"
+        return f"{self.country_code} - {self.city}"
+
 
 class Inventor(models.Model):
     patent = models.ForeignKey(Patent, on_delete=models.PROTECT, related_name="inventors")
@@ -111,6 +115,9 @@ class Inventor(models.Model):
     last_name = models.CharField(null=True, blank=True, max_length=100, help_text="The last name of the inventor.")
     male = models.BooleanField(null=True, help_text="Whether the inventor is male, if false is female, if null then no gender attributed.")
     objects = CopyManager()
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
 
 
 class Assignee(models.Model):
@@ -121,13 +128,16 @@ class Assignee(models.Model):
     organization = models.CharField(null=True, max_length=100, help_text="The organization name if the assignee is an organization.")
     objects = CopyManager()
 
+    def __str__(self):
+        return self.organization if self.organization else f"{self.first_name} {self.last_name}" 
+
 
 class PatentCitation(models.Model):
-    citing_patent = models.ForeignKey(Patent, on_delete=models.PROTECT, related_name="citations")
+    citing_patent = models.ForeignKey(Patent, on_delete=models.PROTECT, null=True, related_name="citations")
     cited_patent = models.ForeignKey(Patent, on_delete=models.PROTECT, null=True, related_name="cited_by")
     citation_date = models.DateField(help_text="The date when the patent was cited.")
-    record_name = models.CharField(max_length=100, null=True, blank=True, help_text="The name of the record.")
+    record_name = models.CharField(max_length=150, null=True, blank=True, help_text="The name of the record.")
     cited_patent_number = models.CharField(null=True, max_length=100, help_text="The application number of the cited patent if it's not in the database.")
-    cited_patent_country = models.CharField(null=True, max_length=100, help_text="The country of the cited patent if it's not in the database.")
+    cited_patent_country = models.CharField(null=True, max_length=100, help_text="The country code of the cited patent if it's not in the database.")
     objects = CopyManager()
     

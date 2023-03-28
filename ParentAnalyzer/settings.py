@@ -20,6 +20,9 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+INTERNAL_IPS = [
+    "127.0.0.1"
+]
 
 # Application definition
 
@@ -33,6 +36,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'admin_reorder',
     'leaflet',
+    'debug_toolbar',
     'main',
 ]
 
@@ -44,7 +48,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'admin_reorder.middleware.ModelAdminReorder'
+    'admin_reorder.middleware.ModelAdminReorder',
+    "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = 'ParentAnalyzer.urls'
@@ -139,13 +144,16 @@ LEAFLET_CONFIG = {
 # ModelAdmin-Reorder
 ADMIN_REORDER = (
     {'app': 'main', 'label': 'Patent related', 'models': (
-        {'model': 'main.Patent',      'label': 'Patents'},
-        {'model': 'main.Location',    'label': 'Locations'},
+        {'model': 'main.Patent',         'label': 'Patents'},
+        {'model': 'main.PatentCitation', 'label': 'Patent Citation'},
+        {'model': 'main.Location',       'label': 'Locations'},
+        {'model': 'main.Inventor',       'label': 'Inventor'},
+        {'model': 'main.Assignee',       'label': 'Assignee'},
     )}, 
     {'app': 'main', 'label': 'CPC related', 'models': (
-        {'model': 'main.CPCSection',  'label': 'Sections'},
-        {'model': 'main.CPCClass',    'label': 'Classes'},
-        {'model': 'main.CPCSubclass', 'label': 'Subclasses'},
-        {'model': 'main.CPCGroup',    'label': 'Groups'},
+        {'model': 'main.CPCSection',     'label': 'Sections'},
+        {'model': 'main.CPCClass',       'label': 'Classes'},
+        {'model': 'main.CPCSubclass',    'label': 'Subclasses'},
+        {'model': 'main.CPCGroup',       'label': 'Groups'},
     )}
 )

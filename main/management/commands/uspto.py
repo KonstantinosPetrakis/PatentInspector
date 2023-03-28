@@ -7,7 +7,7 @@ the database.
 
 It's execution takes about 3 hours on a decent computer and internet connection 
 (~16GB RAM [I guess 10GB could also be enough] is required for it to run,
-if you have less you should alter some of the code to use chunks)
+if you have less you should alter some of the code to use chunks or use smaller chunks generally)
 
 ----------------------------------------------------------------------------------------------------
 # How does it work?
@@ -17,7 +17,8 @@ It uses pandas to preprocess the data.
 For relatively small tables, it uses django's ORM bulk_create method to insert the data into the
 database.
 
-For larger tables, it uses the postgres_copy module to insert the data into the database.
+For larger tables, it uses the postgres_copy module to insert the data into the database for 
+performance reasons.
 """
 
 
@@ -258,24 +259,93 @@ class Command(BaseCommand):
 
 
     def handle_assignee(self):
+        # self.download_and_unzip("g_assignee_disambiguated")
+
+        # Preprocess data
+        assignee_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_assignee_disambiguated.tsv", sep="\t",
+            usecols=["patent_id", "location_id", "disambig_assignee_individual_name_first",
+                "disambig_assignee_individual_name_last", "disambig_assignee_organization"],
+            dtype={"patent_id": str, "location_id": str, "disambig_assignee_organization": str,
+                "disambig_assignee_individual_name_first": str, 
+                "disambig_assignee_individual_name_last": str}, chunksize=1000000)
+
+        first_chunk = True
+        for assignee_chunk in assignee_chunks:
+            # Process chunk
+            assignee_chunk = assignee_chunk.rename(columns={
+                "disambig_assignee_individual_name_first": "first_name", 
+                "disambig_assignee_individual_name_last": "last_name", 
+                "disambig_assignee_organization": "organization"})
+            
+            assignee_chunk["patent_id"] = assignee_chunk["patent_id"].map(patent_id_map)
+            assignee_chunk["location_id"] = assignee_chunk["location_id"].map(location_id_map)
+            # There are some invalid location ids, so we need to remove them
+            assignee_chunk = assignee_chunk[assignee_chunk["location_id"].notna()]
+            assignee_chunk["location_id"] = assignee_chunk["location_id"].astype(int)
+
+            # Store chunk
+            if first_chunk: 
+                assignee_chunk.to_csv(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv",
+                    index=False, header=True)
+                first_chunk = False
+            else:
+                assignee_chunk.to_csv(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv",
+                    mode="a", index=False, header=False)
+        
+        # Load data
+        Assignee.objects.from_csv(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv")
+
+        # os.remove(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv")
+        # os.remove(f"{DATA_DIRECTORY}/g_assignee_disambiguated.tsv")
+
+
+    def handle_us_patent_citation(self):
+        # self.download_and_unzip("g_us_patent_citation")
+
+        # Preprocess data
+        citations_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_us_patent_citation.tsv", sep="\t",
+            usecols=["patent_id", "citation_patent_id", "citation_date"], 
+            dtype={"patent_id": str, "citation_patent_id": str, "citation_date": str}, chunksize=10000)
+        
+        first_chunk = True
+        for citations_chunk in citations_chunks:
+            citations_chunk.rename(columns={"patent_id": "citing_patent_id"}, inplace=True)
+            
+            citations_chunk["citing_patent_id"] = citations_chunk["citing_patent_id"].map(patent_id_map)
+            citations_chunk["cited_patent_id"] = citations_chunk["citation_patent_id"].map(patent_id_map).astype("Int64")
+
+            na = citations_chunk["cited_patent_id"].isna()
+            citations_chunk.loc[na, "cited_patent_country"] = "US"
+            citations_chunk.loc[na, "cited_patent_number"] = citations_chunk.loc[na]["citation_patent_id"]
+            citations_chunk.drop(columns=["citation_patent_id"], inplace=True)
+
+            if first_chunk:
+                citations_chunk.to_csv(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv",
+                    index=False, header=True)
+                first_chunk = False
+                break
+            else:
+                citations_chunk.to_csv(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv",
+                    mode="a", index=False, header=False)  
+        # Load data
+        PatentCitation.objects.from_csv(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv")
+
+        # os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation.tsv")
+        # os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv")
+
+
+    def handle_foreign_citation():
         pass
-
-
-    def handle_patent_citation(self): # this is gonna be hard
-        pass 
 
 
     def handle(self, *args, **options):
         global patent_id_map
-
-        Inventor.objects.all().delete()
-        Location.objects.all().delete()
-        self.handle_location()   
         
         patent_id_map = {patent["office_patent_id"]: patent["id"] 
             for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
-
-        self.handle_inventor()
+        
+        PatentCitation.objects.all().delete()
+        self.handle_us_patent_citation()
 
         # Interesting tables:
         # https://patentsview.org/download/data-download-tables
