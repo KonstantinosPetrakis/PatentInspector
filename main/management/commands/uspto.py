@@ -19,6 +19,14 @@ database.
 
 For larger tables, it uses the postgres_copy module to insert the data into the database for 
 performance reasons.
+
+----------------------------------------------------------------------------------------------------
+# What are those fields and tables, how are they downloaded manually?
+----------------------------------------------------------------------------------------------------
+USPTO explains the tables and fields in the following URL:
+https://patentsview.org/download/data-download-dictionary
+Moreover, one can download the tables manually from the following URL:
+https://patentsview.org/download/data-download-tables
 """
 
 
@@ -305,7 +313,7 @@ class Command(BaseCommand):
         # Preprocess data
         citations_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_us_patent_citation.tsv", sep="\t",
             usecols=["patent_id", "citation_patent_id", "citation_date"], 
-            dtype={"patent_id": str, "citation_patent_id": str, "citation_date": str}, chunksize=10000)
+            dtype={"patent_id": str, "citation_patent_id": str, "citation_date": str}, chunksize=20000000)
         
         first_chunk = True
         for citations_chunk in citations_chunks:
@@ -316,14 +324,13 @@ class Command(BaseCommand):
 
             na = citations_chunk["cited_patent_id"].isna()
             citations_chunk.loc[na, "cited_patent_country"] = "US"
-            citations_chunk.loc[na, "cited_patent_number"] = citations_chunk.loc[na]["citation_patent_id"]
+            citations_chunk.loc[na, "cited_patent_number"] = citations_chunk.loc[na, "citation_patent_id"]
             citations_chunk.drop(columns=["citation_patent_id"], inplace=True)
 
             if first_chunk:
                 citations_chunk.to_csv(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv",
                     index=False, header=True)
                 first_chunk = False
-                break
             else:
                 citations_chunk.to_csv(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv",
                     mode="a", index=False, header=False)  
@@ -334,8 +341,27 @@ class Command(BaseCommand):
         # os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv")
 
 
-    def handle_foreign_citation():
-        pass
+    def handle_foreign_citation(self):
+        # self.download_and_unzip("g_foreign_citation")
+
+        # Preprocess data
+        citations = pd.read_csv(f"{DATA_DIRECTORY}/g_foreign_citation.tsv", sep="\t",
+            usecols=["patent_id", "citation_application_id", "citation_date", "citation_country"], 
+            dtype={"patent_id": str, "citation_application_id": str, "citation_date": str, 
+            "citation_country": str})
+        
+        citations.rename(columns={"patent_id": "citing_patent_id", 
+            "citation_application_id": "cited_patent_number", 
+            "citation_country": "cited_patent_country"}, inplace=True)
+        
+        citations["citing_patent_id"] = citations["citing_patent_id"].map(patent_id_map)
+        citations.to_csv(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv", index=False)
+        
+        # Load data
+        PatentCitation.objects.from_csv(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv")
+
+        # os.remove(f"{DATA_DIRECTORY}/g_foreign_citation.tsv")
+        # os.remove(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv")
 
 
     def handle(self, *args, **options):
@@ -344,9 +370,4 @@ class Command(BaseCommand):
         patent_id_map = {patent["office_patent_id"]: patent["id"] 
             for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
         
-        PatentCitation.objects.all().delete()
-        self.handle_us_patent_citation()
-
-        # Interesting tables:
-        # https://patentsview.org/download/data-download-tables
-        # https://patentsview.org/download/data-download-dictionary
+        self.handle_foreign_citation()

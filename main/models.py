@@ -135,7 +135,7 @@ class Assignee(models.Model):
 class PatentCitation(models.Model):
     citing_patent = models.ForeignKey(Patent, on_delete=models.PROTECT, null=True, related_name="citations")
     cited_patent = models.ForeignKey(Patent, on_delete=models.PROTECT, null=True, related_name="cited_by")
-    citation_date = models.DateField(help_text="The date when the patent was cited.")
+    citation_date = models.DateField(null=True, help_text="The date when the patent was cited.")
     record_name = models.CharField(max_length=150, null=True, blank=True, help_text="The name of the record.")
     cited_patent_number = models.CharField(null=True, max_length=100, help_text="The application number of the cited patent if it's not in the database.")
     cited_patent_country = models.CharField(null=True, max_length=100, help_text="The country code of the cited patent if it's not in the database.")
