@@ -11,6 +11,7 @@ django-postgres-copy==2.7.2
 idna==3.4
 numpy==1.24.2
 pandas==1.5.3
+pip-autoremove==0.10.0
 psycopg2==2.9.5
 python-dateutil==2.8.2
 pytz==2022.7.1

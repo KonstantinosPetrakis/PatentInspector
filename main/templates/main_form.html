@@ -1,0 +1,15 @@
+{{ form.non_field_errors }}
+{% for field in form %}
+    <div class="mb-3">
+        <div class="d-flex">
+            <label for="{{field.name}}" class="form-label"> {{ field.label }} </label>
+            {% if field.help_text %}
+                <div class="ms-auto" data-bs-toggle="tooltip" data-bs-title="{{field.help_text}}">
+                    <i class="fa-solid fa-info"></i>
+                </div>
+            {% endif %}
+        </div>
+        {{ field }}
+        {{ field.errors }}
+    </div>
+{% endfor %}

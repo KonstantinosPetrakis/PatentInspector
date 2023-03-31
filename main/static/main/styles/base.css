@@ -1,0 +1,13 @@
+.theme-button {
+    all: unset;
+}
+
+html[data-bs-theme="dark"] .theme-button {
+    transform: rotate(0);
+    transition: transform .3s;
+}
+
+html[data-bs-theme="light"] .theme-button {
+    transform: rotate(180deg);
+    transition: transform .3s;
+}

@@ -1,0 +1,45 @@
+{% load static %}
+
+
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static "main/styles/bootstrap.min.css" %}">
+    <link rel="stylesheet" href="{% static "main/styles/fontawesome.min.css" %}">
+    <link rel="stylesheet" href="{% static "main/styles/base.css" %}">
+    <link rel="stylesheet" href="{% static "main/styles/slider.css" %}">
+    <script src="{% static "main/scripts/fontawesome.min.js" %}"></script>
+    <script src="{% static "main/scripts/bootstrap.bundle.min.js" %}"></script>
+    <script src="{% static "main/scripts/base.js" %}"></script>
+    <script src="{% static "main/scripts/slider.js" %}"></script>
+    <title>PatentAnalyzer</title>
+    <meta name="description" content="An open source tool for analyzing patents.">
+    <meta name="keywords" content="Patent, USPTO, Analyze, Statistics, Data Representation">
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url "index" %}">
+                PatentAnalyzer
+            </a>
+
+            <button class="ms-auto theme-button" onClick="switchBootstrapTheme()">
+                <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+        </div>
+    </nav>
+    <main class="container-xxl">
+        <h1 class="h1 text-center m-"> PatentAnalyzer </h1>
+        {% block content %} {% endblock content %}
+    </main>
+    <footer>
+
+    </footer>
+</body>
+
+</html>

@@ -5,10 +5,10 @@
 This module defines a command that downloads all the necessary data from the USPTO and inserts it to
 the database.
 
-It's execution takes about 3 hours on a decent computer and internet connection 
-(~16GB RAM [I guess 10GB could also be enough] is required for it to run,
-if you have less you should alter some of the code to use chunks or use smaller chunks generally)
-
+It's execution takes about 3-4 hours on a decent computer and internet connection 
+(~16GB RAM is required for it to run, if you have less you should alter some of the code
+to use chunks or use smaller chunks generally, you could also try to run one function of handle() 
+at a time, this would put less pressure on the garbage collector.)
 ----------------------------------------------------------------------------------------------------
 # How does it work?
 ----------------------------------------------------------------------------------------------------
@@ -77,7 +77,7 @@ class Command(BaseCommand):
     def handle_location(self):
         global location_id_map
 
-        # self.download_and_unzip("g_location_disambiguated")
+        self.download_and_unzip("g_location_disambiguated")
 
         locations = pd.read_csv(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv", sep="\t", 
             usecols=["location_id", "disambig_country", "disambig_state", "disambig_city", 
@@ -102,11 +102,12 @@ class Command(BaseCommand):
         for i in range(len(location_old_ids)):
             location_id_map[location_old_ids[i]] = locations[i].id
 
-        # os.remove(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_location_disambiguated.tsv")
+        print("Location table inserted successfully!")
 
 
     def handle_cpc(self):
-        # self.download_and_unzip("g_cpc_title")
+        self.download_and_unzip("g_cpc_title")
         cpcs = pd.read_csv(f"{DATA_DIRECTORY}/g_cpc_title.tsv", sep="\t")
 
         # Create CPCClasses
@@ -132,15 +133,16 @@ class Command(BaseCommand):
         cpc_groups = [CPCGroup(**cpc_group) for cpc_group in cpc_groups.to_dict("records")]
         CPCGroup.objects.bulk_create(cpc_groups)
 
-        # os.remove(f"{DATA_DIRECTORY}/g_cpc_title.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_cpc_title.tsv")
+        print("CPC table inserted successfully!")
 
 
     def handle_patent(self):
         global patent_id_map
 
-        # self.download_and_unzip("g_patent")
-        # self.download_and_unzip("g_application")
-        # self.download_and_unzip("g_figures")
+        self.download_and_unzip("g_patent")
+        self.download_and_unzip("g_application")
+        self.download_and_unzip("g_figures")
 
         # Preprocess data
         patents = pd.read_csv(f"{DATA_DIRECTORY}/g_patent.tsv", sep="\t",
@@ -167,22 +169,23 @@ class Command(BaseCommand):
                 "num_claims": "claims_count"})
         patents["office"] = "USPTO"
 
-        patent_id_map = dict(zip(patents["office_patent_id"], patents["id"]))
-
         patents.to_csv(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv", index=False)
         del patents
         
         # Load data
         Patent.objects.from_csv(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv")
+        patent_id_map = {patent["office_patent_id"]: patent["id"] 
+            for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
 
-        # os.remove(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv")
-        # os.remove(f"{DATA_DIRECTORY}/g_patent.tsv")
-        # os.remove(f"{DATA_DIRECTORY}/g_application.tsv")
-        # os.remove(f"{DATA_DIRECTORY}/g_figures.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_patent.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_application.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_figures.tsv")
+        print("Patent table inserted successfully!")
 
 
     def handle_patent_cpc_group(self): 
-        # self.download_and_unzip("g_cpc_current")
+        self.download_and_unzip("g_cpc_current")
 
         # Preprocess data
         valid_cpcs = CPCGroup.objects.values_list("group", flat=True)
@@ -199,17 +202,20 @@ class Command(BaseCommand):
         
         patent_cpc_groups.to_csv(f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv", index=False)
         del patent_cpc_groups
+        del valid_cpcs
 
         # Load data
         PatentCPCGroup.objects.from_csv(f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv")
 
-        # os.remove(f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv")
-        # os.remove(f"{DATA_DIRECTORY}/g_cpc_current.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_cpc_current.tsv")
+        print("PatentCPCGroup table inserted successfully!")
 
 
     def handle_pct(self):
-        # self.download_and_unzip("g_pct_data")
+        self.download_and_unzip("g_pct_data")
 
+        # Preprocess data
         pct_data = pd.read_csv(f"{DATA_DIRECTORY}/g_pct_data.tsv", sep="\t", usecols=["patent_id",
             "published_or_filed_date", "filed_country", "pct_doc_number", "pct_doc_type"],
             dtype={"patent_id": str, "published_or_filed_date": str, "filed_country": str,
@@ -220,15 +226,19 @@ class Command(BaseCommand):
         pct_data["patent_id"] = pct_data["patent_id"].map(patent_id_map)
         pct_data["granted"] = pct_data["granted"].map({"wo_grant": True, "pct_application": False})
         pct_data = pct_data[pct_data["published_or_filed_date"].notna()]
-        pct_data = pct_data.to_dict("records")
+        pct_data.to_csv(f"{DATA_DIRECTORY}/g_pct_data_preprocessed.csv", index=False)
+        del pct_data
+        
+        # Load data
+        PCTData.objects.from_csv(f"{DATA_DIRECTORY}/g_pct_data_preprocessed.csv")
 
-        PCTData.objects.bulk_create([PCTData(**pct) for pct in pct_data])
-
-        # os.remove(f"{DATA_DIRECTORY}/g_pct_data.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_pct_data.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_pct_data_preprocessed.csv")
+        print("PCTData table inserted successfully!")
 
 
     def handle_inventor(self):
-        # self.download_and_unzip("g_inventor_disambiguated")
+        self.download_and_unzip("g_inventor_disambiguated")
 
         # Preprocess data
         inventors_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv", sep="\t",
@@ -262,12 +272,13 @@ class Command(BaseCommand):
         
         # Load data
         Inventor.objects.from_csv(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
-        # os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv")
-        # os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv")
+        print("Inventor table inserted successfully!")
 
 
     def handle_assignee(self):
-        # self.download_and_unzip("g_assignee_disambiguated")
+        self.download_and_unzip("g_assignee_disambiguated")
 
         # Preprocess data
         assignee_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_assignee_disambiguated.tsv", sep="\t",
@@ -303,12 +314,13 @@ class Command(BaseCommand):
         # Load data
         Assignee.objects.from_csv(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv")
 
-        # os.remove(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv")
-        # os.remove(f"{DATA_DIRECTORY}/g_assignee_disambiguated.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_assignee_disambiguated.tsv")
+        print("Assignee table inserted successfully!")
 
 
     def handle_us_patent_citation(self):
-        # self.download_and_unzip("g_us_patent_citation")
+        self.download_and_unzip("g_us_patent_citation")
 
         # Preprocess data
         citations_chunks = pd.read_csv(f"{DATA_DIRECTORY}/g_us_patent_citation.tsv", sep="\t",
@@ -337,12 +349,13 @@ class Command(BaseCommand):
         # Load data
         PatentCitation.objects.from_csv(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv")
 
-        # os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation.tsv")
-        # os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv")
+        print("PatentCitation table (US) inserted successfully!")
 
 
     def handle_foreign_citation(self):
-        # self.download_and_unzip("g_foreign_citation")
+        self.download_and_unzip("g_foreign_citation")
 
         # Preprocess data
         citations = pd.read_csv(f"{DATA_DIRECTORY}/g_foreign_citation.tsv", sep="\t",
@@ -360,14 +373,27 @@ class Command(BaseCommand):
         # Load data
         PatentCitation.objects.from_csv(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv")
 
-        # os.remove(f"{DATA_DIRECTORY}/g_foreign_citation.tsv")
-        # os.remove(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_foreign_citation.tsv")
+        os.remove(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv")
+        print("PatentCitation table (global) inserted successfully!")
 
 
     def handle(self, *args, **options):
+        # self.handle_location()
+        # self.handle_cpc()
+        # self.handle_patent()
+        # self.handle_patent_cpc_group() # 40m
         global patent_id_map
         
+        
+        Location.objects.all().delete()
+        self.handle_location()
+
         patent_id_map = {patent["office_patent_id"]: patent["id"] 
             for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
-        
+
+        self.handle_pct()
+        self.handle_inventor()
+        self.handle_assignee()
+        self.handle_us_patent_citation()
         self.handle_foreign_citation()

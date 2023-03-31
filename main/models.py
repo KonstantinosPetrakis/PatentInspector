@@ -45,16 +45,16 @@ class CPCGroup(models.Model):
 
 
 class Patent(models.Model):  
-    type_choices = (
+    type_choices = [
         ("utility", "Utility"),
         ("design", "Design"),
         ("plant", "Plant"),
         ("reissue", "Reissue"),
-    )
+    ]
 
-    office_choices = (
+    office_choices = [
         ("USPTO", "USPTO"),
-    )
+    ]
 
     office = models.CharField(max_length=100, choices=office_choices, help_text="The office that granted the patent.")
     office_patent_id = models.CharField(max_length=100, help_text="The ID of the patent in the office's database.")
@@ -93,7 +93,8 @@ class PCTData(models.Model):
     published_or_filed_date = models.DateField(help_text="The date when the patent was published or filed by the office.")
     filed_country = models.CharField(max_length=100, help_text="The country code where the patent was filed in the PCT database.")
     granted = models.BooleanField(help_text="Whether the patent is published and granted or it's just filed.")
-
+    objects = CopyManager()
+    
 
 class Location(models.Model):
     country_code = models.CharField(null=True, max_length=100, help_text="The country of the location.")
