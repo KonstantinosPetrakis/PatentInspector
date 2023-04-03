@@ -27,8 +27,9 @@ INTERNAL_IPS = [
 # Application definition
 
 INSTALLED_APPS = [
-    'django.contrib.admin',
     'django.contrib.auth',
+    'main',
+    'django.contrib.admin',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -37,7 +38,7 @@ INSTALLED_APPS = [
     'admin_reorder',
     'leaflet',
     'debug_toolbar',
-    'main',
+
 ]
 
 MIDDLEWARE = [

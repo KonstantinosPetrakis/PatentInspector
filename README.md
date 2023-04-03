@@ -4,8 +4,7 @@ PatentAnalyzer is a tool for analyzing patent data. It's written in Python and u
 
 # TODO
 
-* Create the form (query builder) page (maybe use some other more responsive double-range
-from here https://stackoverflow.com/questions/55067557/bootstrap-input-field-inside-tooltip-popover-removed-from-output-html)
+* Create the form (query builder)
 * Index the tables (with goal of speeding up queries of the query builder and django-admin)
     - It's best if data is indexed after insertion
     - I could try Model.objects.db.create_index()

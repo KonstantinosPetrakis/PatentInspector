@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-
-{% block content %}
-    <form method="POST" action="{% url "index" %}" class="border border-1 rounded shadow p-3 mt-2">
-        {% csrf_token %}
-        {{ form }}
-        <input type="submit" value="Query">
-    </form>
-{% endblock %} 

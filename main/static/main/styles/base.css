@@ -11,3 +11,29 @@ html[data-bs-theme="light"] .theme-button {
     transform: rotate(180deg);
     transition: transform .3s;
 }
+
+.min-max-slider .slider, .min-max-slider .noUi-base {
+    background-color: var(--bs-secondary-bg);
+    box-shadow: unset;
+    border: 0;
+    border-radius: 25px;
+}
+
+.min-max-slider .noUi-handle {
+    content: "";
+    background-color: var(--bs-body-color);
+    border: 0;
+    border-radius: 50%;
+    width: 1.5rem !important;
+    height: 1.5rem !important;
+    transform: translateY(12.5%); /* random number that just works */
+    box-shadow: unset;
+}
+
+.min-max-slider .noUi-handle:hover {
+    cursor: grab;
+}
+
+.min-max-slider .noUi-handle::before, .min-max-slider .noUi-handle::after {
+    all: unset;
+}

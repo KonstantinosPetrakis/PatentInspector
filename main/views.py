@@ -10,4 +10,4 @@ def index(request):
     else:
         form = MainForm()
 
-    return render(request, "index.html", {"form": form})
+    return render(request, "main/index.html", {"form": form})
