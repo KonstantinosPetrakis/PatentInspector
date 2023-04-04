@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from main.forms import *
+from main.models import *
 
 
 def index(request):

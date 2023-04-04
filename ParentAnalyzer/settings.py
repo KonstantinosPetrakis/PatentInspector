@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'admin_reorder',
     'leaflet',
     'debug_toolbar',
-
+    'macros'
 ]
 
 MIDDLEWARE = [

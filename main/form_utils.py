@@ -31,8 +31,17 @@ class RangeDateWidget(forms.MultiWidget):
         return [value.get('min'), value.get('max')] if value else [None, None]
 
 
+class TriStateCheckboxInput(forms.HiddenInput):
+    def __init__(self, attrs={}):
+        attrs.update({"class": "tri-state-checkbox"})
+        super().__init__(attrs)
+
+    def value_from_datadict(self, data, files, name):
+        value = data.get(name)
+        return value == "True" if len(value) != 0 else None
+
+
 class KeywordWidget(forms.TextInput):
-    # All the work is being done in keyword-input.js
     def __init__(self, attrs={}):
         attrs.update({"class": "d-none keyword-input"})
         super().__init__(attrs)
@@ -45,6 +54,16 @@ class KeywordWidget(forms.TextInput):
         if isinstance(value, list):
             return ','.join(str(v) for v in value)
         return super().format_value(value)
+    
+
+class ChoiceKeywordsWidget(forms.SelectMultiple):
+    def __init__(self, attrs={}):
+        attrs.update({"class": "form-select"})
+        super().__init__(attrs)
+    
+    def value_from_datadict(self, data, files, name):
+        values = super().value_from_datadict(data, files, name)
+        return values.split(",") if values else []
     
 
 # ----------------- Fields -----------------
@@ -96,8 +115,28 @@ class KeywordField(forms.CharField):
         return list(value) # without this, the value is a string, e.g 
 
 
-class BooleanField(forms.BooleanField):
+class TriStateField(forms.BooleanField):
     def __init__(self, *args, **kwargs):
-        kwargs.setdefault('required', False)
+        kwargs.setdefault("widget", TriStateCheckboxInput())
+        kwargs.setdefault("required", False)
         super().__init__(*args, **kwargs)
-        self.widget.attrs.update({"class": "form-check-input"})
+        
+    def to_python(self, value):
+        return None if value is None else super().to_python(value) 
+
+
+# Use just a comma sep charfield in backend and a multiple choice in frontend 
+# Generally clean this mess (try to use less widgets)
+class ChoiceKeywordsInputField(forms.MultipleChoiceField):
+    def __init__(self, *args, **kwargs):
+        url = kwargs.pop("url")
+        min_query_length = kwargs.pop("min_query_length", 0)
+
+        kwargs.setdefault('required', False)
+        kwargs.setdefault('widget', forms.SelectMultiple(attrs={"class": "choice-keywords-input", "data-url": url, 
+            "data-minQueryLength": min_query_length}))
+        
+        super().__init__(*args, **kwargs)
+    
+    
+
