@@ -26,7 +26,7 @@
             </h2>
             <div id="mainForm-{{ name|slugify }}" class="accordion-collapse collapse {% if forloop.first %}show{% endif %}">
                 {% if name == "CPC fields" %}
-                    <p class="m-2 fs-6">
+                    <p class="m-2">
                         A field with greater specificity has greater precedence over a field with 
                         less specificity. For example, if you select "A" for section, and "A41"
                         for class, you will only get the results for class A41.
