@@ -12,6 +12,7 @@ CLASS_MAP = {
     "cpc_subclass": CPCSubclass,
     "cpc_group": CPCGroup,
     "inventor": Inventor,
+    "assignee": Assignee,
 }
 
 REVERSE_CLASS_MAP = {v: k for k, v in CLASS_MAP.items()}

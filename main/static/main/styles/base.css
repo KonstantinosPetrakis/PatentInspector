@@ -36,6 +36,15 @@ html[data-bs-theme="dark"] .btn.btn-theme { /* This is the bootstrap .btn-dark *
     cursor: pointer;
 }
 
+.map {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+}
+
+html[data-bs-theme="dark"] .map {
+    filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+
 /* Customize noUiSlider library */
 .min-max-slider .slider, .min-max-slider .noUi-base {
     background-color: var(--bs-secondary-bg);

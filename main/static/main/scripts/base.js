@@ -10,24 +10,18 @@ function switchBootstrapTheme() {
 
 
 /**
- * This function throttles a function.
- * Code copied from https://stackoverflow.com/a/27078401
- * @param {Function} callback the function to throttle. 
- * @param {Number} limit the time limit in milliseconds to throttle for.
- * @returns the throttled function.
+ * This function debounces a function (delays its execution until a certain time has passed without it being called)
+ * @param {Function} func the function to debounce
+ * @param {Number} timeout the milliseconds to wait before executing the function.
+ * @returns The new function that has been debounced.
  */
-function throttle (callback, limit) {
-    var waiting = false;                      
-    return function () {                      
-        if (!waiting) {                      
-            callback.apply(this, arguments);  
-            waiting = true;                   
-            setTimeout(function () {          
-                waiting = false;             
-            }, limit);
-        }
-    }
-}
+function debounce(func, timeout = 500){
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+  }
 
 document.querySelector("html").setAttribute("data-bs-theme", localStorage.getItem("theme") || "dark");
 addEventListener("DOMContentLoaded", () => {
@@ -46,4 +40,7 @@ addEventListener("DOMContentLoaded", () => {
 
     for (const choiceKeywordInput of document.querySelectorAll(".choice-keywords-input")) 
         initializeChoiceKeywordsInputField(choiceKeywordInput);
+
+    for (const radiusInput of document.querySelectorAll(".radius-input")) 
+        initializeRadiusInput(radiusInput);
 });

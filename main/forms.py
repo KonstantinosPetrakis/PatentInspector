@@ -1,9 +1,9 @@
 from django.utils.safestring import mark_safe
 from django.conf import settings
+from main.api import build_url
 from main.form_utils import *
 from main.models import *
 from django import forms
-from main.api import build_url
 
 
 def get_help_text(field):
@@ -28,13 +28,14 @@ class MainForm(forms.Form):
     cpc_group = ChoiceKeywordsField(min_query_length=3, url=build_url(CPCGroup), help_text="The group of the CPC classification. E.g 'A01B1/00	Hand tools'")
     pct_application_date = RangeDateField(help_text="The date when the PCT application was filed. To retrieve all patents that have a PCT application you can add 2 dates that are really far apart effectively encompassing all PCT applications.")
     pct_granted = TriStateField(help_text="Whether the patent has been granted protection under the PCT.")
-    # inventor_location = 
-    inventor_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "first_name"), help_text="The first name of the inventor.")
-    inventor_last_name = KeywordField(help_text="The last name of the inventor.")
+    inventor_location = RadiusField(help_text="The location of the inventor.")
+    inventor_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "first_name"), help_text="The first name of the inventor. All first names that start-with the given first name will be returned.")
+    inventor_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "last_name"), help_text="The last name of the inventor. The last name will be matched exactly, so if you want more variants you will have to select them.")
     inventor_male = TriStateField(help_text="Whether the inventor is male or not.")
-    assignee_first_name = KeywordField(help_text="The first name name of the assignee if it is an individual.")
-    assignee_last_name = KeywordField(help_text="The last name of the assignee if it is an individual.")
-    assignee_organization = KeywordField(help_text="The name of the organization if the assignee is an organization.")
+    assignee_location = RadiusField(help_text="The location of the assignee.")
+    assignee_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "first_name"), help_text="The first name name of the assignee if it is an individual. All first names that start-with the given first name will be returned.")
+    assignee_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "last_name"), help_text="The last name of the assignee if it is an individual. The last name will be matched exactly, so if you want more variants you will have to select them.")
+    assignee_organization = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "organization"), help_text="The name of the organization if the assignee is an organization.")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,4 +44,5 @@ class MainForm(forms.Form):
             "CPC fields": [field for field in self.fields if field.startswith("cpc_")],
             "PCT fields": [field for field in self.fields if field.startswith("pct_")],
             "Inventor fields": [field for field in self.fields if field.startswith("inventor_")],
+            "Assignee fields": [field for field in self.fields if field.startswith("assignee_")],
         }

@@ -46,7 +46,7 @@ function initializeMinMaxSlider(sliderWrapper) {
     const inputs = [sliderWrapper.querySelector(".min-input"), sliderWrapper.querySelector(".max-input")]
     const min = parseInt(sliderWrapper.getAttribute("data-min"));
     const max = parseInt(sliderWrapper.getAttribute("data-max"));
-    noUiSlider.create(slider, { start: [min, max], step: 1, range: {min, max} });
+    noUiSlider.create(slider, { start: [min, max], step: 1, range: { min, max } });
     slider.noUiSlider.on("update", (values, handle) => inputs[handle].value = parseInt(values[handle]));
     inputs.forEach((input, handle) => input.addEventListener("change", () => slider.noUiSlider.setHandle(handle, input.value)));
 }
@@ -61,8 +61,8 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
      * This function searches for keywords and updates the available choices.
      * @param {string} value the value to search for. 
      */
-    async function searchKeywords(value="") {
-        if (value.length < minQueryLength) return; 
+    async function searchKeywords(value = "") {
+        if (value.length < minQueryLength) return;
         const response = await fetch(`${url}${noQueryLimit ? '' : '/'}${value}`);
         const data = await response.json();
         formatData(data);
@@ -74,12 +74,11 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
      * @param {Event} event the event choice.js triggers when the user searches for a choice.
      */
     async function searchKeywordsByEvent(event) { await searchKeywords(event.detail.value) }
-    const searchKeywordsByEventThrottled = throttle(searchKeywordsByEvent, 500); 
-
+    const searchKeywordsByEventDebounced = debounce(searchKeywordsByEvent, 500);
 
     async function populateChoices(values) {
         // Make a POST request via fetch
-        const response = await fetch(`${url}?ids=${encodeURIComponent(JSON.stringify(values))}`, {method: "GET", headers: {"Content-Type": "application/json"}});
+        const response = await fetch(`${url}?ids=${encodeURIComponent(JSON.stringify(values))}`, { method: "GET", headers: { "Content-Type": "application/json" } });
         const data = await response.json();
         formatData(data);
         choiceKeywords.setChoices(data, "search_id", "representation", false)
@@ -109,23 +108,23 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     fakeSelect.multiple = true;
     choiceKeywordInput.insertAdjacentElement("afterend", fakeSelect);
 
-    const choiceKeywords = new Choices(fakeSelect, {allowHTML: true, removeItemButton: true, duplicateItemsAllowed: false, shouldSort: false, searchFields: ["representation"], searchResultLimit: 10000});
-    fakeSelect.addEventListener("search", searchKeywordsByEventThrottled);
+    const choiceKeywords = new Choices(fakeSelect, { allowHTML: true, removeItemButton: true, duplicateItemsAllowed: false, shouldSort: false, searchFields: ["representation"], searchResultLimit: 10000 });
+    fakeSelect.addEventListener("search", searchKeywordsByEventDebounced);
 
     // If there is no query limit, trigger a search event to get all keywords and don't
     // listen to search events anymore.
     if (noQueryLimit) {
-        fakeSelect.removeEventListener("search", searchKeywordsByEventThrottled);
+        fakeSelect.removeEventListener("search", searchKeywordsByEventDebounced);
         await searchKeywords();
     }
-    
+
     // If hidden input field has a value, add the corresponding choices
     if (choiceKeywordInput.value) {
         const choices = choiceKeywordInput.value.split(",");
         const alreadyExistingChoices = choiceKeywords._currentState.choices.map(choice => choice.value);
-        
+
         // Fetch choices only if there are not already fetched (there wasn't a query limit)
-        if (choices.some(choice => !alreadyExistingChoices.includes(choice))) 
+        if (choices.some(choice => !alreadyExistingChoices.includes(choice)))
             await populateChoices(choices);
 
         // Add choices
@@ -136,4 +135,56 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     fakeSelect.addEventListener("change", () => {
         choiceKeywordInput.value = Array.from(fakeSelect.selectedOptions).map(option => option.value).join(",")
     });
+}
+
+
+/**
+ * This function initializes a radius field.
+ * @param {Element} radiusInput the hidden input field that stores the radius.
+ */
+function initializeRadiusInput(radiusInput) {
+    // Create a div to contain the map
+    const mapElement = document.createElement("div");
+    mapElement.className = "map";
+    mapElement.id = radiusInput.getAttribute("name");
+    radiusInput.insertAdjacentElement("afterend", mapElement);
+
+    // Create the map and center it on the US
+    const map = L.map(mapElement.id).setView([37.8, -96], 3);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Create a new layer group to store the drawn items
+    var drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+
+    var drawControl = new L.Control.Draw({
+        draw: {
+            polygon: false,
+            marker: false,
+            polyline: false,
+            rectangle: false,
+            circlemarker: false
+        },
+        edit: { featureGroup: drawnItems}
+    });
+    map.addControl(drawControl);
+
+    // When a circle is drawn, add a marker at its center and store that lat, lng and
+    // radius in the hidden input field
+    map.on(L.Draw.Event.CREATED, (e) => {
+        const circle = e.layer;
+        const circleCoords = circle.getLatLng();
+        const circleRadius = circle.getRadius();
+
+        drawnItems.clearLayers(); // clear old circle
+        drawnItems.addLayer(circle); // Add the circle
+        drawnItems.addLayer(L.marker(circleCoords)); // Add a marker in the center
+        radiusInput.value = `${circleCoords.lat},${circleCoords.lng},${circleRadius}`;
+    });
+
+    // Fix bootstrap accordion mess with leaflet map
+    const accordion = mapElement.closest(".accordion");
+    if (accordion) accordion.addEventListener("shown.bs.collapse", () => map.invalidateSize());
 }
