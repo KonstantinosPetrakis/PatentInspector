@@ -46,3 +46,6 @@ class MainForm(forms.Form):
             "Inventor fields": [field for field in self.fields if field.startswith("inventor_")],
             "Assignee fields": [field for field in self.fields if field.startswith("assignee_")],
         }
+    
+    def query_patents(self):
+        pass

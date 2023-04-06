@@ -33,7 +33,7 @@ class PatentAdmin(admin.ModelAdmin):
 
     list_display = ("id", "office", "office_patent_id", "title", "type")
     list_filter = ("type", "office", HasPCTApplicationFilter)
-    search_fields = ("title", "abstract", "office", "office_patent_id")
+    search_fields = ("search_vector", "office", "office_patent_id")
     inlines = [PatentCPCGroupInline, PatentPCTDataInline]
 
 

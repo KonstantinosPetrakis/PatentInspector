@@ -57,12 +57,10 @@ class Command(BaseCommand):
     help = 'This command downloads all the necessary data from the USPTO and inserts it  \
         "into the database.'
 
-
     def download_and_unzip(self, table: str):
-        """Downloads and unzips a table from the USPTO endpoint.
-
-        Args:
-            table (str): the name of the table to download and unzip.
+        """
+        Downloads and unzips a table from the USPTO endpoint.
+        :param table: the name of the table to download and unzip.
         """
 
         res = r.get(f"{ENDPOINT}{table}.tsv.zip")
@@ -379,21 +377,14 @@ class Command(BaseCommand):
 
 
     def handle(self, *args, **options):
+        self.handle_patent()
+
         # self.handle_location()
         # self.handle_cpc()
         # self.handle_patent()
-        # self.handle_patent_cpc_group() # 40m
-        global patent_id_map
-        
-        
-        Location.objects.all().delete()
-        self.handle_location()
-
-        patent_id_map = {patent["office_patent_id"]: patent["id"] 
-            for patent in Patent.objects.filter(office="USPTO").values("id", "office_patent_id")}
-
-        self.handle_pct()
-        self.handle_inventor()
-        self.handle_assignee()
-        self.handle_us_patent_citation()
-        self.handle_foreign_citation()
+        # self.handle_patent_cpc_group()
+        # self.handle_pct()
+        # self.handle_inventor()
+        # self.handle_assignee()
+        # self.handle_us_patent_citation()
+        # self.handle_foreign_citation()

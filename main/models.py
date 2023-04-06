@@ -1,3 +1,4 @@
+from django.contrib.postgres.search import SearchVectorField 
 from django.utils.safestring import mark_safe
 from django.contrib.gis.db import models
 from django.conf import settings
@@ -67,6 +68,7 @@ class Patent(models.Model):
     figures_count = models.IntegerField(null=True, help_text="The number of figures included with the patent.")
     sheets_count = models.IntegerField(null=True, help_text="The number of sheets included with the patent.")
     withdrawn = models.BooleanField(help_text="Whether the patent has been withdrawn, in other words if it hasn't lost its validity.")
+    search_vector = SearchVectorField(null=True)
     objects = CopyManager()
 
     def __str__(self):
