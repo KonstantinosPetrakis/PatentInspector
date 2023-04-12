@@ -377,6 +377,7 @@ class Command(BaseCommand):
 
 
     def handle(self, *args, **options):
+        # self.download_and_unzip("g_patent")
         self.handle_patent()
 
         # self.handle_location()

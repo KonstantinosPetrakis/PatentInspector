@@ -4,3 +4,6 @@ __pycache__/
 data
 # A file used locally to view the data of tsv datadumps 
 test.ipynb
+# Migrations should be ignored because there's no production yet.
+main/migrations/*
+!main/migrations/__init__.py

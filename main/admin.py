@@ -4,6 +4,33 @@ from django.contrib.auth.models import Group, User
 from main.models import *
 
 
+
+
+class FastCountAdmin(admin.ModelAdmin):
+    class FastCountQuerySet(QuerySet):
+        def count(self):
+            """
+            Override count queries (performed by Django ORM) to display approximate value.
+            This will speed up count in the admin interface.
+            """
+
+            if self._result_cache is not None:
+                return len(self._result_cache)
+
+            query = self.query
+            if not (query.group_by or query.where or query.distinct):
+                cursor = connection.cursor()
+                cursor.execute("SELECT reltuples FROM pg_class WHERE relname = %s", 
+                    [self.model._meta.db_table])
+                return int(cursor.fetchone()[0])
+            else:
+                return self.query.get_count(using=self.db)
+    
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return FastCountAdmin.FastCountQuerySet(qs.model, using=qs.db)
+
+
 # Patent related definitions
 class PatentCPCGroupInline(admin.TabularInline):
     model = PatentCPCGroup
@@ -16,7 +43,7 @@ class PatentPCTDataInline(admin.TabularInline):
     extra = 0
 
 
-class PatentAdmin(admin.ModelAdmin):
+class PatentAdmin(FastCountAdmin):
     class HasPCTApplicationFilter(admin.SimpleListFilter):
         title = "existence of a PCT application"
         parameter_name = "has_pct_application"
@@ -33,7 +60,7 @@ class PatentAdmin(admin.ModelAdmin):
 
     list_display = ("id", "office", "office_patent_id", "title", "type")
     list_filter = ("type", "office", HasPCTApplicationFilter)
-    search_fields = ("search_vector", "office", "office_patent_id")
+    search_fields = ("search", "office", "office_patent_id")
     inlines = [PatentCPCGroupInline, PatentPCTDataInline]
 
 

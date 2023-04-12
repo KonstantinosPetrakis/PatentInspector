@@ -1,0 +1,44 @@
+{% extends "main/base.html" %}
+
+{% block content %}
+    <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
+    <p>
+        You selected {{ patents|length }} out of {{ patents_count }} patents in {{ time_taken|floatformat:2}}s .
+    </p>
+    Showing at most 10 results.
+    <ul>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th> Office </th>
+                        <th> Office Patent ID </th>
+                        <th> Type </th>
+                        <th> Application Filled Date </th>
+                        <th> Granted Date </th>
+                        <th> Title </th>
+                        <th> Abstract </th>
+                        <th> Claims count </th>
+                        <th> Figures count </th>
+                        <th> withdrawn </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for patent in patents|slice:":10" %}
+                        <tr>
+                            <td> {{ patent.office }} </td>
+                            <td> {{ patent.office_patent_id }} </td>
+                            <td> {{ patent.type }} </td>
+                            <td> {{ patent.application_filed_date }} </td>
+                            <td> {{ patent.granted_date }} </td>
+                            <td> {{ patent.title }} </td>
+                            <td> {{ patent.abstract }} </td>
+                            <td> {{ patent.claims_count }} </td>
+                            <td> {{ patent.figures_count }} </td>
+                            <td> {{ patent.withdrawn }} </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+    </ul>
+
+{% endblock %}

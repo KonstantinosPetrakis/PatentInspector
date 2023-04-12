@@ -1,8 +1,10 @@
-from django.contrib.postgres.search import SearchVectorField 
+from django.contrib.postgres.search import SearchVectorField
 from django.utils.safestring import mark_safe
+from django.db.models.query import QuerySet
 from django.contrib.gis.db import models
 from django.conf import settings
 from postgres_copy import CopyManager
+from django.db import connection
 
 
 def get_help_text(field):
@@ -68,11 +70,17 @@ class Patent(models.Model):
     figures_count = models.IntegerField(null=True, help_text="The number of figures included with the patent.")
     sheets_count = models.IntegerField(null=True, help_text="The number of sheets included with the patent.")
     withdrawn = models.BooleanField(help_text="Whether the patent has been withdrawn, in other words if it hasn't lost its validity.")
-    search_vector = SearchVectorField(null=True)
+    search = SearchVectorField(null=True) # This can be used after/or db is indexed (see manage.py index command ).
     objects = CopyManager()
 
     def __str__(self):
         return f"{self.office} - {self.office_patent_id}"
+    
+    @staticmethod
+    def approximate_count():
+        cursor = connection.cursor()
+        cursor.execute("SELECT reltuples FROM pg_class WHERE relname = %s", [Patent._meta.db_table])
+        return int(cursor.fetchone()[0])
 
 
 class PatentCPCGroup(models.Model):
