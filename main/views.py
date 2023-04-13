@@ -10,7 +10,7 @@ def index(request):
         form = MainForm(request.POST)
         if form.is_valid():
             t = time()
-            patents = form.query_patents()
+            patents = list(form.query_patents())
             patents_count = Patent.approximate_count()
             time_taken = time() - t
             return render(request, "main/result.html", 

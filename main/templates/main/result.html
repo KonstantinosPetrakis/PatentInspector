@@ -1,13 +1,25 @@
 {% extends "main/base.html" %}
 
 {% block content %}
+    <style>
+        table {
+            overflow: auto;
+            height: 5rem;
+        }
+        table thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: var(--bs-body-bg);
+        }
+    </style>
     <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
     <p>
         You selected {{ patents|length }} out of {{ patents_count }} patents in {{ time_taken|floatformat:2}}s .
     </p>
-    Showing at most 10 results.
+    Showing at most 50 results.
     <ul>
-            <table class="table">
+            <table class="table table-sm table-responsive">
                 <thead>
                     <tr>
                         <th> Office </th>
@@ -20,10 +32,11 @@
                         <th> Claims count </th>
                         <th> Figures count </th>
                         <th> withdrawn </th>
+                        <th> CPC Groups </th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for patent in patents|slice:":10" %}
+                    {% for patent in patents|slice:":50" %}
                         <tr>
                             <td> {{ patent.office }} </td>
                             <td> {{ patent.office_patent_id }} </td>
@@ -35,6 +48,11 @@
                             <td> {{ patent.claims_count }} </td>
                             <td> {{ patent.figures_count }} </td>
                             <td> {{ patent.withdrawn }} </td>
+                            <td> 
+                                {% for patent_group in patent.cpc_groups.all %}
+                                    {{ patent_group.cpc_group }}{% if not forloop.last %},{% endif %}
+                                {% endfor %}
+                            </td>
                         </tr>
                     {% endfor %}
                 </tbody>

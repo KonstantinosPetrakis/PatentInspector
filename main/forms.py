@@ -52,21 +52,55 @@ class MainForm(forms.Form):
             "Inventor fields": [field for field in self.fields if field.startswith("inventor_")],
             "Assignee fields": [field for field in self.fields if field.startswith("assignee_")],
         }
-    """
-    {'patent_office': '', 'patent_type': '', 'patent_keywords': [], 
-    'patent_application_filed_date': None, 'patent_grant_date': None, 'patent_figures_count': None, 
-    'patent_claims_count': None, 'patent_sheets_count': None, 'patent_withdrawn': None}
-    """
+
     def query_patents(self):
         data = self.cleaned_data
+        print(data)
+        keywords = "|".join(data["patent_keywords"])
         query = Q()
+
+        # Patent fields
         if data["patent_office"]: query &= Q(office=data["patent_office"])
         if data["patent_type"]: query &= Q(type=data["patent_type"])
-        if data["patent_keywords"]: query &= Q(search="|".join(data["patent_keywords"]))
-        if data["patent_application_filed_date"]: query &= Q(application_filed_date__range=data["patent_application_filed_date"].values())
-        if data["patent_granted_date"]: query &= Q(granted_date__range=data["patent_granted_date"].values())
-        if data["patent_figures_count"]: query &= Q(figures_count__range=data["patent_figures_count"].values())
-        if data["patent_claims_count"]: query &= Q(claims_count__range=data["patent_claims_count"].values())
-        if data["patent_sheets_count"]: query &= Q(sheets_count__range=data["patent_sheets_count"].values())
         if data["patent_withdrawn"] is not None: query &= Q(withdrawn=data["patent_withdrawn"])
-        return Patent.objects.filter(query)
+        
+        if data["patent_keywords"]: # design patents usually don't have abstracts and full text search doesn't work for most of them
+            if not data["patent_type"]: query &= Q(search=keywords) | Q(title__iregex=keywords)
+            elif data["patent_type"] == "design": query &= Q(title__iregex=keywords)
+            else: query &= Q(search=keywords)
+        
+        if patent_filled_date := data["patent_application_filed_date"]: 
+            if patent_filled_date["min"]: query &= Q(application_filed_date__gte=patent_filled_date["min"])
+            if patent_filled_date["max"]: query &= Q(application_filed_date__lte=patent_filled_date["max"])
+        
+        if patent_granted_date := data["patent_granted_date"]:
+            if patent_granted_date["min"]: query &= Q(granted_date__gte=patent_granted_date["min"])
+            if patent_granted_date["max"]: query &= Q(granted_date__lte=patent_granted_date["max"])
+
+        if patent_figures_count :=data["patent_figures_count"]: 
+            if patent_figures_count["min"]: query &= Q(figures_count__gte=patent_figures_count["min"])
+            if patent_figures_count["max"]: query &= Q(figures_count__lte=patent_figures_count["max"])
+        
+        if patent_claims_count := data["patent_claims_count"]:
+            if patent_claims_count["min"]: query &= Q(claims_count__gte=patent_claims_count["min"])
+            if patent_claims_count["max"]: query &= Q(claims_count__lte=patent_claims_count["max"])
+        
+        if patent_sheets_count := data["patent_sheets_count"]:
+            if patent_sheets_count["min"]: query &= Q(sheets_count__gte=patent_sheets_count["min"])
+            if patent_sheets_count["max"]: query &= Q(sheets_count__lte=patent_sheets_count["max"])
+
+        # CPC fields
+        # 'cpc_section': [], 'cpc_class': [], 'cpc_subclass': [], 'cpc_group': [],
+        # Algorithm:
+        # If a section is selected, pop classes, subclasses and groups that start with the
+        #   letter of the section.
+        # If a class is selected (and not popped from the previous set), pop subclasses and
+        #   groups that start with the letters of the class.
+        # And so on... Then:
+        # For each section to a like section% query
+        # For each class to a like class% query
+        # For each subclass to a like subclass% query
+        # For the groups just use the ids
+        # Before implementing this, check if IDs are like that. 
+        # By they way create a function for the min-max query, don't be stupid.
+        return Patent.objects.filter(query).prefetch_related("cpc_groups__cpc_group")[:100]

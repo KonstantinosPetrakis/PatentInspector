@@ -43,12 +43,15 @@ function initializeTriStateCheckbox(hiddenElement) {
  */
 function initializeMinMaxSlider(sliderWrapper) {
     const slider = sliderWrapper.querySelector(".slider");
-    const inputs = [sliderWrapper.querySelector(".min-input"), sliderWrapper.querySelector(".max-input")]
+    const inputs = [sliderWrapper.querySelector(".min-input"), sliderWrapper.querySelector(".max-input")];
+    
     const min = parseInt(sliderWrapper.getAttribute("data-min"));
     const max = parseInt(sliderWrapper.getAttribute("data-max"));
-    noUiSlider.create(slider, { start: [min, max], step: 1, range: { min, max } });
+    const minValue = inputs[0].value == "" ? min : inputs[0].value;
+    const maxValue = inputs[1].value == "" ? max : inputs[1].value;
+    noUiSlider.create(slider, { start: [minValue, maxValue], step: 1, range: { min, max } });
     slider.noUiSlider.on("update", (values, handle) => inputs[handle].value = parseInt(values[handle]));
-    inputs.forEach((input, handle) => input.addEventListener("change", () => slider.noUiSlider.setHandle(handle, input.value)));
+    inputs.forEach((input, handle) => input.addEventListener("change", () => slider.noUiSlider.setHandle(handle, input.value)));  
 }
 
 

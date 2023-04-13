@@ -132,7 +132,7 @@ class Command(BaseCommand):
         CPCGroup.objects.bulk_create(cpc_groups)
 
         os.remove(f"{DATA_DIRECTORY}/g_cpc_title.tsv")
-        print("CPC table inserted successfully!")
+        print("CPC tables inserted successfully!")
 
 
     def handle_patent(self):
@@ -377,15 +377,12 @@ class Command(BaseCommand):
 
 
     def handle(self, *args, **options):
-        # self.download_and_unzip("g_patent")
+        self.handle_location()
+        self.handle_cpc()
         self.handle_patent()
-
-        # self.handle_location()
-        # self.handle_cpc()
-        # self.handle_patent()
-        # self.handle_patent_cpc_group()
-        # self.handle_pct()
-        # self.handle_inventor()
-        # self.handle_assignee()
-        # self.handle_us_patent_citation()
-        # self.handle_foreign_citation()
+        self.handle_patent_cpc_group()
+        self.handle_pct()
+        self.handle_inventor()
+        self.handle_assignee()
+        self.handle_us_patent_citation()
+        self.handle_foreign_citation()
