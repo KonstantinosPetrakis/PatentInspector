@@ -152,5 +152,5 @@ class RadiusField(forms.CharField):
     def to_python(self, value):
         if not value: return None
         lat, lng, radius = value.split(",")
-        return {"lat": lat, "lng": lng, "radius": radius} 
+        return {"lat": float(lat), "lng": float(lng), "radius": float(radius)} 
     

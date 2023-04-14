@@ -12,51 +12,90 @@
             z-index: 1;
             background-color: var(--bs-body-bg);
         }
+
+        .map {
+            width: 15rem;
+        }
     </style>
     <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
     <p>
         You selected {{ patents|length }} out of {{ patents_count }} patents in {{ time_taken|floatformat:2}}s .
     </p>
     Showing at most 50 results.
-    <ul>
-            <table class="table table-sm table-responsive">
-                <thead>
-                    <tr>
-                        <th> Office </th>
-                        <th> Office Patent ID </th>
-                        <th> Type </th>
-                        <th> Application Filled Date </th>
-                        <th> Granted Date </th>
-                        <th> Title </th>
-                        <th> Abstract </th>
-                        <th> Claims count </th>
-                        <th> Figures count </th>
-                        <th> withdrawn </th>
-                        <th> CPC Groups </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for patent in patents|slice:":50" %}
-                        <tr>
-                            <td> {{ patent.office }} </td>
-                            <td> {{ patent.office_patent_id }} </td>
-                            <td> {{ patent.type }} </td>
-                            <td> {{ patent.application_filed_date }} </td>
-                            <td> {{ patent.granted_date }} </td>
-                            <td> {{ patent.title }} </td>
-                            <td> {{ patent.abstract }} </td>
-                            <td> {{ patent.claims_count }} </td>
-                            <td> {{ patent.figures_count }} </td>
-                            <td> {{ patent.withdrawn }} </td>
-                            <td> 
-                                {% for patent_group in patent.cpc_groups.all %}
-                                    {{ patent_group.cpc_group }}{% if not forloop.last %},{% endif %}
-                                {% endfor %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-    </ul>
-
+    <table class="table table-sm table-responsive">
+        <thead>
+            <tr>
+                <th> Office </th>
+                <th> Office Patent ID </th>
+                <th> Type </th>
+                <th> Application Filled Date </th>
+                <th> Granted Date </th>
+                <th> Title </th>
+                <th> Abstract </th>
+                <th> Claims count </th>
+                <th> Figures count </th>
+                <th> withdrawn </th>
+                <th> CPC Groups </th>
+                <th> PCT Published/Filed date </th>
+                <th> PCT Granted </th>
+                <th> Inventor names </th>
+                <th> Inventor locations </th>
+                <th> Assignee names </th>
+                <th> Assignee locations </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for patent in patents|slice:":50" %}
+                <tr>
+                    <td> {{ patent.office }} </td>
+                    <td> {{ patent.office_patent_id }} </td>
+                    <td> {{ patent.type }} </td>
+                    <td> {{ patent.application_filed_date }} </td>
+                    <td> {{ patent.granted_date }} </td>
+                    <td> {{ patent.title }} </td>
+                    <td> {{ patent.abstract }} </td>
+                    <td> {{ patent.claims_count }} </td>
+                    <td> {{ patent.figures_count }} </td>
+                    <td> {{ patent.withdrawn }} </td>
+                    <td> 
+                        {% for patent_group in patent.cpc_groups.all %}
+                            {{ patent_group.cpc_group }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %} 
+                    </td>
+                    <td> 
+                        {% for pct_data in patent.pct_data.all %}
+                            {{ pct_data.published_or_filed_date }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td> 
+                        {% for pct_data in patent.pct_data.all %}
+                            {{ pct_data.granted }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td> 
+                        {% for inventor in patent.inventors.all %}
+                            {{ inventor.first_name }}
+                            {{ inventor.last_name }}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <div class="point-map" data-circle="{{inventor_circle}}" data-points="{% for inventor in patent.inventors.all %}{{ inventor.location.point.0 }}|{{ inventor.location.point.1 }}{% if not forloop.last %},{% endif %}{% endfor %}"></div></div>
+                    </td>
+                    <td>
+                        {% for assignee in patent.assignees.all %}
+                            {% if assignee.organization %}
+                                {{ assignee.organization }}
+                            {% else %}
+                                {{ assignee.first_name }}
+                                {{ assignee.last_name }}
+                            {% endif %}{% if not forloop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% comment %} <div class="point-map"> </div> {% endcomment %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 {% endblock %}

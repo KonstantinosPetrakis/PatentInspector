@@ -43,4 +43,7 @@ addEventListener("DOMContentLoaded", () => {
 
     for (const radiusInput of document.querySelectorAll(".radius-input")) 
         initializeRadiusInput(radiusInput);
+
+    for (const pointMap of document.querySelectorAll(".point-map")) 
+        initializePointMap(pointMap);
 });

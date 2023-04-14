@@ -1,10 +1,13 @@
 from django.utils.safestring import mark_safe
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
 from django.conf import settings
 from main.api import build_url
 from django.db.models import Q
 from main.form_utils import *
 from main.models import *
 from django import forms
+
 
 
 def get_help_text(field):
@@ -33,15 +36,15 @@ class MainForm(forms.Form):
     pct_application_date = RangeDateField(help_text="The date when the PCT application was filed. To retrieve all patents that have a PCT application you can add 2 dates that are really far apart effectively encompassing all PCT applications.")
     pct_granted = TriStateField(help_text="Whether the patent has been granted protection under the PCT.")
     
-    inventor_location = RadiusField(help_text="The location of the inventor.")
-    inventor_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "first_name"), help_text="The first name of the inventor. All first names that start-with the given first name will be returned.")
-    inventor_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "last_name"), help_text="The last name of the inventor. The last name will be matched exactly, so if you want more variants you will have to select them.")
-    inventor_male = TriStateField(help_text="Whether the inventor is male or not.")
+    inventor_location = RadiusField(help_text="The location of the inventor. If there are multiple inventors, at least one of them must be in this location.")
+    inventor_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "first_name"), help_text="The first name of the inventor. If there are multiple inventors, at least one of them will have this first name.")
+    inventor_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "last_name"), help_text="The last name of the inventor. If there are multiple inventors, at least one of them must have this last name.")
+    inventor_male = TriStateField(help_text="Whether the inventor is male or not. Currently there are no inventor records with gender declared.")
     
-    assignee_location = RadiusField(help_text="The location of the assignee.")
-    assignee_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "first_name"), help_text="The first name name of the assignee if it is an individual. All first names that start-with the given first name will be returned.")
-    assignee_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "last_name"), help_text="The last name of the assignee if it is an individual. The last name will be matched exactly, so if you want more variants you will have to select them.")
-    assignee_organization = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "organization"), help_text="The name of the organization if the assignee is an organization.")
+    assignee_location = RadiusField(help_text="The location of the assignee. If there are multiple assignees, at least one of them must be in this location.")
+    assignee_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "first_name"), help_text="The first name name of the assignee if it is an individual. If there are multiple assignees, at least one of them will have this first name.")
+    assignee_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "last_name"), help_text="The last name of the assignee if it is an individual. If there are multiple assignees, at least one of them must have this last name.")
+    assignee_organization = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "organization"), help_text="The name of the organization if the assignee is an organization. If there are multiple assignees, at least one of them must have this name.")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -54,53 +57,62 @@ class MainForm(forms.Form):
         }
 
     def query_patents(self):
+        def exact_query(field, value):
+            return Q(**{field: value}) if value else Q()
+
+        def range_query(field, value):
+            query = Q()
+            if value:
+                if value["min"]: query &= Q(**{f"{field}__gte": value["min"]})
+                if value["max"]: query &= Q(**{f"{field}__lte": value["max"]})
+            return query
+
         data = self.cleaned_data
-        print(data)
         keywords = "|".join(data["patent_keywords"])
-        query = Q()
 
-        # Patent fields
-        if data["patent_office"]: query &= Q(office=data["patent_office"])
-        if data["patent_type"]: query &= Q(type=data["patent_type"])
-        if data["patent_withdrawn"] is not None: query &= Q(withdrawn=data["patent_withdrawn"])
-        
-        if data["patent_keywords"]: # design patents usually don't have abstracts and full text search doesn't work for most of them
-            if not data["patent_type"]: query &= Q(search=keywords) | Q(title__iregex=keywords)
-            elif data["patent_type"] == "design": query &= Q(title__iregex=keywords)
-            else: query &= Q(search=keywords)
-        
-        if patent_filled_date := data["patent_application_filed_date"]: 
-            if patent_filled_date["min"]: query &= Q(application_filed_date__gte=patent_filled_date["min"])
-            if patent_filled_date["max"]: query &= Q(application_filed_date__lte=patent_filled_date["max"])
-        
-        if patent_granted_date := data["patent_granted_date"]:
-            if patent_granted_date["min"]: query &= Q(granted_date__gte=patent_granted_date["min"])
-            if patent_granted_date["max"]: query &= Q(granted_date__lte=patent_granted_date["max"])
+        patent_query = exact_query("office", data["patent_office"])
+        patent_query &= exact_query("type", data["patent_type"])
+        patent_query &= range_query("application_filed_date", data["patent_application_filed_date"])
+        patent_query &= range_query("granted_date", data["patent_granted_date"])
+        patent_query &= range_query("figures_count", data["patent_figures_count"])
+        patent_query &= range_query("claims_count", data["patent_claims_count"])
+        patent_query &= range_query("sheets_count", data["patent_sheets_count"])
 
-        if patent_figures_count :=data["patent_figures_count"]: 
-            if patent_figures_count["min"]: query &= Q(figures_count__gte=patent_figures_count["min"])
-            if patent_figures_count["max"]: query &= Q(figures_count__lte=patent_figures_count["max"])
+        if data["patent_withdrawn"] is not None: patent_query &= Q(withdrawn=data["patent_withdrawn"])
         
-        if patent_claims_count := data["patent_claims_count"]:
-            if patent_claims_count["min"]: query &= Q(claims_count__gte=patent_claims_count["min"])
-            if patent_claims_count["max"]: query &= Q(claims_count__lte=patent_claims_count["max"])
-        
-        if patent_sheets_count := data["patent_sheets_count"]:
-            if patent_sheets_count["min"]: query &= Q(sheets_count__gte=patent_sheets_count["min"])
-            if patent_sheets_count["max"]: query &= Q(sheets_count__lte=patent_sheets_count["max"])
+        if data["patent_keywords"]: # design patents usually don't have abstracts and have really small titles, so full text search doesn't work well for them.
+            if not data["patent_type"]: patent_query &= Q(search=keywords) | Q(title__iregex=keywords)
+            elif data["patent_type"] == "design": patent_query &= Q(title__iregex=keywords)
+            else: patent_query &= Q(search=keywords)
 
-        # CPC fields
-        # 'cpc_section': [], 'cpc_class': [], 'cpc_subclass': [], 'cpc_group': [],
-        # Algorithm:
-        # If a section is selected, pop classes, subclasses and groups that start with the
-        #   letter of the section.
-        # If a class is selected (and not popped from the previous set), pop subclasses and
-        #   groups that start with the letters of the class.
-        # And so on... Then:
-        # For each section to a like section% query
-        # For each class to a like class% query
-        # For each subclass to a like subclass% query
-        # For the groups just use the ids
-        # Before implementing this, check if IDs are like that. 
-        # By they way create a function for the min-max query, don't be stupid.
-        return Patent.objects.filter(query).prefetch_related("cpc_groups__cpc_group")[:100]
+        cpc_query = Q()    
+        # Remove redundant keywords from the lower levels of the hierarchy for each level.
+        hierarchies = ["cpc_section", "cpc_class", "cpc_subclass", "cpc_group"]
+        for level_index, level in enumerate(hierarchies): 
+            for hierarchy_below in hierarchies[level_index+1:]:
+                for key in data[level]:
+                    data[hierarchy_below] = [keyword for keyword in data[hierarchy_below] if not keyword.startswith(key)]
+        
+        # Then create the query using like queries in the groups.
+        if sections := data["cpc_section"]: cpc_query &= Q(cpc_groups__cpc_group__group__iregex=f"^({'|'.join(sections)})")
+        if classes := data["cpc_class"]: cpc_query &= Q(cpc_groups__cpc_group__group__iregex=f"^({'|'.join(classes)})")
+        if subclasses := data["cpc_subclass"]: cpc_query &= Q(cpc_groups__cpc_group__group__iregex=f"^({'|'.join(subclasses)})")
+        if groups := data["cpc_group"]: cpc_query &= Q(cpc_groups__cpc_group__in=groups)
+        
+        pct_query = range_query("pct_data__published_or_filed_date", data["pct_application_date"])
+        if data["pct_granted"] is not None: pct_query &= Q(pct_data__granted=data["pct_granted"])
+
+        inventor_query = Q()
+        if data["inventor_first_name"]: inventor_query &= Q(inventors__first_name__iregex=f"^({''.join(data['inventor_first_name'])})")
+        if data["inventor_last_name"]: inventor_query &= Q(inventors__last_name__in=data['inventor_last_name'])
+        if data["inventor_male"] is not None: inventor_query &= Q(inventors__male=data["inventor_male"])
+        if location := data["inventor_location"]:inventor_query &= Q(inventors__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
+        
+        assignee_query = Q()
+        if data["assignee_first_name"]: assignee_query &= Q(assignees__first_name__iregex=f"^({''.join(data['assignee_first_name'])})")
+        if data["assignee_last_name"]: assignee_query &= Q(assignees__last_name__in=data['assignee_last_name'])
+        if data["assignee_organization"]: assignee_query &= Q(assignees__organization__in=data['assignee_organization'])
+
+        query = patent_query & cpc_query & pct_query & inventor_query & assignee_query
+        return Patent.objects.filter(query).prefetch_related("cpc_groups__cpc_group", "pct_data", "inventors", "assignees", "inventors__location", "assignees__location")[:100]
+    

@@ -79,6 +79,11 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     async function searchKeywordsByEvent(event) { await searchKeywords(event.detail.value) }
     const searchKeywordsByEventDebounced = debounce(searchKeywordsByEvent, 500);
 
+    /**
+     * This function populates the choices with the given values.
+     * It's used to add choices that were already selected when the page was loaded (e.g. when the form is invalid).
+     * @param {Array<String>} values the IDs of the values to populate the choices with.
+     */
     async function populateChoices(values) {
         // Make a POST request via fetch
         const response = await fetch(`${url}?ids=${encodeURIComponent(JSON.stringify(values))}`, { method: "GET", headers: { "Content-Type": "application/json" } });
@@ -111,7 +116,7 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     fakeSelect.multiple = true;
     choiceKeywordInput.insertAdjacentElement("afterend", fakeSelect);
 
-    const choiceKeywords = new Choices(fakeSelect, { allowHTML: true, removeItemButton: true, duplicateItemsAllowed: false, shouldSort: false, searchFields: ["representation"], searchResultLimit: 10000 });
+    const choiceKeywords = new Choices(fakeSelect, { allowHTML: true, removeItemButton: true, duplicateItemsAllowed: false, shouldSort: false, searchResultLimit: 10000 });
     fakeSelect.addEventListener("search", searchKeywordsByEventDebounced);
 
     // If there is no query limit, trigger a search event to get all keywords and don't
@@ -180,7 +185,6 @@ function initializeRadiusInput(radiusInput) {
         const circle = e.layer;
         const circleCoords = circle.getLatLng();
         const circleRadius = circle.getRadius();
-
         drawnItems.clearLayers(); // clear old circle
         drawnItems.addLayer(circle); // Add the circle
         drawnItems.addLayer(L.marker(circleCoords)); // Add a marker in the center
@@ -190,4 +194,28 @@ function initializeRadiusInput(radiusInput) {
     // Fix bootstrap accordion mess with leaflet map
     const accordion = mapElement.closest(".accordion");
     if (accordion) accordion.addEventListener("shown.bs.collapse", () => map.invalidateSize());
+}
+
+/**
+ * This function initializes a map with already pinned points.
+ * @param {Element} pointMapElement the html element that will contain the map.
+ */
+function initializePointMap(pointMapElement) {
+    const circle = pointMapElement.getAttribute("data-circle").split(",");
+    const points = pointMapElement.getAttribute("data-points").split(",");
+
+    pointMapElement.id = Date.now() * Math.floor(Math.random() * 10000);
+    pointMapElement.className = "map";
+    
+    const map = L.map(pointMapElement.id).setView([+circle[0], +circle[1]], 3.5);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+
+    L.circle([+circle[0], +circle[1]], +circle[2]).addTo(map);
+    for (let point of points) {
+        point = point.split("|");
+        console.log([+point[0], +point[1]])
+        L.marker([+point[0], +point[1]]).addTo(map); // marker doesn't work 
+    }
 }
