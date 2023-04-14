@@ -92,7 +92,7 @@
                         {% endfor %}
                     </td>
                     <td>
-                        {% comment %} <div class="point-map"> </div> {% endcomment %}
+                        <div class="point-map" data-circle="{{assignee_circle}}" data-points="{% for assignee in patent.assignees.all %}{{ assignee.location.point.0 }}|{{ assignee.location.point.1 }}{% if not forloop.last %},{% endif %}{% endfor %}"></div></div>
                     </td>
                 </tr>
             {% endfor %}

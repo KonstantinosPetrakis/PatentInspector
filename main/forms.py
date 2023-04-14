@@ -112,7 +112,8 @@ class MainForm(forms.Form):
         if data["assignee_first_name"]: assignee_query &= Q(assignees__first_name__iregex=f"^({''.join(data['assignee_first_name'])})")
         if data["assignee_last_name"]: assignee_query &= Q(assignees__last_name__in=data['assignee_last_name'])
         if data["assignee_organization"]: assignee_query &= Q(assignees__organization__in=data['assignee_organization'])
-
+        if location := data["assignee_location"]: assignee_query &= Q(assignees__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
+        
         query = patent_query & cpc_query & pct_query & inventor_query & assignee_query
         return Patent.objects.filter(query).prefetch_related("cpc_groups__cpc_group", "pct_data", "inventors", "assignees", "inventors__location", "assignees__location")[:100]
     

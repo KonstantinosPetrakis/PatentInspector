@@ -201,21 +201,20 @@ function initializeRadiusInput(radiusInput) {
  * @param {Element} pointMapElement the html element that will contain the map.
  */
 function initializePointMap(pointMapElement) {
-    const circle = pointMapElement.getAttribute("data-circle").split(",");
-    const points = pointMapElement.getAttribute("data-points").split(",");
-
+    const circle = pointMapElement.getAttribute("data-circle").split(",").filter(val => val != "");
+    const points = pointMapElement.getAttribute("data-points").split(",").filter(val => val != "");
     pointMapElement.id = Date.now() * Math.floor(Math.random() * 10000);
     pointMapElement.className = "map";
+    if (circle.length) var map = L.map(pointMapElement.id).setView([+circle[0], +circle[1]], 3.5);
+    else var map = L.map(pointMapElement.id).setView([37.8, -96], 3);
     
-    const map = L.map(pointMapElement.id).setView([+circle[0], +circle[1]], 3.5);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    L.circle([+circle[0], +circle[1]], +circle[2]).addTo(map);
+    if(circle.length) L.circle([+circle[0], +circle[1]], +circle[2]).addTo(map);
     for (let point of points) {
         point = point.split("|");
-        console.log([+point[0], +point[1]])
-        L.marker([+point[0], +point[1]]).addTo(map); // marker doesn't work 
+        L.marker([+point[1], +point[0]]).addTo(map);
     }
 }
