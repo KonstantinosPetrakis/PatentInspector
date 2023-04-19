@@ -85,10 +85,12 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
      * @param {Array<String>} values the IDs of the values to populate the choices with.
      */
     async function populateChoices(values) {
+        console.log("populating choices with values: ", values);
         // Make a POST request via fetch
         const response = await fetch(`${url}?ids=${encodeURIComponent(JSON.stringify(values))}`, { method: "GET", headers: { "Content-Type": "application/json" } });
         const data = await response.json();
         formatData(data);
+        console.log(data);
         choiceKeywords.setChoices(data, "search_id", "representation", false)
     }
 
@@ -130,9 +132,8 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     if (choiceKeywordInput.value) {
         const choices = choiceKeywordInput.value.split(",");
         const alreadyExistingChoices = choiceKeywords._currentState.choices.map(choice => choice.value);
-
         // Fetch choices only if there are not already fetched (there wasn't a query limit)
-        if (choices.some(choice => !alreadyExistingChoices.includes(choice)))
+        if (choices.some(choice => !alreadyExistingChoices.includes(choice))) 
             await populateChoices(choices);
 
         // Add choices
@@ -194,6 +195,14 @@ function initializeRadiusInput(radiusInput) {
     // Fix bootstrap accordion mess with leaflet map
     const accordion = mapElement.closest(".accordion");
     if (accordion) accordion.addEventListener("shown.bs.collapse", () => map.invalidateSize());
+
+    // If the hidden input field has a value, add the corresponding circle
+    if (radiusInput.value) {
+        const coords = radiusInput.value.split(",").map(val => +val);
+        const circle = L.circle([coords[0], coords[1]], { radius: coords[2] });
+        drawnItems.addLayer(circle);
+        drawnItems.addLayer(L.marker([coords[0], coords[1]]));
+    }
 }
 
 /**
@@ -217,4 +226,15 @@ function initializePointMap(pointMapElement) {
         point = point.split("|");
         L.marker([+point[1], +point[0]]).addTo(map);
     }
+}
+
+
+/**
+ * This function initializes a switch input.
+ * @param {Element} inputElement the input element which is a checkbox.
+ */
+function initializeSwitchInput(inputElement) {
+    inputElement.classList.add("form-check-input", "m-0");
+    inputElement.parentElement.classList.add("form-check", "form-switch", "ps-0", "mb-4");
+    // inputElement.parentElement.querySelector("label").classList.add("form-check-label");
 }

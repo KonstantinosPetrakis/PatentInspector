@@ -55,7 +55,7 @@ html[data-bs-theme="dark"] .map {
 
 .min-max-slider .noUi-handle {
     content: "";
-    background-color: var(--bs-body-color);
+    filter: brightness(.75);
     border: 0;
     border-radius: 50%;
     width: 1.5rem !important;

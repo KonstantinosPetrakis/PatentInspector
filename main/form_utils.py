@@ -154,3 +154,13 @@ class RadiusField(forms.CharField):
         lat, lng, radius = value.split(",")
         return {"lat": float(lat), "lng": float(lng), "radius": float(radius)} 
     
+
+class SwitchInputValuesField(forms.BooleanField):
+    def __init__(self, *args, **kwargs):  
+        self.choices = kwargs.pop("choices")
+        kwargs.setdefault("required", False)
+        self.widget = forms.CheckboxInput(attrs={"class": "switch-input"})
+        super().__init__(*args, **kwargs)
+
+    def to_python(self, value):
+        return self.choices[bool(value)]

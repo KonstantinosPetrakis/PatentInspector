@@ -1,3 +1,4 @@
+from django.core.management import call_command 
 from django.utils.safestring import mark_safe
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
@@ -7,7 +8,7 @@ from django.db.models import Q
 from main.form_utils import *
 from main.models import *
 from django import forms
-
+from io import StringIO
 
 
 def get_help_text(field):
@@ -21,6 +22,7 @@ class MainForm(forms.Form):
     patent_office = EmptyChoiceField(choices=Patent.office_choices, help_text="The office that granted the patent.")
     patent_type = EmptyChoiceField(choices=Patent.type_choices, help_text=get_help_text("patent_type"))
     patent_keywords = KeywordField(help_text="Keywords to search for in the patent's title and abstract.")
+    patent_keywords_logic = SwitchInputValuesField(choices=["|", " "], label="Include ALL patent keywords", help_text="Whether to use AND or OR when searching for keywords.") 
     patent_application_filed_date = RangeDateField(help_text="The date when the application was filed.")
     patent_granted_date = RangeDateField(help_text="The date when the protection was granted.")
     patent_figures_count = RangeField(min=0, max=200, help_text="The number of figures in the patent.")
@@ -68,7 +70,7 @@ class MainForm(forms.Form):
             return query
 
         data = self.cleaned_data
-        keywords = "|".join(data["patent_keywords"])
+        keywords = data["patent_keywords_logic"].join(data["patent_keywords"])
 
         patent_query = exact_query("office", data["patent_office"])
         patent_query &= exact_query("type", data["patent_type"])
@@ -80,10 +82,8 @@ class MainForm(forms.Form):
 
         if data["patent_withdrawn"] is not None: patent_query &= Q(withdrawn=data["patent_withdrawn"])
         
-        if data["patent_keywords"]: # design patents usually don't have abstracts and have really small titles, so full text search doesn't work well for them.
-            if not data["patent_type"]: patent_query &= Q(search=keywords) | Q(title__iregex=keywords)
-            elif data["patent_type"] == "design": patent_query &= Q(title__iregex=keywords)
-            else: patent_query &= Q(search=keywords)
+        if data["patent_keywords"]:
+            patent_query &= Q(title__iregex=f"({keywords})") | Q(abstract__iregex=f"({keywords})")
 
         cpc_query = Q()    
         # Remove redundant keywords from the lower levels of the hierarchy for each level.
@@ -106,7 +106,7 @@ class MainForm(forms.Form):
         if data["inventor_first_name"]: inventor_query &= Q(inventors__first_name__iregex=f"^({''.join(data['inventor_first_name'])})")
         if data["inventor_last_name"]: inventor_query &= Q(inventors__last_name__in=data['inventor_last_name'])
         if data["inventor_male"] is not None: inventor_query &= Q(inventors__male=data["inventor_male"])
-        if location := data["inventor_location"]:inventor_query &= Q(inventors__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
+        if location := data["inventor_location"]: inventor_query &= Q(inventors__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
         
         assignee_query = Q()
         if data["assignee_first_name"]: assignee_query &= Q(assignees__first_name__iregex=f"^({''.join(data['assignee_first_name'])})")
@@ -115,5 +115,5 @@ class MainForm(forms.Form):
         if location := data["assignee_location"]: assignee_query &= Q(assignees__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
         
         query = patent_query & cpc_query & pct_query & inventor_query & assignee_query
-        return Patent.objects.filter(query).prefetch_related("cpc_groups__cpc_group", "pct_data", "inventors", "assignees", "inventors__location", "assignees__location")[:100]
+        return Patent.objects.filter(query)
     

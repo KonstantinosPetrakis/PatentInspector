@@ -46,4 +46,7 @@ addEventListener("DOMContentLoaded", () => {
 
     for (const pointMap of document.querySelectorAll(".point-map")) 
         initializePointMap(pointMap);
+
+    for (const switchInput of document.querySelectorAll(".switch-input")) 
+        initializeSwitchInput(switchInput);
 });

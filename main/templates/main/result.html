@@ -1,6 +1,6 @@
 {% extends "main/base.html" %}
 
-{% block content %}
+{% block contentBig %}
     <style>
         table {
             overflow: auto;
@@ -19,7 +19,7 @@
     </style>
     <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
     <p>
-        You selected {{ patents|length }} out of {{ patents_count }} patents in {{ time_taken|floatformat:2}}s .
+        You selected {{ patents_count }} out of {{ patent_total_count }} patents in {{ time_taken|floatformat:2}}s. 
     </p>
     Showing at most 50 results.
     <table class="table table-sm table-responsive">
@@ -57,43 +57,13 @@
                     <td> {{ patent.claims_count }} </td>
                     <td> {{ patent.figures_count }} </td>
                     <td> {{ patent.withdrawn }} </td>
-                    <td> 
-                        {% for patent_group in patent.cpc_groups.all %}
-                            {{ patent_group.cpc_group }}{% if not forloop.last %}, {% endif %}
-                        {% endfor %} 
-                    </td>
-                    <td> 
-                        {% for pct_data in patent.pct_data.all %}
-                            {{ pct_data.published_or_filed_date }}{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td> 
-                        {% for pct_data in patent.pct_data.all %}
-                            {{ pct_data.granted }}{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td> 
-                        {% for inventor in patent.inventors.all %}
-                            {{ inventor.first_name }}
-                            {{ inventor.last_name }}{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td>
-                        <div class="point-map" data-circle="{{inventor_circle}}" data-points="{% for inventor in patent.inventors.all %}{{ inventor.location.point.0 }}|{{ inventor.location.point.1 }}{% if not forloop.last %},{% endif %}{% endfor %}"></div></div>
-                    </td>
-                    <td>
-                        {% for assignee in patent.assignees.all %}
-                            {% if assignee.organization %}
-                                {{ assignee.organization }}
-                            {% else %}
-                                {{ assignee.first_name }}
-                                {{ assignee.last_name }}
-                            {% endif %}{% if not forloop.last %}, {% endif %}
-                        {% endfor %}
-                    </td>
-                    <td>
-                        <div class="point-map" data-circle="{{assignee_circle}}" data-points="{% for assignee in patent.assignees.all %}{{ assignee.location.point.0 }}|{{ assignee.location.point.1 }}{% if not forloop.last %},{% endif %}{% endfor %}"></div></div>
-                    </td>
+                    <td> {{ patent.cpc_groups_groups }} </td>
+                    <td> {{ patent.pct_data_dates }} </td>
+                    <td> {{ patent.pct_data_granted }} </td>
+                    <td> {{ patent.inventor_names }} </td>
+                    <td> <div class="point-map" data-circle="{{inventor_circle}}" data-points="{{patent.inventor_points}}"/> </td>
+                    <td> {{ patent.assignee_names }} </td>
+                    <td> <div class="point-map" data-circle="{{assignee_circle}}" data-points="{{patent.assignee_points}}"/> </td>
                 </tr>
             {% endfor %}
         </tbody>

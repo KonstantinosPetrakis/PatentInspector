@@ -97,7 +97,7 @@ def model(request, model, query=""):
             return JsonResponse(data, safe=False)
         return HttpResponseBadRequest("Expected ids in json body.")
     
-    data = model.objects.filter(**{f"{id}__istartswith": query}).values(id, title)
+    data = model.objects.filter(**{f"{id}__iregex": f"^{query}"}).values(id, title)
     data = list(data.annotate(search_id=F(id), search_title=F(title)).values("search_id", "search_title"))
     return JsonResponse(data, safe=False)
 
@@ -123,13 +123,17 @@ def model_field(request, model, field, query=""):
         return HttpResponseBadRequest("Invalid model name.")
     
     if request.META.get('CONTENT_TYPE', '') == "application/json":
-        ids = json.loads(request.GET.get("ids", None))
-        if ids is not None:
-            data = model.objects.filter(**{f"{field}__istartswith": ids}).values(field)
-            data = list(data.annotate(search_id=F(field)).values("search_id"))
+        distinct_field_values = json.loads(request.GET.get("ids", None))
+        if distinct_field_values is not None:
+            data = model.objects.filter(**{f"{field}__in": distinct_field_values}).distinct(field).values(field)
+            # front-end expects search_id field, an identifier for the model
+            # in our case, it's the same as the field value itself 
+            # you can compare it with model function that goes like (search_id, title_field) 
+            # instead of (field, field)
+            data = list(data.annotate(search_id=F(field)).values("search_id")) 
             return JsonResponse(data, safe=False)
         return HttpResponseBadRequest("Expected ids in json body.")
     
-    data = model.objects.filter(**{f"{field}__istartswith": query}).values(field).distinct().order_by(Length(field))[:1000]
+    data = model.objects.filter(**{f"{field}__iregex": f"^{query}"}).values(field).distinct().order_by(Length(field))[:1000]
     data = list(data.annotate(search_id=F(field), search_title=F(field)).values("search_id"))
     return JsonResponse(data, safe=False)

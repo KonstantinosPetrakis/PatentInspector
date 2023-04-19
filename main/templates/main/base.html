@@ -40,9 +40,10 @@
             </button>
         </div>
     </nav>
-    <main class="container-fluid">
-        <h1 class="h1 text-center m-"> PatentAnalyzer </h1>
-        {% block content %} {% endblock content %}
+    <main>
+        <h1 class="h1 text-center"> PatentAnalyzer </h1>
+        <div class="container-fluid"> {% block contentBig %} {% endblock contentBig %} </div>
+        <div class="container-xxl"> {% block content %} {% endblock content %} </div>
     </main>
     <footer>
 
