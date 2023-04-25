@@ -45,6 +45,12 @@ html[data-bs-theme="dark"] .map {
     filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
 }
 
+.page-link.active {
+    background-color: var(--bs-body-color) !important;
+    border-color: var(--bs-body-color) !important;
+    color: var(--bs-body-bg)
+}
+
 /* Customize noUiSlider library */
 .min-max-slider .slider, .min-max-slider .noUi-base {
     background-color: var(--bs-secondary-bg);

@@ -1,10 +1,14 @@
-from django.contrib.postgres.search import SearchVectorField
+from django.db.models import CharField, Case, When, Value, F, Q, Func
+from django.contrib.postgres.aggregates import StringAgg
+from django.db.models.functions import Concat, Cast
 from django.utils.safestring import mark_safe
-from django.db.models.query import QuerySet
+from django.contrib.gis.geos import Point
+from django.contrib.gis.measure import D
 from django.contrib.gis.db import models
-from django.conf import settings
 from postgres_copy import CopyManager
+from django.conf import settings
 from django.db import connection
+
 
 
 def get_help_text(field):
@@ -80,6 +84,92 @@ class Patent(models.Model):
         cursor = connection.cursor()
         cursor.execute("SELECT reltuples FROM pg_class WHERE relname = %s", [Patent._meta.db_table])
         return int(cursor.fetchone()[0])
+
+    @staticmethod
+    def filter(data):
+        def exact_query(field, value):
+            return Q(**{field: value}) if value else Q()
+
+        def range_query(field, value):
+            query = Q()
+            if value:
+                if value["min"]: query &= Q(**{f"{field}__gte": value["min"]})
+                if value["max"]: query &= Q(**{f"{field}__lte": value["max"]})
+            return query        
+
+        keywords = data["patent_keywords_logic"].join(data["patent_keywords"])
+
+        patent_query = exact_query("office", data["patent_office"])
+        patent_query &= exact_query("type", data["patent_type"])
+        patent_query &= range_query("application_filed_date", data["patent_application_filed_date"])
+        patent_query &= range_query("granted_date", data["patent_granted_date"])
+        patent_query &= range_query("figures_count", data["patent_figures_count"])
+        patent_query &= range_query("claims_count", data["patent_claims_count"])
+        patent_query &= range_query("sheets_count", data["patent_sheets_count"])
+
+        if data["patent_withdrawn"] is not None: patent_query &= Q(withdrawn=data["patent_withdrawn"])
+        
+        if data["patent_keywords"]:
+            patent_query &= Q(title__iregex=f"({keywords})") | Q(abstract__iregex=f"({keywords})")
+
+        cpc_query = Q()    
+        # Remove redundant keywords from the lower levels of the hierarchy for each level.
+        hierarchies = ["cpc_section", "cpc_class", "cpc_subclass", "cpc_group"]
+        for level_index, level in enumerate(hierarchies): 
+            for hierarchy_below in hierarchies[level_index+1:]:
+                for key in data[level]:
+                    data[hierarchy_below] = [keyword for keyword in data[hierarchy_below] if not keyword.startswith(key)]
+        
+        # Then create the query using like queries in the groups.
+        if sections := data["cpc_section"]: cpc_query &= Q(cpc_groups__cpc_group__group__iregex=f"^({'|'.join(sections)})")
+        if classes := data["cpc_class"]: cpc_query &= Q(cpc_groups__cpc_group__group__iregex=f"^({'|'.join(classes)})")
+        if subclasses := data["cpc_subclass"]: cpc_query &= Q(cpc_groups__cpc_group__group__iregex=f"^({'|'.join(subclasses)})")
+        if groups := data["cpc_group"]: cpc_query &= Q(cpc_groups__cpc_group__in=groups)
+        
+        pct_query = range_query("pct_data__published_or_filed_date", data["pct_application_date"])
+        if data["pct_granted"] is not None: pct_query &= Q(pct_data__granted=data["pct_granted"])
+
+        inventor_query = Q()
+        if data["inventor_first_name"]: inventor_query &= Q(inventors__first_name__iregex=f"^({''.join(data['inventor_first_name'])})")
+        if data["inventor_last_name"]: inventor_query &= Q(inventors__last_name__in=data['inventor_last_name'])
+        if data["inventor_male"] is not None: inventor_query &= Q(inventors__male=data["inventor_male"])
+        if location := data["inventor_location"]: inventor_query &= Q(inventors__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
+        
+        assignee_query = Q()
+        if data["assignee_first_name"]: assignee_query &= Q(assignees__first_name__iregex=f"^({''.join(data['assignee_first_name'])})")
+        if data["assignee_last_name"]: assignee_query &= Q(assignees__last_name__in=data['assignee_last_name'])
+        if data["assignee_organization"]: assignee_query &= Q(assignees__organization__in=data['assignee_organization'])
+        if location := data["assignee_location"]: assignee_query &= Q(assignees__location__point__distance_lte=(Point(location['lng'], location['lat']), D(m=location['radius'])))
+        
+        query = patent_query & cpc_query & pct_query & inventor_query & assignee_query
+                
+        return Patent.objects.filter(query)
+
+    @staticmethod
+    def fetch_representation(patents):
+        return patents.annotate(
+            cpc_groups_groups=StringAgg("cpc_groups__cpc_group__group", delimiter=", ", distinct=True),
+            pct_documents=StringAgg(Concat(
+                Cast("pct_data__published_or_filed_date", CharField()),
+                Case(When(pct_data__granted=True, then=Value(" - granted"))),
+                Case(When(pct_data__granted=False, then=Value(" - refused")))
+            ), delimiter=", ", distinct=True),
+            inventor_names=StringAgg(Concat(
+                F("inventors__first_name"), Value(" "), F("inventors__last_name")
+            ), delimiter=", ", distinct=True),
+            inventor_points=StringAgg(Concat(
+                Func("inventors__location__point", function="ST_X"), Value("|"),
+                Func("inventors__location__point", function="ST_Y")
+            ), delimiter=",", distinct=True),
+            assignee_names=StringAgg(Case(When(assignees__organization="",
+                then=Concat(F("assignees__first_name"), Value(" "), F("assignees__last_name"))),
+                default=F("assignees__organization")
+            ), delimiter=", ", distinct=True),
+            assignee_points=StringAgg(Concat(
+                Func("assignees__location__point", function="ST_X"), Value("|"),
+                Func("assignees__location__point", function="ST_Y")
+            ), delimiter=",", distinct=True),
+        ).order_by("id")
 
 
 class PatentCPCGroup(models.Model):

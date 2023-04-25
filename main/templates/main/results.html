@@ -1,0 +1,100 @@
+{% extends "main/base.html" %}
+{% load static %}
+
+{% block styles %}
+    <link rel="stylesheet" href="{% static 'main/styles/results.css' %}">
+{% endblock %}
+
+{% block scripts %}
+    <script src="{% static 'main/scripts/results.js' %}"></script>
+{% endblock %}
+
+{% block contentBig %}
+    <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
+
+    <p>
+        You selected {{ patents_count }} out of {{ patents_total_count }} patents. 
+    </p>
+
+    <div class="in-page-nav-tab">
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link" href="#descriptive-analysis"> 
+                    Descriptive Analysis
+                    <span data-bs-toggle="tooltip" data-bs-title="How can the data be profiled?">
+                        <i class="ms-1 fa-solid fa-info"></i>
+                    </span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#business-analysis"> 
+                    Business Analysis
+                    <span data-bs-toggle="tooltip" data-bs-title="What is the business worth of the data?">
+                        <i class="ms-1 fa-solid fa-info"></i>
+                    </span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#thematic-analysis"> 
+                    Thematic Analysis
+                    <span data-bs-toggle="tooltip" data-bs-title="What are the primary topics of the data?">
+                        <i class="ms-1 fa-solid fa-info"></i>
+                    </span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#network-analysis"> 
+                    Network Analysis 
+                    <span data-bs-toggle="tooltip" data-bs-title="What are the primary interconnections between the data?">
+                        <i class="ms-1 fa-solid fa-info"></i>
+                    </span>
+                </a>
+            </li>
+        </ul>
+        <div class="tab-contents">
+            <div id="descriptive-analysis">
+                Descriptive Analysis
+                Hello World 
+            </div>
+            <div id="business-analysis">
+                Business Analysis
+                Hello World
+            </div>
+            <div id="thematic-analysis">
+                Thematic Analysis
+                Hello World
+            </div>
+            <div id="network-analysis"> 
+                Network Analysis
+                Hello World
+            </div>
+        </div>
+    </div>    
+
+    <table id="patent-table" class="table table-sm">
+        <thead>
+            <tr>
+                <th> Office </th>
+                <th> Office Patent ID </th>
+                <th> Type </th>
+                <th> Application Filled Date </th>
+                <th> Granted Date </th>
+                <th> Title </th>
+                <th> Abstract </th>
+                <th> Claims count </th>
+                <th> Figures count </th>
+                <th> Withdrawn </th>
+                <th> CPC Groups </th>
+                <th> PCT Documents </th>
+                <th> Inventor names </th>
+                <th> Inventor locations </th>
+                <th> Assignee names </th>
+                <th> Assignee locations </th>
+            </tr>
+        </thead>
+        <tbody> </tbody>
+    </table>
+    <nav aria-label="See more patents">
+        <ul class="pagination"> </ul>
+    </nav>
+{% endblock %}

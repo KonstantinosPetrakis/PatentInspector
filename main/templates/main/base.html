@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="{% static "main/styles/leaflet.css" %}">
     <link rel="stylesheet" href="{% static "main/styles/leaflet-draw.css" %}">
     <link rel="stylesheet" href="{% static "main/styles/base.css" %}">
+    {% block styles %} {% endblock styles %}
     <script src="{% static "main/scripts/fontawesome.min.js" %}"></script>
     <script src="{% static "main/scripts/bootstrap.bundle.min.js" %}"></script>
     <script src="{% static "main/scripts/nouislider.min.js" %}"></script>
@@ -23,6 +24,7 @@
     <script src="{% static "main/scripts/leaflet.js" %}"> </script>
     <script src="{% static "main/scripts/leaflet-draw.js" %}"></script>
     <script src="{% static "main/scripts/base.js" %}"></script>
+    {% block scripts %} {% endblock scripts %}
     <title>PatentAnalyzer</title>
     <meta name="description" content="An open source tool for analyzing patents.">
     <meta name="keywords" content="Patent, USPTO, Analyze, Statistics, Data Representation">

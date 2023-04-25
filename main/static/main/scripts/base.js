@@ -49,4 +49,7 @@ addEventListener("DOMContentLoaded", () => {
 
     for (const switchInput of document.querySelectorAll(".switch-input")) 
         initializeSwitchInput(switchInput);
+    
+    for (const inPageNavTab of document.querySelectorAll(".in-page-nav-tab")) 
+        initializeInPageNavTab(inPageNavTab);
 });

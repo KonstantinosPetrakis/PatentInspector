@@ -236,5 +236,26 @@ function initializePointMap(pointMapElement) {
 function initializeSwitchInput(inputElement) {
     inputElement.classList.add("form-check-input", "m-0");
     inputElement.parentElement.classList.add("form-check", "form-switch", "ps-0", "mb-4");
-    // inputElement.parentElement.querySelector("label").classList.add("form-check-label");
+}
+
+
+function initializeInPageNavTab(tabsWrapper) {
+    const tabs = tabsWrapper.querySelectorAll(".nav-link");
+    const tabContents = tabsWrapper.querySelectorAll(".tab-contents > div");
+
+    // Add the active class to the first tab and show its content
+    tabs[0].classList.add("active");
+    tabContents[0].classList.add("active");
+
+    for (let i=0; i<tabs.length; i++) {
+        tabs[i].addEventListener("click", (e) => {
+            e.preventDefault();
+            for (let j=0; j<tabs.length; j++) {
+                tabs[j].classList.remove("active");
+                tabContents[j].classList.remove("active");
+            }
+            tabs[i].classList.add("active");
+            tabContents[i].classList.add("active");
+        });
+    }
 }

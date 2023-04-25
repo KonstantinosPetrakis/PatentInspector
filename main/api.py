@@ -1,6 +1,6 @@
 from django.http import JsonResponse, HttpResponseBadRequest
-from django.urls import reverse_lazy as reverse
 from django.db.models.functions import Length
+from django.core.paginator import Paginator
 from django.db.models import F
 from main.models import *
 import json
@@ -38,19 +38,6 @@ def string_from_class(_class):
     """
 
     return REVERSE_CLASS_MAP[_class] if _class in REVERSE_CLASS_MAP else None
-
-
-def build_url(model, field=None):
-    """
-    Builds the url to fetch data for the given model class from the api.
-
-    :param model: the class of the model to build the url for
-    :param field: the field to filter the data by, defaults to None
-    :return: the url to fetch data for the given model class from the api
-    """
-
-    if field is None: return reverse("model", args=[string_from_class(model)])
-    return reverse("model-field", args=[string_from_class(model), field])
 
 
 def id_and_title(model):
@@ -137,3 +124,29 @@ def model_field(request, model, field, query=""):
     data = model.objects.filter(**{f"{field}__iregex": f"^{query}"}).values(field).distinct().order_by(Length(field))[:1000]
     data = list(data.annotate(search_id=F(field), search_title=F(field)).values("search_id"))
     return JsonResponse(data, safe=False)
+
+
+def patents(request):
+    """
+    This view returns a list of patents, given a page number as a query parameter, it's used for pagination.
+    """
+
+    if (form_data := request.session.get("form_data", None)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+
+    patents = Patent.fetch_representation(Patent.filter(form_data))
+
+    page = int(request.GET.get("page", 1))
+    paginator = Paginator(patents, 50)
+
+
+    return JsonResponse({
+        "patents": list(paginator.page(page).object_list.values()),
+        "page": page,
+        "page_range": list(paginator.get_elided_page_range(page)),
+        "inventor_circle": (f"{inventor_circle['lat']},{inventor_circle['lng']},{inventor_circle['radius']}"
+            if (inventor_circle := form_data.get("inventor_location", None)) is not None else ""),
+        "assignee_circle": (f"{assignee_circle['lat']},{assignee_circle['lng']},{assignee_circle['radius']}"
+            if (assignee_circle := form_data.get("assignee_location", None)) is not None else ""),
+    })
+

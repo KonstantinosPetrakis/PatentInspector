@@ -1,0 +1,29 @@
+table {
+    position: relative;
+}
+
+th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background-color: var(--bs-body-bg) !important;
+}
+
+td > div {
+    max-height: 10rem;
+    overflow: auto;
+}
+
+.map {
+    width: 15rem;
+}
+
+.tab-contents > div {
+    display: none;
+    margin-top: 1rem;
+    height: 10rem;
+}
+
+.tab-contents > div.active {
+    display: block;
+}
