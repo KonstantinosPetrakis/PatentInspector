@@ -63,7 +63,7 @@ class PatentAdmin(FastCountAdmin):
     inlines = [PatentCPCGroupInline, PatentPCTDataInline]
 
 
-class PatentCitationAdmin(admin.ModelAdmin):
+class PatentCitationAdmin(FastCountAdmin):
     model = PatentCitation
     list_display = ("id", "record_name", "citation_date", "cited_patent_number")
     search_fields = ("cited_patent_number", "record_name")
@@ -76,14 +76,14 @@ class LocationAdmin(LeafletGeoAdmin):
     search_fields = ("city", "country_code", "state", "county_fips", "state_fips")
 
 
-class InventorAdmin(admin.ModelAdmin):
+class InventorAdmin(FastCountAdmin):
     list_filter = ("male", )
     search_fields = ("last_name", "first_name", )
     ordering = ("last_name", "first_name")
     autocomplete_fields = ("patent", "location")
 
 
-class AssigneeAdmin(admin.ModelAdmin):
+class AssigneeAdmin(FastCountAdmin):
     class IsOrganizationFilter(admin.SimpleListFilter):
         title = "whether the assignee is an organization"
         parameter_name = "organization"

@@ -51,10 +51,18 @@
                 </a>
             </li>
         </ul>
-        <div class="tab-contents">
+        <div class="tab-contents shadow-lg">
             <div id="descriptive-analysis">
-                Descriptive Analysis
-                Hello World 
+                <h3> Basic statistical measures </h3>
+                <table id="statistics-table" class="table table-sm"> 
+                    <thead>
+                        <th> Field name </th>
+                        <th> Average </th>
+                        <th> Median </th>
+                        <th> Standard deviation </th>
+                    </thead>
+                    <tbody></tbody>
+                </table>
             </div>
             <div id="business-analysis">
                 Business Analysis
@@ -70,6 +78,10 @@
             </div>
         </div>
     </div>    
+    
+    <a href="/api/download-tsv" download="patents.tsv" class="btn btn-outline-secondary mb-2 mt-5"> 
+        Export to TSV
+    </a>
 
     <table id="patent-table" class="table table-sm">
         <thead>

@@ -21,7 +21,6 @@ td > div {
 .tab-contents > div {
     display: none;
     margin-top: 1rem;
-    height: 10rem;
 }
 
 .tab-contents > div.active {

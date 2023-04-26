@@ -9,6 +9,8 @@ urlpatterns = [
     path("model-field/<model>/<field>/<query>", views.model_field, name="model-field"),
     path("model-field/<model>/<field>", views.model_field, name="model-field"),
     path("patents", views.patents, name="patents"),
+    path("download-tsv", views.download_tsv, name="download-tsv"),
+    path("statistics", views.statistics, name="statistics"),
 ]
 
 

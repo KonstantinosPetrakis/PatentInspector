@@ -1,14 +1,13 @@
 asgiref==3.6.0
-backports.zoneinfo==0.2.1;python_version<"3.9"
 certifi==2022.12.7
 charset-normalizer==3.1.0
 Django==4.1.7
-django-debug-toolbar==3.8.1
 django-environ==0.9.0
 django-leaflet==0.28.3
 django-macros==0.4.0
 django-modeladmin-reorder==0.3.1
 django-postgres-copy==2.7.2
+django_debug_toolbar==3.8.1
 idna==3.4
 numpy==1.24.2
 pandas==1.5.3

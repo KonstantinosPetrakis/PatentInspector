@@ -1,7 +1,12 @@
-from django.http import JsonResponse, HttpResponseBadRequest
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.db.models.functions import Length
+from django.db.models.aggregates import Avg, StdDev, Count
+from main.helpers import Median, WordCount, Datediff
 from django.core.paginator import Paginator
-from django.db.models import F
+from django.db.models import F, ExpressionWrapper, fields
+from os import remove
+from random import randint
+from time import time
 from main.models import *
 import json
 
@@ -150,3 +155,130 @@ def patents(request):
             if (assignee_circle := form_data.get("assignee_location", None)) is not None else ""),
     })
 
+
+def download_tsv(request):
+    """
+    This view allows the user to download the patents he filtered as a tsv file.
+    """
+
+    if (form_data := request.session.get("form_data", None)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+    
+    file_name = f"main/temp/{randint(0, 100) * time()}_patents.tsv"
+    Patent.fetch_representation(Patent.filter(form_data)).to_csv(file_name, delimiter="\t")
+    response = HttpResponse(content_type="text/tab-separated-values")
+    response["Content-Disposition"] = f"attachment; filename={file_name}"
+    response.write(open(file_name, "rb").read())
+    remove(file_name)
+    return response
+
+
+def statistics(request):
+    if (form_data := request.session.get("form_data", None)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+
+    def calculate_statistics(field, function=None, display_name=None):
+        if display_name is None: display_name = field
+
+        return {
+            f"avg_{display_name}": Avg(field),
+            f"med_{display_name}": Median(field),
+            f"std_dev_{display_name}": StdDev(field),
+        }   if function is None else {
+                f"avg_{display_name}": Avg(function(field)),
+                f"med_{display_name}": Median(function(field)),
+                f"std_dev_{display_name}": StdDev(function(field)),
+            }
+
+    def retrieve_statistics_from_result(bulk_result, fields):
+        statistics.update({field: {
+            "avg": bulk_result[f"avg_{field}"],
+            "med": bulk_result[f"med_{field}"],
+            "std_dev": bulk_result[f"std_dev_{field}"],
+        } for field in fields})
+
+    statistics = {}
+    patents = Patent.filter(form_data)
+
+    # Handle statistics that don't need joins
+    retrieve_statistics_from_result(patents.annotate(
+        days_to_get_granted=whatgoeshere?)
+        ).aggregate(
+            **calculate_statistics("sheets_count"),
+            **calculate_statistics("figures_count"),
+            **calculate_statistics("claims_count"),
+            **calculate_statistics("title", WordCount, "title_word_count"),
+            **calculate_statistics("abstract", WordCount, "abstract_word_count"),
+            **calculate_statistics("days_to_get_granted"),
+        ), ["sheets_count", "figures_count", "claims_count", "title_word_count", "abstract_word_count"])
+
+    # Handle statistics that need joins one by one (one by one probably yields better performance)
+    retrieve_statistics_from_result(patents.annotate(
+        cpc_group_count=Count("cpc_groups", distinct=True)).aggregate(
+            **calculate_statistics("cpc_group_count"),
+        ), ["cpc_group_count"])
+
+    retrieve_statistics_from_result(patents.annotate(
+        inventor_count=Count("inventors", distinct=True)).aggregate(
+            **calculate_statistics("inventor_count"),
+        ), ["inventor_count"])
+
+    retrieve_statistics_from_result(patents.annotate(
+        assignee_count=Count("assignees", distinct=True)).aggregate(
+           **calculate_statistics("assignee_count"),
+        ), ["assignee_count"])
+
+    retrieve_statistics_from_result(patents.annotate(
+        incoming_citation_count=Count("citations", distinct=True)).aggregate(
+            **calculate_statistics("incoming_citation_count"),
+        ), ["incoming_citation_count"])
+    
+    retrieve_statistics_from_result(patents.annotate(
+        outgoing_citation_count=Count("cited_by", distinct=True)).aggregate(
+            **calculate_statistics("outgoing_citation_count"),
+        ), ["outgoing_citation_count"])
+
+    return JsonResponse({k.replace("_", " ").title(): v for k, v in statistics.items()})
+
+
+def time_series(request):
+    """
+    https://www.chartjs.org/docs/latest/charts/line.html
+    * Time series
+    * Number of patent applications per year
+    * Number of granted patents per year 
+    * Number of patents per year with granted PCT protection 
+    * Number of granted patents per year for each CPC section
+    * Number of granted patents per year for each patent type
+    * Number of granted patents per year for each patent office
+    * Number of patent citations per year (where the citing or cited patent was is in the dataset)
+    """
+    
+    pass
+
+
+def other_graphs(request):
+    """
+    https://github.com/Leaflet/Leaflet.heat
+
+    * More graphs
+        * Patent
+            * Pie with PCT protection or not
+            * Pie with patent type
+            * Pie with patent office
+        * Inventor
+            * Pie with top 10 inventors
+            * Pie with gender of inventors
+            * Pie with organization, individual inventor count
+            * A heatmap based on the location of the inventors
+        * Assignee
+            * A heatmap based on the location of the assignees
+            * Pie with top 10 assignees
+        * CPC
+            * Pie with CPC sections
+            * Pie with top 5 cpc classes
+            * Pie with top 5 cpc subclasses
+            * Pie with top 5 cpc groups
+    """
+
+    pass

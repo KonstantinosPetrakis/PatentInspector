@@ -1,8 +1,6 @@
-from django.core.paginator import Paginator
 from django.shortcuts import render
 from main.forms import *
 from main.models import *
-from time import time
 
 
 def index(request):

@@ -1,4 +1,4 @@
-function populateTable(data) {
+function populatePatentTable(data) {
     const tbody = document.querySelector("#patent-table tbody");
     let html = "";
     for (const patent of data.patents) {
@@ -10,7 +10,7 @@ function populateTable(data) {
                 <td> <div> ${patent.application_filed_date} </div> </td>
                 <td> <div> ${patent.granted_date} </div> </td>
                 <td> <div> ${patent.title} </div> </td>
-                <td> <div> ${patent.abstract} </div> </td>
+                <td> <div> ${patent.abstract != null ? patent.abstract : "No abstract"} </div> </td>
                 <td> <div> ${patent.claims_count} </div> </td>
                 <td> <div> ${patent.figures_count} </div> </td>
                 <td> <div> ${patent.withdrawn} </div> </td>
@@ -70,9 +70,42 @@ async function goToPage(page) {
 
     const response = await fetch(`/api/patents?page=${page}`);
     const data = await response.json();
-    populateTable(data);
+    populatePatentTable(data);
     createPagination(data);
 }
 
 
-document.addEventListener("DOMContentLoaded", () => goToPage(1));
+async function fetchStatisticsTable() {
+    const table = document.querySelector("#statistics-table tbody");
+    table.innerHTML = `
+        <tr class="fetch-message">
+            <td class="text-center" colspan="100"> <!-- It's ok for < 100 columns -->
+                <p> Processing in progress... Please wait. </p>
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </td>
+        </tr>
+    `;
+
+    const response = await fetch("/api/statistics");
+    const data = await response.json();
+
+    let html = "";
+    for (let field of Object.keys(data)) {
+        html += `
+            <tr>
+                <td> ${field} </td>
+                <td> ${data[field].avg.toFixed(2)} </td>
+                <td> ${data[field].med.toFixed(2)} </td>
+                <td> ${data[field].std_dev.toFixed(2)} </td>
+            </tr>
+        `;
+    }
+    table.innerHTML = html;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    goToPage(1);
+    fetchStatisticsTable();
+});
