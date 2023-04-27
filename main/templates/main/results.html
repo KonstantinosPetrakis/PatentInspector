@@ -6,15 +6,15 @@
 {% endblock %}
 
 {% block scripts %}
+
+    <script src="{% static 'main/scripts/chartjs/chart.umd.js' %}"></script>
     <script src="{% static 'main/scripts/results.js' %}"></script>
 {% endblock %}
 
 {% block contentBig %}
     <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
 
-    <p>
-        You selected {{ patents_count }} out of {{ patents_total_count }} patents. 
-    </p>
+    <p id="result-counts"></p>
 
     <div class="in-page-nav-tab">
         <ul class="nav nav-tabs">
@@ -56,13 +56,15 @@
                 <h3> Basic statistical measures </h3>
                 <table id="statistics-table" class="table table-sm"> 
                     <thead>
-                        <th> Field name </th>
+                        <th> Variable </th>
                         <th> Average </th>
                         <th> Median </th>
                         <th> Standard deviation </th>
                     </thead>
                     <tbody></tbody>
                 </table>
+                <h3> Variables over time  </h3>
+                <div id="time-series" class="row"> </div>
             </div>
             <div id="business-analysis">
                 Business Analysis

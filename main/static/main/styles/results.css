@@ -26,3 +26,8 @@ td > div {
 .tab-contents > div.active {
     display: block;
 }
+
+canvas {
+    display: block;
+    height: 15rem;
+}

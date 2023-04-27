@@ -1,13 +1,14 @@
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
-from django.db.models.functions import Length
+from django.db.models.functions import Length, Substr, ExtractYear
 from django.db.models.aggregates import Avg, StdDev, Count
-from main.helpers import Median, WordCount, Datediff
+from main.helpers import Median, WordCount, date_difference_in_years
 from django.core.paginator import Paginator
-from django.db.models import F, ExpressionWrapper, fields
-from os import remove
+from django.db.models import F
 from random import randint
-from time import time
 from main.models import *
+from os import remove
+from time import time
+import itertools
 import json
 
 
@@ -144,10 +145,11 @@ def patents(request):
     page = int(request.GET.get("page", 1))
     paginator = Paginator(patents, 50)
 
-
     return JsonResponse({
         "patents": list(paginator.page(page).object_list.values()),
         "page": page,
+        "selected_record_count": paginator.count,
+        "total_record_count": Patent.approximate_count(),
         "page_range": list(paginator.get_elided_page_range(page)),
         "inventor_circle": (f"{inventor_circle['lat']},{inventor_circle['lng']},{inventor_circle['radius']}"
             if (inventor_circle := form_data.get("inventor_location", None)) is not None else ""),
@@ -197,20 +199,20 @@ def statistics(request):
             "std_dev": bulk_result[f"std_dev_{field}"],
         } for field in fields})
 
+    # coffee, 5.8k, 13.2s
     statistics = {}
     patents = Patent.filter(form_data)
 
     # Handle statistics that don't need joins
     retrieve_statistics_from_result(patents.annotate(
-        days_to_get_granted=whatgoeshere?)
-        ).aggregate(
+        years_to_get_granted=date_difference_in_years("granted_date", "application_filed_date")).aggregate(
+            **calculate_statistics("years_to_get_granted"),
             **calculate_statistics("sheets_count"),
             **calculate_statistics("figures_count"),
             **calculate_statistics("claims_count"),
             **calculate_statistics("title", WordCount, "title_word_count"),
             **calculate_statistics("abstract", WordCount, "abstract_word_count"),
-            **calculate_statistics("days_to_get_granted"),
-        ), ["sheets_count", "figures_count", "claims_count", "title_word_count", "abstract_word_count"])
+        ), ["years_to_get_granted", "sheets_count", "figures_count", "claims_count", "title_word_count", "abstract_word_count"])
 
     # Handle statistics that need joins one by one (one by one probably yields better performance)
     retrieve_statistics_from_result(patents.annotate(
@@ -242,19 +244,45 @@ def statistics(request):
 
 
 def time_series(request):
-    """
-    https://www.chartjs.org/docs/latest/charts/line.html
-    * Time series
-    * Number of patent applications per year
-    * Number of granted patents per year 
-    * Number of patents per year with granted PCT protection 
-    * Number of granted patents per year for each CPC section
-    * Number of granted patents per year for each patent type
-    * Number of granted patents per year for each patent office
-    * Number of patent citations per year (where the citing or cited patent was is in the dataset)
-    """
+    def format_output(records, grouped_by=None):
+        if grouped_by is not None:
+            # Create a dict with the distinct values of the grouped_by field as keys
+            formatted_output = {distinct_val: {} for distinct_val in set(record[grouped_by] for record in records)}
+            for record in records:
+                formatted_output[record[grouped_by]].update({record["year"]: record["count"]})
+            # Fill the missing years with 0
+            distinct_years = list(set(record["year"] for record in records))
+            for distinct_val in formatted_output:
+                for year in distinct_years:
+                    if year not in formatted_output[distinct_val]:
+                        formatted_output[distinct_val][year] = 0
+            return formatted_output
+        else:
+            return {record["year"]: record["count"] for record in records if record["year"]}
     
-    pass
+    if (form_data := request.session.get("form_data", None)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+
+    patents = Patent.filter(form_data)
+
+    applications_per_year = patents.annotate(year=ExtractYear("application_filed_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
+    granted_patents_per_year = patents.annotate(year=ExtractYear("granted_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
+    granted_patents_per_type_year = patents.annotate(year=ExtractYear("granted_date")).values("year", "type").annotate(count=Count("id")).order_by("year", "type").values("year", "type", "count")
+    granted_patents_per_office_year = patents.annotate(year=ExtractYear("granted_date")).values("year", "office").annotate(count=Count("id")).order_by("year", "office").values("year", "office", "count")
+    pct_protected_patents_per_year = patents.filter(pct_data__isnull=False).annotate(year=ExtractYear("granted_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
+    granted_patents_per_cpc_year = patents.annotate(year=ExtractYear("granted_date"), cpc_section=Substr("cpc_groups__cpc_group", 1, 1)).values("year", "cpc_section").annotate(count=Count("id")).order_by("year", "cpc_section").values("year", "cpc_section", "count")
+    citations_made_per_year = patents.annotate(year=ExtractYear("citations__citation_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
+    citations_received_per_year = patents.annotate(year=ExtractYear("cited_by__citation_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
+    return JsonResponse({
+        "applications_per_year": format_output(applications_per_year),
+        "granted_patents_per_year": format_output(granted_patents_per_year),
+        "granted_patents_per_type_year": format_output(granted_patents_per_type_year, "type"),
+        "granted_patents_per_office_year": format_output(granted_patents_per_office_year, "office"),
+        "pct_protected_patents_per_year": format_output(pct_protected_patents_per_year),
+        "granted_patents_per_cpc_year": format_output(granted_patents_per_cpc_year, "cpc_section"),
+        "citations_made_per_year": format_output(citations_made_per_year),
+        "citations_received_per_year": format_output(citations_received_per_year),
+    })
 
 
 def other_graphs(request):
