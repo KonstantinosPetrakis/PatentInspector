@@ -12,6 +12,7 @@ urlpatterns = [
     path("download-tsv", views.download_tsv, name="download-tsv"),
     path("statistics", views.statistics, name="statistics"),
     path("time-series", views.time_series, name="time-series"),
+    path("entity-info", views.entity_info, name="entity-info"),
 ]
 
 

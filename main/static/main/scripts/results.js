@@ -1,4 +1,9 @@
-function create2DPlot(x, y, name) {
+const colors = [
+    '#003f5c', '#2f4b7c', '#665191', '#a05195', '#d45087',
+    '#f95d6a', '#ff7c43', '#ffa600', '#8a2be2', '#dc143c'
+];
+
+function create2DPlot(datasets, title) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
 
@@ -6,19 +11,30 @@ function create2DPlot(x, y, name) {
     wrapper.appendChild(canvas);
     document.getElementById("time-series").appendChild(wrapper);
 
+    const singleLine = Object.keys(datasets)[0] == "";
+
     new Chart(canvas, {
         type: "line",
         data: {
-            labels: x,
-            datasets: [{
-                label: name,
-                data: y,
+            labels: Object.keys(datasets).values()[0], // labels are the same for all datasets, 
+            datasets: Object.entries(datasets).map(([name, data]) => ({
+                label: singleLine ? title : name,
+                data: Object.values(data),
+                data,
                 tension: 0.1,
-            }]
+                backgroundColor: colors[Object.keys(datasets).indexOf(name)],
+                borderColor: colors[Object.keys(datasets).indexOf(name)],
+            }))
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: !singleLine,
+                    text: title
+                }
+            }
         }
     });
 }
@@ -52,6 +68,36 @@ function populatePatentTable(data) {
     for (const pointMap of document.querySelectorAll(".point-map")) initializePointMap(pointMap);
 }
 
+
+function createPie(dataset, title, elementId) {
+    const wrapper = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
+    wrapper.appendChild(canvas);
+    document.querySelector(`#${elementId}`).appendChild(wrapper);
+
+    new Chart(canvas, {
+        type: "pie",
+        data: {
+            labels: Object.keys(dataset),
+            datasets: [{
+                data: Object.values(dataset),
+                backgroundColor: colors
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false
+        }
+    });
+}
 
 function createPagination(data) {
     const pagination = document.querySelector(".pagination");
@@ -133,18 +179,40 @@ async function fetchStatisticsTable() {
 
 
 async function fetchTimeSeries() {
+    const timeSeriesWrapper = document.getElementById("time-series");
+    timeSeriesWrapper.innerHTML = `
+        <div class="text-center">
+            <p> Processing in progress... Please wait. </p>
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+    `;
+
     const response = await fetch("/api/time-series");
     const data = await response.json();
-    console.log(data);
-    create2DPlot(Object.keys(data.applications_per_year), Object.values(data.applications_per_year), "Applications per year");
-    create2DPlot(Object.keys(data.granted_patents_per_year), Object.values(data.granted_patents_per_year), "Granted patents per year");
-    create2DPlot(Object.keys(data.pct_protected_patents_per_year), Object.values(data.pct_protected_patents_per_year), "PCT protected patents per year");
-    create2DPlot(Object.keys(data.citations_made_per_year), Object.values(data.citations_made_per_year), "Citations made per year");
-    create2DPlot(Object.keys(data.citations_received_per_year), Object.values(data.citations_received_per_year), "Citations received per year");
+    timeSeriesWrapper.innerHTML = "";
+    create2DPlot({"": data.applications_per_year}, "Applications per year");
+    create2DPlot({"": data.granted_patents_per_year}, "Granted patents per year");
+    create2DPlot({"": data.pct_protected_patents_per_year}, "PCT protected patents per year");
+    create2DPlot({"": data.citations_made_per_year}, "Citations made per year");
+    create2DPlot({"": data.citations_received_per_year}, "Citations received per year");
+    create2DPlot(data.granted_patents_per_type_year, "Granted patents of different types per year");
+    create2DPlot(data.granted_patents_per_office_year, "Granted patents of different offices per year");
+    create2DPlot(data.granted_patents_per_cpc_year, "Granted patents of different CPC sections per year");
+}
+
+
+async function fetchEntityInfo() {
+    const response = await fetch("/api/entity-info");
+    const data = await response.json();
+    createPie(data.pct, "PCT protection of patents", "entity-patent");
+    createPie(data.type, "Types of patents", "entity-patent");
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     goToPage(1);
     fetchStatisticsTable();
     fetchTimeSeries();
+    fetchEntityInfo();
 });

@@ -7,3 +7,4 @@ test.ipynb
 # Migrations should be ignored because there's no production yet.
 main/migrations/*
 !main/migrations/__init__.py
+temp/

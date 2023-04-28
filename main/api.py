@@ -3,7 +3,7 @@ from django.db.models.functions import Length, Substr, ExtractYear
 from django.db.models.aggregates import Avg, StdDev, Count
 from main.helpers import Median, WordCount, date_difference_in_years
 from django.core.paginator import Paginator
-from django.db.models import F
+from django.db.models import F, Q, OuterRef, Exists
 from random import randint
 from main.models import *
 from os import remove
@@ -256,6 +256,8 @@ def time_series(request):
                 for year in distinct_years:
                     if year not in formatted_output[distinct_val]:
                         formatted_output[distinct_val][year] = 0
+            formatted_output.pop(None, None) # remove empty values
+            formatted_output = dict(sorted(formatted_output.items())) # sort by key
             return formatted_output
         else:
             return {record["year"]: record["count"] for record in records if record["year"]}
@@ -273,19 +275,43 @@ def time_series(request):
     granted_patents_per_cpc_year = patents.annotate(year=ExtractYear("granted_date"), cpc_section=Substr("cpc_groups__cpc_group", 1, 1)).values("year", "cpc_section").annotate(count=Count("id")).order_by("year", "cpc_section").values("year", "cpc_section", "count")
     citations_made_per_year = patents.annotate(year=ExtractYear("citations__citation_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
     citations_received_per_year = patents.annotate(year=ExtractYear("cited_by__citation_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
+    
+    # Append the titles to the CPC sections codes
+    cpc_section_titles = {record["section"]: record["title"] 
+        for record in CPCSection.objects.all().values("section", "title")}
+    granted_patents_per_cpc_year = {f"{k} - {cpc_section_titles[k]}": v 
+        for k, v in format_output(granted_patents_per_cpc_year, "cpc_section").items()}
+
     return JsonResponse({
         "applications_per_year": format_output(applications_per_year),
         "granted_patents_per_year": format_output(granted_patents_per_year),
         "granted_patents_per_type_year": format_output(granted_patents_per_type_year, "type"),
         "granted_patents_per_office_year": format_output(granted_patents_per_office_year, "office"),
         "pct_protected_patents_per_year": format_output(pct_protected_patents_per_year),
-        "granted_patents_per_cpc_year": format_output(granted_patents_per_cpc_year, "cpc_section"),
+        "granted_patents_per_cpc_year": granted_patents_per_cpc_year,
         "citations_made_per_year": format_output(citations_made_per_year),
         "citations_received_per_year": format_output(citations_received_per_year),
     })
 
 
-def other_graphs(request):
+def entity_info(request):
+    def format_output(records, grouped_by=None):
+        if grouped_by is not None:
+            # Create a dict with the distinct values of the grouped_by field as keys
+            formatted_output = {distinct_val: {} for distinct_val in set(record[grouped_by] for record in records)}
+            for record in records:
+                formatted_output[record[grouped_by]].update({record["year"]: record["count"]})
+            # Fill the missing years with 0
+            distinct_years = list(set(record["year"] for record in records))
+            for distinct_val in formatted_output:
+                for year in distinct_years:
+                    if year not in formatted_output[distinct_val]:
+                        formatted_output[distinct_val][year] = 0
+            formatted_output.pop(None, None) # remove empty values
+            formatted_output = dict(sorted(formatted_output.items())) # sort by key
+            return formatted_output
+        else:
+            return {record["year"]: record["count"] for record in records if record["year"]}
     """
     https://github.com/Leaflet/Leaflet.heat
 
@@ -309,4 +335,18 @@ def other_graphs(request):
             * Pie with top 5 cpc groups
     """
 
-    pass
+    if (form_data := request.session.get("form_data", None)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+    
+    patents = Patent.filter(form_data)
+    print(patents.values("type").annotate(count=Count("id")).order_by("count").values("type", "count"))
+    return JsonResponse({
+        "pct": {
+            "not_pct": patents.filter(pct_data__isnull=True).count(),
+            "pct_application": patents.annotate(all_not_granted=~Exists(PCTData.objects.filter(Q(granted=True), patent_id=OuterRef("pk")))).filter(all_not_granted=True, pct_data__isnull=False).count(),
+            "pct_granted": patents.filter(pct_data__granted=True).count(),
+        },
+        "type": formatted_output(patents.values("type").annotate(count=Count("id")).order_by("count").values("type", "count"))),
+    })
+
+

@@ -29,5 +29,9 @@ td > div {
 
 canvas {
     display: block;
-    height: 15rem;
+    height: 25rem;
+}
+
+#entity-info canvas {
+    height: 20rem !important;
 }
