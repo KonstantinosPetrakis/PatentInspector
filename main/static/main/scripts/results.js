@@ -1,3 +1,4 @@
+// The colors that are being used for the plots.
 const colors = [
     '#003f5c', '#2f4b7c', '#665191', '#a05195', '#d45087',
     '#f95d6a', '#ff7c43', '#ffa600', '#8a2be2', '#dc143c'
@@ -6,8 +7,8 @@ const colors = [
 
 /**
  * This function creates a 2D plot with the given datasets and title.
- * @param {} datasets 
- * @param {*} title 
+ * @param {Object} datasets an object with keys the names of the lines, and values the data of the lines
+ * @param {String} title the title of the plot 
  */
 function create2DPlot(datasets, title) {
     const wrapper = document.createElement("div");
@@ -45,6 +46,52 @@ function create2DPlot(datasets, title) {
     });
 }
 
+
+/**
+ * This function creates a pie chart with the given dataset and title.
+ * @param {Object} dataset an object with keys the names of the slices, and values the data of the slices
+ * @param {String} title the title of the plot 
+ * @param {String} wrapperId the id of the element that will contain the plot 
+ */
+function createPie(dataset, title, wrapperId) {
+    const wrapper = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
+    wrapper.appendChild(canvas);
+    document.querySelector(`#${wrapperId}`).appendChild(wrapper);
+
+    new Chart(canvas, {
+        type: "pie",
+        data: {
+            labels: Object.keys(dataset).map(key => key.length > 80 ? key.substring(0, 80) + "..." : key),
+            datasets: [{
+                data: Object.values(dataset),
+                backgroundColor: colors
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                }
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false
+        }   
+    });
+}
+
+
+function createHeatmap(points) {    
+
+}
+
+/**
+ * This function populates the table with the given data.
+ * @param {Array<Object>} data the data containing the patents 
+ */
 function populatePatentTable(data) {
     const tbody = document.querySelector("#patent-table tbody");
     let html = "";
@@ -75,36 +122,10 @@ function populatePatentTable(data) {
 }
 
 
-function createPie(dataset, title, elementId) {
-    const wrapper = document.createElement("div");
-    const canvas = document.createElement("canvas");
-    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
-    wrapper.appendChild(canvas);
-    document.querySelector(`#${elementId}`).appendChild(wrapper);
-
-    new Chart(canvas, {
-        type: "pie",
-        data: {
-            labels: Object.keys(dataset).map(key => key.length > 80 ? key.substring(0, 80) + "..." : key),
-            datasets: [{
-                data: Object.values(dataset),
-                backgroundColor: colors
-            }]
-        },
-        options: {
-            plugins: {
-                title: {
-                    display: true,
-                    text: title
-                }
-            },
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false
-        }   
-    });
-}
-
+/**
+ * This function creates the pagination for the patent table.
+ * @param {Object} data the data containing the pagination information 
+ */
 function createPagination(data) {
     const pagination = document.querySelector(".pagination");
     let html = "";
@@ -130,6 +151,10 @@ function createPagination(data) {
 }
 
 
+/**
+ * This function fetches the patents for the given page and populates the table and creates the pagination.
+ * @param {Number} page the page to go to. 
+ */
 async function goToPage(page) {
     const tbody = document.querySelector("#patent-table tbody");
     const pagination = document.querySelector(".pagination");
@@ -153,6 +178,9 @@ async function goToPage(page) {
 }
 
 
+/**
+ * This function fetches the statistics and populates the table.
+ */
 async function fetchStatisticsTable() {
     const table = document.querySelector("#statistics-table tbody");
     table.innerHTML = `
@@ -184,6 +212,9 @@ async function fetchStatisticsTable() {
 }
 
 
+/**
+ * This function fetches the time series and creates the plots.
+ */
 async function fetchTimeSeries() {
     const timeSeriesWrapper = document.getElementById("time-series");
     timeSeriesWrapper.innerHTML = `
@@ -209,6 +240,9 @@ async function fetchTimeSeries() {
 }
 
 
+/**
+ * This function fetches the entity information and creates the plots.
+ */
 async function fetchEntityInfo() {
     const response = await fetch("/api/entity-info");
     const data = await response.json();
@@ -217,8 +251,10 @@ async function fetchEntityInfo() {
     createPie(data.patent.pct, "PCT protection of patents", "entity-patent");
     createPie(data.patent.type, "Types of patents", "entity-patent");
     createPie(data.patent.office, "Offices of patents", "entity-patent");
+
     // Inventor
     createPie(data.inventor.top_10, "Top 10 inventors", "entity-inventor");
+    createHeatmap(1);
 
     // Assignee
     createPie(data.assignee.top_10, "Top 10 assignees", "entity-assignee");
@@ -230,6 +266,7 @@ async function fetchEntityInfo() {
     createPie(data.cpc.top_5_subclasses, "Top 5 CPC subclasses", "entity-cpc");
     createPie(data.cpc.top_5_groups, "Top 5 CPC groups", "entity-cpc");
 }
+
 
 document.addEventListener("DOMContentLoaded", () => {
     goToPage(1);

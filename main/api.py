@@ -258,7 +258,8 @@ def entity_info(request):
 
     if (form_data := request.session.get("form_data", None)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
-    
+
+
     patents = Patent.filter(form_data)
     return JsonResponse({
         "patent": {
@@ -272,6 +273,7 @@ def entity_info(request):
         },
         "inventor": {
             "top_10": group_fields(patents.annotate(inventor=Concat("inventors__first_name", Value(" "), "inventors__last_name")).filter(~Q(inventor=" ")).values("inventor").annotate(count=Count("id")).order_by("-count")[:10], "inventor"),
+            "locations": list(patents.annotate(**get_coordinates("inventors__location__point")).values("lat", "lng").annotate(count=Count("id")).order_by("-count").values("lat", "lng", "count"))
         },
         "assignee": {
             "top_10": group_fields(patents.annotate(assignee=Concat("assignees__first_name", Value(" "), "assignees__last_name", Value(" "), "assignees__organization")).filter(~Q(assignee="  ")).values("assignee").annotate(count=Count("id")).order_by("-count")[:10], "assignee"),
@@ -287,5 +289,3 @@ def entity_info(request):
             "top_5_groups": append_title_to_cpc(group_fields(patents.values("cpc_groups__cpc_group").annotate(count=Count("id")).order_by("-count")[:5], "cpc_groups__cpc_group")),
         }
     })
-
-

@@ -6,7 +6,6 @@
 {% endblock %}
 
 {% block scripts %}
-
     <script src="{% static 'main/scripts/chartjs/chart.umd.js' %}"></script>
     <script src="{% static 'main/scripts/results.js' %}"></script>
 {% endblock %}
@@ -91,7 +90,9 @@
             </div>
         </div>
     </div>    
-    
+    <div>
+        <div style="width: 500px; height: 500px;" id="mymap" > </div>
+    </div>
     <a href="/api/download-tsv" download="patents.tsv" class="btn btn-outline-secondary mb-2 mt-5"> 
         Export to TSV
     </a>

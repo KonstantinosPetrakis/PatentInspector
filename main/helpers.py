@@ -161,8 +161,6 @@ def append_title_to_cpc(cpc_dict):
     Returns:
         Dict: The updated dictionary with keys the CPC section codes and the section title.
     """
-# cpc_section_titles = {record["section"]: record["title"] # That's used for appending the section title to the section code
-#     for record in CPCSection.objects.all().values("section", "title")}
     
     cpc_levels = list(cpc_dict.keys())
     cpc_level_len = len(cpc_levels[0])
@@ -182,3 +180,9 @@ def append_title_to_cpc(cpc_dict):
             for record in CPCGroup.objects.filter(group__in=cpc_levels).values("group", "title")}
         return {f"{key} - {cpc_group_titles[key]}": value for key, value in cpc_dict.items()}
         
+
+def get_coordinates(field):
+    return {
+        "lat": Func(field, function="ST_X", output_field=FloatField()),
+        "lng": Func(field, function="ST_Y", output_field=FloatField()),
+    }
