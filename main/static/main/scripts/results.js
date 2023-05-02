@@ -3,6 +3,12 @@ const colors = [
     '#f95d6a', '#ff7c43', '#ffa600', '#8a2be2', '#dc143c'
 ];
 
+
+/**
+ * This function creates a 2D plot with the given datasets and title.
+ * @param {} datasets 
+ * @param {*} title 
+ */
 function create2DPlot(datasets, title) {
     const wrapper = document.createElement("div");
     wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
@@ -79,7 +85,7 @@ function createPie(dataset, title, elementId) {
     new Chart(canvas, {
         type: "pie",
         data: {
-            labels: Object.keys(dataset),
+            labels: Object.keys(dataset).map(key => key.length > 80 ? key.substring(0, 80) + "..." : key),
             datasets: [{
                 data: Object.values(dataset),
                 backgroundColor: colors
@@ -95,7 +101,7 @@ function createPie(dataset, title, elementId) {
             responsive: true,
             maintainAspectRatio: false,
             animation: false
-        }
+        }   
     });
 }
 
@@ -206,8 +212,23 @@ async function fetchTimeSeries() {
 async function fetchEntityInfo() {
     const response = await fetch("/api/entity-info");
     const data = await response.json();
-    createPie(data.pct, "PCT protection of patents", "entity-patent");
-    createPie(data.type, "Types of patents", "entity-patent");
+
+    // Patent
+    createPie(data.patent.pct, "PCT protection of patents", "entity-patent");
+    createPie(data.patent.type, "Types of patents", "entity-patent");
+    createPie(data.patent.office, "Offices of patents", "entity-patent");
+    // Inventor
+    createPie(data.inventor.top_10, "Top 10 inventors", "entity-inventor");
+
+    // Assignee
+    createPie(data.assignee.top_10, "Top 10 assignees", "entity-assignee");
+    createPie(data.assignee.corporation_vs_individual, "Corporation and individual assignees", "entity-assignee");
+
+    // CPC
+    createPie(data.cpc.section, "CPC sections", "entity-cpc");
+    createPie(data.cpc.top_5_classes, "Top 5 CPC classes", "entity-cpc");
+    createPie(data.cpc.top_5_subclasses, "Top 5 CPC subclasses", "entity-cpc");
+    createPie(data.cpc.top_5_groups, "Top 5 CPC groups", "entity-cpc");
 }
 
 document.addEventListener("DOMContentLoaded", () => {

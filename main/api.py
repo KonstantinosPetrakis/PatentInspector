@@ -1,14 +1,13 @@
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.db.models.functions import Length, Substr, ExtractYear
-from django.db.models.aggregates import Avg, StdDev, Count
-from main.helpers import Median, WordCount, date_difference_in_years
+from django.db.models.aggregates import Count, Sum
+from main.helpers import *
 from django.core.paginator import Paginator
 from django.db.models import F, Q, OuterRef, Exists
 from random import randint
 from main.models import *
 from os import remove
 from time import time
-import itertools
 import json
 
 
@@ -176,92 +175,50 @@ def download_tsv(request):
 
 
 def statistics(request):
+    """
+    This view returns statistics about the patents that match the user's query.
+    """
+
     if (form_data := request.session.get("form_data", None)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    def calculate_statistics(field, function=None, display_name=None):
-        if display_name is None: display_name = field
-
-        return {
-            f"avg_{display_name}": Avg(field),
-            f"med_{display_name}": Median(field),
-            f"std_dev_{display_name}": StdDev(field),
-        }   if function is None else {
-                f"avg_{display_name}": Avg(function(field)),
-                f"med_{display_name}": Median(function(field)),
-                f"std_dev_{display_name}": StdDev(function(field)),
-            }
-
-    def retrieve_statistics_from_result(bulk_result, fields):
-        statistics.update({field: {
-            "avg": bulk_result[f"avg_{field}"],
-            "med": bulk_result[f"med_{field}"],
-            "std_dev": bulk_result[f"std_dev_{field}"],
-        } for field in fields})
-
-    # coffee, 5.8k, 13.2s
     statistics = {}
     patents = Patent.filter(form_data)
 
     # Handle statistics that don't need joins
-    retrieve_statistics_from_result(patents.annotate(
+    statistics.update(format_statistics(patents.annotate(
         years_to_get_granted=date_difference_in_years("granted_date", "application_filed_date")).aggregate(
             **calculate_statistics("years_to_get_granted"),
             **calculate_statistics("sheets_count"),
             **calculate_statistics("figures_count"),
             **calculate_statistics("claims_count"),
             **calculate_statistics("title", WordCount, "title_word_count"),
-            **calculate_statistics("abstract", WordCount, "abstract_word_count"),
-        ), ["years_to_get_granted", "sheets_count", "figures_count", "claims_count", "title_word_count", "abstract_word_count"])
+            **calculate_statistics("abstract", WordCount, "abstract_word_count"))))
 
     # Handle statistics that need joins one by one (one by one probably yields better performance)
-    retrieve_statistics_from_result(patents.annotate(
-        cpc_group_count=Count("cpc_groups", distinct=True)).aggregate(
-            **calculate_statistics("cpc_group_count"),
-        ), ["cpc_group_count"])
+    statistics.update(format_statistics(patents.annotate(
+        cpc_group_count=Count("cpc_groups")).aggregate(**calculate_statistics("cpc_group_count"))))
 
-    retrieve_statistics_from_result(patents.annotate(
-        inventor_count=Count("inventors", distinct=True)).aggregate(
-            **calculate_statistics("inventor_count"),
-        ), ["inventor_count"])
+    statistics.update(format_statistics(patents.annotate(
+        inventor_count=Count("inventors")).aggregate(**calculate_statistics("inventor_count"))))
 
-    retrieve_statistics_from_result(patents.annotate(
-        assignee_count=Count("assignees", distinct=True)).aggregate(
-           **calculate_statistics("assignee_count"),
-        ), ["assignee_count"])
+    statistics.update(format_statistics(patents.annotate(
+        assignee_count=Count("assignees")).aggregate(**calculate_statistics("assignee_count"))))
 
-    retrieve_statistics_from_result(patents.annotate(
-        incoming_citation_count=Count("citations", distinct=True)).aggregate(
-            **calculate_statistics("incoming_citation_count"),
-        ), ["incoming_citation_count"])
+    statistics.update(format_statistics(patents.annotate(incoming_citation_count=Count("citations")).aggregate(
+        **calculate_statistics("incoming_citation_count"))))
     
-    retrieve_statistics_from_result(patents.annotate(
-        outgoing_citation_count=Count("cited_by", distinct=True)).aggregate(
-            **calculate_statistics("outgoing_citation_count"),
-        ), ["outgoing_citation_count"])
+    statistics.update(format_statistics(patents.annotate(
+        outgoing_citation_count=Count("cited_by")).aggregate(**calculate_statistics("outgoing_citation_count"))))
 
     return JsonResponse({k.replace("_", " ").title(): v for k, v in statistics.items()})
 
 
 def time_series(request):
-    def format_output(records, grouped_by=None):
-        if grouped_by is not None:
-            # Create a dict with the distinct values of the grouped_by field as keys
-            formatted_output = {distinct_val: {} for distinct_val in set(record[grouped_by] for record in records)}
-            for record in records:
-                formatted_output[record[grouped_by]].update({record["year"]: record["count"]})
-            # Fill the missing years with 0
-            distinct_years = list(set(record["year"] for record in records))
-            for distinct_val in formatted_output:
-                for year in distinct_years:
-                    if year not in formatted_output[distinct_val]:
-                        formatted_output[distinct_val][year] = 0
-            formatted_output.pop(None, None) # remove empty values
-            formatted_output = dict(sorted(formatted_output.items())) # sort by key
-            return formatted_output
-        else:
-            return {record["year"]: record["count"] for record in records if record["year"]}
-    
+    """
+    This view returns a set of time series based on the user's query.
+    """
+
     if (form_data := request.session.get("form_data", None)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
@@ -276,77 +233,59 @@ def time_series(request):
     citations_made_per_year = patents.annotate(year=ExtractYear("citations__citation_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
     citations_received_per_year = patents.annotate(year=ExtractYear("cited_by__citation_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
     
-    # Append the titles to the CPC sections codes
-    cpc_section_titles = {record["section"]: record["title"] 
-        for record in CPCSection.objects.all().values("section", "title")}
-    granted_patents_per_cpc_year = {f"{k} - {cpc_section_titles[k]}": v 
-        for k, v in format_output(granted_patents_per_cpc_year, "cpc_section").items()}
-
     return JsonResponse({
-        "applications_per_year": format_output(applications_per_year),
-        "granted_patents_per_year": format_output(granted_patents_per_year),
-        "granted_patents_per_type_year": format_output(granted_patents_per_type_year, "type"),
-        "granted_patents_per_office_year": format_output(granted_patents_per_office_year, "office"),
-        "pct_protected_patents_per_year": format_output(pct_protected_patents_per_year),
-        "granted_patents_per_cpc_year": granted_patents_per_cpc_year,
-        "citations_made_per_year": format_output(citations_made_per_year),
-        "citations_received_per_year": format_output(citations_received_per_year),
+        "applications_per_year": group_fields(applications_per_year),
+        "granted_patents_per_year": group_fields(granted_patents_per_year),
+        "granted_patents_per_type_year": group_fields(granted_patents_per_type_year, "type"),
+        "granted_patents_per_office_year": group_fields(granted_patents_per_office_year, "office"),
+        "pct_protected_patents_per_year": group_fields(pct_protected_patents_per_year),
+        "granted_patents_per_cpc_year": append_title_to_cpc(group_fields(granted_patents_per_cpc_year, "cpc_section")),
+        "citations_made_per_year": group_fields(citations_made_per_year),
+        "citations_received_per_year": group_fields(citations_received_per_year),
     })
 
 
 def entity_info(request):
-    def format_output(records, grouped_by=None):
-        if grouped_by is not None:
-            # Create a dict with the distinct values of the grouped_by field as keys
-            formatted_output = {distinct_val: {} for distinct_val in set(record[grouped_by] for record in records)}
-            for record in records:
-                formatted_output[record[grouped_by]].update({record["year"]: record["count"]})
-            # Fill the missing years with 0
-            distinct_years = list(set(record["year"] for record in records))
-            for distinct_val in formatted_output:
-                for year in distinct_years:
-                    if year not in formatted_output[distinct_val]:
-                        formatted_output[distinct_val][year] = 0
-            formatted_output.pop(None, None) # remove empty values
-            formatted_output = dict(sorted(formatted_output.items())) # sort by key
-            return formatted_output
-        else:
-            return {record["year"]: record["count"] for record in records if record["year"]}
     """
     https://github.com/Leaflet/Leaflet.heat
 
     * More graphs
-        * Patent
-            * Pie with PCT protection or not
-            * Pie with patent type
-            * Pie with patent office
         * Inventor
-            * Pie with top 10 inventors
-            * Pie with gender of inventors
-            * Pie with organization, individual inventor count
             * A heatmap based on the location of the inventors
         * Assignee
             * A heatmap based on the location of the assignees
-            * Pie with top 10 assignees
-        * CPC
-            * Pie with CPC sections
-            * Pie with top 5 cpc classes
-            * Pie with top 5 cpc subclasses
-            * Pie with top 5 cpc groups
     """
 
     if (form_data := request.session.get("form_data", None)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
     
     patents = Patent.filter(form_data)
-    print(patents.values("type").annotate(count=Count("id")).order_by("count").values("type", "count"))
     return JsonResponse({
-        "pct": {
-            "not_pct": patents.filter(pct_data__isnull=True).count(),
-            "pct_application": patents.annotate(all_not_granted=~Exists(PCTData.objects.filter(Q(granted=True), patent_id=OuterRef("pk")))).filter(all_not_granted=True, pct_data__isnull=False).count(),
-            "pct_granted": patents.filter(pct_data__granted=True).count(),
+        "patent": {
+            "pct": {
+                "Did not apply": patents.filter(pct_data__isnull=True).count(),
+                "Applied but not granted yet": patents.annotate(all_not_granted=~Exists(PCTData.objects.filter(Q(granted=True), patent_id=OuterRef("pk")))).filter(all_not_granted=True, pct_data__isnull=False).count(),
+                "Granted": patents.filter(pct_data__granted=True).count(),
+            },
+            "type": group_fields(patents.values("type").annotate(count=Count("id")).order_by(), "type"),
+            "office": group_fields(patents.values("office").annotate(count=Count("id")).order_by(), "office"),
         },
-        "type": formatted_output(patents.values("type").annotate(count=Count("id")).order_by("count").values("type", "count"))),
+        "inventor": {
+            "top_10": group_fields(patents.annotate(inventor=Concat("inventors__first_name", Value(" "), "inventors__last_name")).filter(~Q(inventor=" ")).values("inventor").annotate(count=Count("id")).order_by("-count")[:10], "inventor"),
+        },
+        "assignee": {
+            "top_10": group_fields(patents.annotate(assignee=Concat("assignees__first_name", Value(" "), "assignees__last_name", Value(" "), "assignees__organization")).filter(~Q(assignee="  ")).values("assignee").annotate(count=Count("id")).order_by("-count")[:10], "assignee"),
+            "corporation_vs_individual": {
+                "Corporation": patents.filter(Q(assignees__isnull=False) & string_is_empty("assignees__first_name") & string_is_empty("assignees__last_name")).count(),
+                "Individual": patents.filter(Q(assignees__isnull=False) & string_is_empty("assignees__organization")).count(),
+            }
+        },
+        "cpc": {
+            "section": append_title_to_cpc(group_fields(patents.annotate(cpc_section=Substr("cpc_groups__cpc_group", 1, 1)).values("cpc_section").annotate(count=Count("id")).order_by("-count"), "cpc_section")),
+            "top_5_classes": append_title_to_cpc(group_fields(patents.annotate(cpc_class=Substr("cpc_groups__cpc_group", 1, 3)).values("cpc_class").annotate(count=Count("id")).order_by("-count")[:5], "cpc_class")),
+            "top_5_subclasses": append_title_to_cpc(group_fields(patents.annotate(cpc_subclass=Substr("cpc_groups__cpc_group", 1, 4)).values("cpc_subclass").annotate(count=Count("id")).order_by("-count")[:5], "cpc_subclass")),
+            "top_5_groups": append_title_to_cpc(group_fields(patents.values("cpc_groups__cpc_group").annotate(count=Count("id")).order_by("-count")[:5], "cpc_groups__cpc_group")),
+        }
     })
 
 

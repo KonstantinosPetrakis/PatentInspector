@@ -31,7 +31,3 @@ canvas {
     display: block;
     height: 25rem;
 }
-
-#entity-info canvas {
-    height: 20rem !important;
-}
