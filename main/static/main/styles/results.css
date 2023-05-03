@@ -27,7 +27,13 @@ td > div {
     display: block;
 }
 
-canvas {
+canvas:not(.global-map canvas) {
     display: block;
     height: 25rem;
+}
+
+.global-map {
+    border: 1px solid;
+    width: 80%;
+    height: 20rem !important;
 }

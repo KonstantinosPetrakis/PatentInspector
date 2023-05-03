@@ -273,14 +273,15 @@ def entity_info(request):
         },
         "inventor": {
             "top_10": group_fields(patents.annotate(inventor=Concat("inventors__first_name", Value(" "), "inventors__last_name")).filter(~Q(inventor=" ")).values("inventor").annotate(count=Count("id")).order_by("-count")[:10], "inventor"),
-            "locations": list(patents.annotate(**get_coordinates("inventors__location__point")).values("lat", "lng").annotate(count=Count("id")).order_by("-count").values("lat", "lng", "count"))
+            "locations": list(patents.annotate(**get_coordinates("inventors__location__point")).filter(lat__isnull=False, lng__isnull=False).values("lat", "lng").annotate(count=Count("id")).order_by("-count").values("lat", "lng", "count"))
         },
         "assignee": {
             "top_10": group_fields(patents.annotate(assignee=Concat("assignees__first_name", Value(" "), "assignees__last_name", Value(" "), "assignees__organization")).filter(~Q(assignee="  ")).values("assignee").annotate(count=Count("id")).order_by("-count")[:10], "assignee"),
             "corporation_vs_individual": {
                 "Corporation": patents.filter(Q(assignees__isnull=False) & string_is_empty("assignees__first_name") & string_is_empty("assignees__last_name")).count(),
                 "Individual": patents.filter(Q(assignees__isnull=False) & string_is_empty("assignees__organization")).count(),
-            }
+            },
+            "locations": list(patents.annotate(**get_coordinates("assignees__location__point")).filter(lat__isnull=False, lng__isnull=False).values("lat", "lng").annotate(count=Count("id")).order_by("-count").values("lat", "lng", "count"))
         },
         "cpc": {
             "section": append_title_to_cpc(group_fields(patents.annotate(cpc_section=Substr("cpc_groups__cpc_group", 1, 1)).values("cpc_section").annotate(count=Count("id")).order_by("-count"), "cpc_section")),

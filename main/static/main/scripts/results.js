@@ -84,8 +84,40 @@ function createPie(dataset, title, wrapperId) {
 }
 
 
-function createHeatmap(points) {    
+/**
+ * This function creates a heatmap with the given points and title.
+ * @param {Array<Object>} points the points (lat, lng, count) that will be used to create the heatmap 
+ * @param {String} title the title of the plot 
+ * @param {String} wrapperID the id of the element that will contain the plot 
+ */
+function createHeatmap(points, title, wrapperID) {    
+    var mapWithLegendElement = document.createElement("div");
+    mapWithLegendElement.textContent = title;
+    mapWithLegendElement.classList.add("col-12", "d-flex", "flex-column", "align-items-center"); 
+    var mapElement = document.createElement("div");
+    mapElement.classList.add("map", "global-map");
+    mapElement.id = `map-${(Math.round(Math.random() * 100))}`;
+    mapWithLegendElement.appendChild(mapElement);
+    document.querySelector(`#${wrapperID}`).appendChild(mapWithLegendElement);
 
+    var map = L.map(mapElement.id).setView([44, -50], 3);
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
+
+    var heatmapLayer = new HeatmapOverlay({
+        "radius": 2,
+        "maxOpacity": .8,
+        "scaleRadius": true,
+        "useLocalExtrema": false,
+        latField: 'lat',
+        lngField: 'lng',
+        valueField: 'count'
+    });
+
+    heatmapLayer.addTo(map);
+    heatmapLayer.setData({max: Math.max(...points.map((point) => point.count)), data: points});
 }
 
 /**
@@ -254,11 +286,12 @@ async function fetchEntityInfo() {
 
     // Inventor
     createPie(data.inventor.top_10, "Top 10 inventors", "entity-inventor");
-    createHeatmap(1);
+    createHeatmap(data.inventor.locations, "Inventor Locations", "entity-inventor");
 
     // Assignee
     createPie(data.assignee.top_10, "Top 10 assignees", "entity-assignee");
     createPie(data.assignee.corporation_vs_individual, "Corporation and individual assignees", "entity-assignee");
+    createHeatmap(data.assignee.locations, "Assignee Locations", "entity-assignee");
 
     // CPC
     createPie(data.cpc.section, "CPC sections", "entity-cpc");

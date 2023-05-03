@@ -41,7 +41,7 @@ html[data-bs-theme="dark"] .btn.btn-theme { /* This is the bootstrap .btn-dark *
     aspect-ratio: 16 / 9;
 }
 
-html[data-bs-theme="dark"] .map {
+html[data-bs-theme="dark"] .leaflet-tile  {
     filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
 }
 

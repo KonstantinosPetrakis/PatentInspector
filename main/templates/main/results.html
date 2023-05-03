@@ -7,6 +7,8 @@
 
 {% block scripts %}
     <script src="{% static 'main/scripts/chartjs/chart.umd.js' %}"></script>
+    <script src="{% static 'main/scripts/heatmap.min.js' %}"></script>
+    <script src="{% static 'main/scripts/leaflet-heatmap.js' %}"></script>
     <script src="{% static 'main/scripts/results.js' %}"></script>
 {% endblock %}
 
@@ -63,17 +65,17 @@
                     <tbody></tbody>
                 </table>
                 <h3> Variables over time  </h3>
-                <div id="time-series" class="row"> </div>
+                <div id="time-series" class="row justify-content-center"> </div>
                 <h3> Information for each entity </h3>
                 <div id="entity-info"> 
                     <h4> Patent </h4>
-                    <div id="entity-patent" class="row"> </div>
+                    <div id="entity-patent" class="row justify-content-center"> </div>
                     <h4> Inventor </h4>
-                    <div id="entity-inventor" class="row"> </div>
+                    <div id="entity-inventor" class="row justify-content-center"> </div>
                     <h4> Assignee </h4>
-                    <div id="entity-assignee" class="row"> </div>
+                    <div id="entity-assignee" class="row justify-content-center"> </div>
                     <h4> CPC </h4>
-                    <div id="entity-cpc" class="row"> </div>
+                    <div id="entity-cpc" class="row justify-content-center"> </div>
                 </div>
             </div>
             <div id="business-analysis">
@@ -90,9 +92,6 @@
             </div>
         </div>
     </div>    
-    <div>
-        <div style="width: 500px; height: 500px;" id="mymap" > </div>
-    </div>
     <a href="/api/download-tsv" download="patents.tsv" class="btn btn-outline-secondary mb-2 mt-5"> 
         Export to TSV
     </a>

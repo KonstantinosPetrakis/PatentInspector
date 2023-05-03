@@ -183,6 +183,6 @@ def append_title_to_cpc(cpc_dict):
 
 def get_coordinates(field):
     return {
-        "lat": Func(field, function="ST_X", output_field=FloatField()),
-        "lng": Func(field, function="ST_Y", output_field=FloatField()),
+        "lng": Func(field, function="ST_X", output_field=FloatField()),
+        "lat": Func(field, function="ST_Y", output_field=FloatField()),
     }
