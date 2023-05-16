@@ -9,6 +9,7 @@
     <script src="{% static 'main/scripts/chartjs/chart.umd.js' %}"></script>
     <script src="{% static 'main/scripts/heatmap.min.js' %}"></script>
     <script src="{% static 'main/scripts/leaflet-heatmap.js' %}"></script>
+    <script src="{% static 'main/scripts/3d-force-graph.min.js' %}"></script>
     <script src="{% static 'main/scripts/results.js' %}"></script>
 {% endblock %}
 
@@ -85,12 +86,12 @@
                 Hello World
             </div>
             <div id="thematic-analysis">
-                Thematic Analysis
-                Hello World
+                <h3> Topic analysis </h3>
+                <p> 10 different topics with the most important 10 words </p>
+                <div class="row" id="topic-analysis"> </div>
             </div>
             <div id="network-analysis"> 
-                Network Analysis
-                Hello World
+                <div id="citation-graph"> </div>
             </div>
         </div>
     </div>    

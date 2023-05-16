@@ -6,6 +6,33 @@ const colors = [
 
 
 /**
+ * This function adds a "processing" message to the given container.
+ * @param {String} selector the selector of the container that will contain the message.
+ * @param {Boolean} table whether the container is a table or not. 
+ */
+function addProcessingMessage(selector, table=false) {
+    const container = document.querySelector(selector);
+    const message = `
+        <p> Processing in progress... Please wait. </p>
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    `;
+
+    if (table) container.innerHTML = `<tr class="fetch-message"> <td class="text-center" colspan="100"> ${message} </td> </tr>`;
+    else container.innerHTML = `<div class="text-center"> ${message} </div>`;
+}
+
+/**
+ * This function removes the "processing" message from the given container.
+ * @param {String} selector the selector of the container that contains the message.
+ */
+function removeProcessingMessage(selector) {
+    document.querySelector(selector).innerHTML = "";
+}
+
+
+/**
  * This function creates a 2D plot with the given datasets and title.
  * @param {Object} datasets an object with keys the names of the lines, and values the data of the lines
  * @param {String} title the title of the plot 
@@ -120,6 +147,94 @@ function createHeatmap(points, title, wrapperID) {
     heatmapLayer.setData({max: Math.max(...points.map((point) => point.count)), data: points});
 }
 
+
+/**
+ * This function creates a bar plot with the given topic and title.
+ * @param {Object} topic the topic that will be used to create the plot.
+ * @param {String} title the title of the plot.
+ * @param {String} wrapperId the id of the element that will contain the plot.
+ */
+function createBarPlotForTopic(topic, title, wrapperId) {
+    const wrapper = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
+    wrapper.appendChild(canvas);
+    document.querySelector(`#${wrapperId}`).appendChild(wrapper);
+
+    new Chart(canvas, {
+        type: "bar",
+        data: {
+            labels: topic.top_features,
+            datasets: [{
+                data: topic.weights,
+                backgroundColor: colors
+            }]
+        },
+        options: {
+            plugins: {
+                title: {
+                    display: true,
+                    text: title
+                },
+                legend: {
+                    display: false
+                }
+            },
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false
+        }   
+    });
+}
+
+
+/**
+ * This function creates the plots for the topic analysis.
+ * @param {Array<Object>} topics the topics that will be used to create the plots.
+ */
+function createTopicAnalysisPlot(topics) {
+    for (let i=0; i<topics.length; i++) 
+        createBarPlotForTopic(topics[i], `Topic ${i+1}`, "topic-analysis");
+}
+
+
+/**
+ * This function creates the citation graph given the data retrieved from the server api.
+ * @param {Array<Object>} data the array containing the patent citations. 
+ * @param {String} wrapperSelector the selector of the element that will contain the graph.
+ */
+function createGraph(data, wrapperSelector) {
+    const darkMode = document.querySelector("html").getAttribute("data-bs-theme") == "dark";
+    const nodes = {};
+    const links = [];
+
+    data.forEach(item => {
+        const citingNode = {id: item.citing_patent_id, code: item.citing_patent_code, title: item.citing_patent__title, granted_date: item.citing_patent__granted_date};
+        const citedNode = {id: item.cited_patent_id, code: item.cited_patent_code, title: item.cited_patent__title, granted_date: item.cited_patent__granted_date};
+
+        nodes[citingNode.id] = citingNode;
+        nodes[citedNode.id] = citedNode;
+
+        links.push({source: citingNode.id, target: citedNode.id});
+    });
+
+    const graph = ForceGraph3D({controlType: 'orbit'})(document.querySelector(wrapperSelector))
+        .graphData({nodes: Object.values(nodes), links})
+        .nodeLabel(node => `${node.code} - ${node.title} - ${node.granted_date}`)
+        .linkDirectionalArrowLength(3.5)
+        .linkDirectionalArrowRelPos(1)
+        .linkCurvature(0.25)
+        .width(window.screen.width * 0.8)
+        .height(window.screen.height * 0.8)
+        .backgroundColor(darkMode ? "#212529" : "#fff")
+        .linkColor(() => darkMode ? "#fff" : "#000")
+        .nodeColor(() => "#d45087")
+        .onNodeClick(node => window.open(`https://patents.google.com/?oq=${node.code}`))
+        .warmupTicks(50)
+        .cooldownTicks(0)
+}
+
 /**
  * This function populates the table with the given data.
  * @param {Array<Object>} data the data containing the patents 
@@ -188,22 +303,13 @@ function createPagination(data) {
  * @param {Number} page the page to go to. 
  */
 async function goToPage(page) {
-    const tbody = document.querySelector("#patent-table tbody");
-    const pagination = document.querySelector(".pagination");
-    pagination.innerHTML = "";
-    tbody.innerHTML = `
-        <tr class="fetch-message">
-            <td class="text-center" colspan="100"> <!-- It's ok for < 100 columns -->
-                <p> Fetching data... Please wait. </p>
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </td>
-        </tr>
-    `;
+    document.querySelector(".pagination").innerHTML = "";
 
+    addProcessingMessage("#patent-table tbody", true)
     const response = await fetch(`/api/patents?page=${page}`);
     const data = await response.json();
+    removeProcessingMessage("#patent-table tbody");
+
     populatePatentTable(data);
     createPagination(data);
     document.querySelector("#result-counts").textContent = `You selected ${data.selected_record_count} out of ${data.total_record_count} patents.`
@@ -214,18 +320,7 @@ async function goToPage(page) {
  * This function fetches the statistics and populates the table.
  */
 async function fetchStatisticsTable() {
-    const table = document.querySelector("#statistics-table tbody");
-    table.innerHTML = `
-        <tr class="fetch-message">
-            <td class="text-center" colspan="100"> <!-- It's ok for < 100 columns -->
-                <p> Processing in progress... Please wait. </p>
-                <div class="spinner-border" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-            </td>
-        </tr>
-    `;
-
+    addProcessingMessage("#statistics-table tbody", true);
     const response = await fetch("/api/statistics");
     const data = await response.json();
 
@@ -242,7 +337,7 @@ async function fetchStatisticsTable() {
             </tr>
         `;
     }
-    table.innerHTML = html;
+    document.querySelector("#statistics-table tbody").innerHTML = html;
 }
 
 
@@ -250,19 +345,11 @@ async function fetchStatisticsTable() {
  * This function fetches the time series and creates the plots.
  */
 async function fetchTimeSeries() {
-    const timeSeriesWrapper = document.getElementById("time-series");
-    timeSeriesWrapper.innerHTML = `
-        <div class="text-center">
-            <p> Processing in progress... Please wait. </p>
-            <div class="spinner-border" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-        </div>
-    `;
-
+    addProcessingMessage("#time-series", false);
     const response = await fetch("/api/time-series");
     const data = await response.json();
-    timeSeriesWrapper.innerHTML = "";
+    removeProcessingMessage("#time-series");
+
     create2DPlot({"": data.applications_per_year}, "Applications per year");
     create2DPlot({"": data.granted_patents_per_year}, "Granted patents per year");
     create2DPlot({"": data.pct_protected_patents_per_year}, "PCT protected patents per year");
@@ -278,8 +365,10 @@ async function fetchTimeSeries() {
  * This function fetches the entity information and creates the plots.
  */
 async function fetchEntityInfo() {
+    addProcessingMessage("#entity-info", false);
     const response = await fetch("/api/entity-info");
     const data = await response.json();
+    removeProcessingMessage("#entity-info");
 
     // Patent
     createPie(data.patent.pct, "PCT protection of patents", "entity-patent");
@@ -303,9 +392,37 @@ async function fetchEntityInfo() {
 }
 
 
+/**
+ * This function fetches the topic modeling data and creates the plots.
+ */
+async function getTopicModeling() {
+    addProcessingMessage("#topic-analysis", false);
+    const response = await fetch("/api/topic-modeling");
+    const data = await response.json();
+    removeProcessingMessage("#topic-analysis");
+
+    createTopicAnalysisPlot(data);
+}
+
+
+/**
+ * This function fetches the citation graph data and creates the graph.
+ */
+async function getGraphData() {
+    addProcessingMessage("#citation-graph", false);
+    const response = await fetch("/api/citation-graph");
+    const data = await response.json();
+    removeProcessingMessage("#citation-graph");
+
+    createGraph(data, "#citation-graph");
+}
+
+
 document.addEventListener("DOMContentLoaded", () => {
     goToPage(1);
     fetchStatisticsTable();
     fetchTimeSeries();
     fetchEntityInfo();
+    getTopicModeling();
+    getGraphData();
 });

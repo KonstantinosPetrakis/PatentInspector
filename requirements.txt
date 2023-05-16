@@ -9,6 +9,7 @@ django-modeladmin-reorder==0.3.1
 django-postgres-copy==2.7.2
 django_debug_toolbar==3.8.1
 idna==3.4
+joblib==1.2.0
 numpy==1.24.2
 pandas==1.5.3
 pip-autoremove==0.10.0
@@ -16,6 +17,10 @@ psycopg2==2.9.5
 python-dateutil==2.8.2
 pytz==2022.7.1
 requests==2.28.2
+scikit-learn==1.2.2
+scipy==1.10.1
 six==1.16.0
+sklearn==0.0.post5
 sqlparse==0.4.3
+threadpoolctl==3.1.0
 urllib3==1.26.14

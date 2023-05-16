@@ -13,6 +13,8 @@ urlpatterns = [
     path("statistics", views.statistics, name="statistics"),
     path("time-series", views.time_series, name="time-series"),
     path("entity-info", views.entity_info, name="entity-info"),
+    path("topic-modeling", views.topic_modeling, name="topic-modeling"),
+    path("citation-graph", views.citation_graph, name="citation-graph"),
 ]
 
 

@@ -1,10 +1,12 @@
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
 from django.db.models.functions import Length, Substr, ExtractYear
-from django.db.models.aggregates import Count, Sum
-from main.helpers import *
-from django.core.paginator import Paginator
+from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models import F, Q, OuterRef, Exists
+from django.db.models.aggregates import Count
+from django.core.paginator import Paginator
+from sklearn.decomposition import NMF
 from random import randint
+from main.helpers import *
 from main.models import *
 from os import remove
 from time import time
@@ -294,3 +296,36 @@ def entity_info(request):
             "top_5_groups": append_title_to_cpc(group_fields(patents.values("cpc_groups__cpc_group").annotate(count=Count("id")).order_by("-count")[:5], "cpc_groups__cpc_group")),
         }
     })
+
+
+def topic_modeling(request):
+    """
+    This view returns the results of the topic modeling analysis.
+    """
+
+    if (form_data := get_patents_form_data(request)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+    
+    patents = Patent.filter(form_data)
+    nmf = NMF(n_components=10, random_state=1, init='nndsvd')
+    tfidf_vectorizer, tfidf = patents_to_tfidf(patents)
+    return JsonResponse(format_topic_analysis_results(nmf.fit(tfidf), tfidf_vectorizer.get_feature_names_out(), 10), safe=False) 
+
+
+def citation_graph(request):
+    """
+    This view returns the local patent to patent (P2P) citation graph for the patents matching the user's query.
+    """
+
+    if (form_data := get_patents_form_data(request)) is None: 
+        return HttpResponseBadRequest("No patent query in the current session.")
+    
+    patent_ids = Patent.filter(form_data).values_list("id", flat=True)
+    graph = PatentCitation.objects.filter(citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids).annotate(
+        citing_patent_code=Concat("citing_patent__office", "citing_patent__office_patent_id"),
+        cited_patent_code=Concat("cited_patent__office", "cited_patent__office_patent_id")
+    ).values(
+        "citing_patent_id", "citing_patent_code", "citing_patent__title", "citing_patent__granted_date",
+        "cited_patent_id", "cited_patent_code", "cited_patent__title", "cited_patent__granted_date")
+
+    return JsonResponse(list(graph), safe=False, encoder=DjangoJSONEncoder)

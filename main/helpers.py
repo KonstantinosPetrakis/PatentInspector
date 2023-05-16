@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 from django.db.models.aggregates import Avg, StdDev, Min, Max
-from django.db.models import Aggregate, FloatField, IntegerField, Func, F, Q, fields
+from django.db.models import Aggregate, TextField, Func, F, Q, fields
+from sklearn.feature_extraction.text import TfidfVectorizer
 from main.models import *
 
 
@@ -15,7 +16,7 @@ class Median(Aggregate):
 
     function = 'PERCENTILE_CONT'
     name = 'median'
-    output_field = FloatField()
+    output_field = fields.FloatField()
     template = '%(function)s(0.5) WITHIN GROUP (ORDER BY %(expressions)s)'
 
 
@@ -27,7 +28,7 @@ class WordCount(Func):
     function = 'CHAR_LENGTH'
     name = 'word_count'
     template = "(%(function)s(%(expressions)s) - CHAR_LENGTH(REPLACE(%(expressions)s, ' ', '')))"
-    output_field = IntegerField()
+    output_field = fields.IntegerField()
 
 
 class ToTimeStamp(Func):
@@ -188,6 +189,28 @@ def append_title_to_cpc(cpc_dict):
 
 def get_coordinates(field):
     return {
-        "lng": Func(field, function="ST_X", output_field=FloatField()),
-        "lat": Func(field, function="ST_Y", output_field=FloatField()),
+        "lng": Func(field, function="ST_X", output_field=fields.FloatField()),
+        "lat": Func(field, function="ST_Y", output_field=fields.FloatField()),
     }
+
+
+def patents_to_tfidf(patents):
+    text_columns = patents.annotate(content=Concat('title', Value(' '), 'abstract', output_field=fields.TextField())).values_list('content', flat=True)
+    tfidf_vectorizer = TfidfVectorizer(max_df=0.8, min_df=2, max_features=1000000, stop_words='english')
+    return tfidf_vectorizer, tfidf_vectorizer.fit_transform(text_columns)
+
+
+def format_topic_analysis_results(model, feature_names, n_top_words):
+    # Check https://scikit-learn.org/stable/auto_examples/applications/plot_topics_extraction_with_nmf_lda.html
+    
+    topics = []
+    for topic in model.components_:
+        top_features_ind = topic.argsort()[:-n_top_words - 1:-1]
+        top_features = [feature_names[i] for i in top_features_ind]
+        weights = topic[top_features_ind]
+        topics.append({
+            "top_features": top_features,
+            "weights": weights.tolist()
+        })
+    
+    return topics

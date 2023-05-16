@@ -46,9 +46,7 @@ class MainForm(forms.Form):
     assignee_organization = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "organization"), help_text="The name of the organization if the assignee is an organization. If there are multiple assignees, at least one of them must have this name.")
 
     def __init__(self, *args, **kwargs):
-        self.request = kwargs.pop("request")
-        if self.request.method == "POST": super().__init__(self.request.POST, **kwargs)
-        else: super().__init__(**kwargs)
+        super().__init__(*args, **kwargs)
         self.field_categories = {
             "Main Fields": [field for field in self.fields if field.startswith("patent_")],
             "CPC fields": [field for field in self.fields if field.startswith("cpc_")],
