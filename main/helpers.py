@@ -1,6 +1,5 @@
 from __future__ import unicode_literals
-from django.db.models.functions import Cast
-from django.db.models.aggregates import Avg, StdDev
+from django.db.models.aggregates import Avg, StdDev, Min, Max
 from django.db.models import Aggregate, FloatField, IntegerField, Func, F, Q, fields
 from main.models import *
 
@@ -77,10 +76,14 @@ def calculate_statistics(field, function=None, display_name=None):
         f"avg_{display_name}": Avg(field),
         f"med_{display_name}": Median(field),
         f"std_dev_{display_name}": StdDev(field),
+        f"min_{display_name}": Min(field),
+        f"max_{display_name}": Max(field),
     }   if function is None else {
             f"avg_{display_name}": Avg(function(field)),
             f"med_{display_name}": Median(function(field)),
             f"std_dev_{display_name}": StdDev(function(field)),
+            f"min_{display_name}": Min(function(field)),
+            f"max_{display_name}": Max(function(field)),
         }
 
 
@@ -101,6 +104,8 @@ def format_statistics(result):
         "avg": result[f"avg_{field}"],
         "med": result[f"med_{field}"],
         "std_dev": result[f"std_dev_{field}"],
+        "min": result[f"min_{field}"],
+        "max": result[f"max_{field}"]
     } for field in statistical_fields}
 
 

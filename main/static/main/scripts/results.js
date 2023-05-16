@@ -237,6 +237,8 @@ async function fetchStatisticsTable() {
                 <td> ${data[field].avg.toFixed(2)} </td>
                 <td> ${data[field].med.toFixed(2)} </td>
                 <td> ${data[field].std_dev.toFixed(2)} </td>
+                <td> ${data[field].min.toFixed(2)} </td>
+                <td> ${data[field].max.toFixed(2)} </td>
             </tr>
         `;
     }

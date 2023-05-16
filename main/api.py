@@ -62,6 +62,17 @@ def id_and_title(model):
     return map[model] if model in map else None
 
 
+def get_patents_form_data(request):
+    """
+    This function returns the patent form data from the session for the given request.
+
+    :param request: the request object passed by django
+    """
+
+    if (data := request.session.get("form_data", None)) is not None: 
+        data = json.loads(data)
+    return data
+
 
 def model(request, model, query=""):
     """
@@ -136,7 +147,7 @@ def patents(request):
     This view returns a list of patents, given a page number as a query parameter, it's used for pagination.
     """
 
-    if (form_data := request.session.get("form_data", None)) is None: 
+    if (form_data := get_patents_form_data(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
     patents = Patent.fetch_representation(Patent.filter(form_data))
@@ -162,7 +173,7 @@ def download_tsv(request):
     This view allows the user to download the patents he filtered as a tsv file.
     """
 
-    if (form_data := request.session.get("form_data", None)) is None: 
+    if (form_data := get_patents_form_data(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
     
     file_name = f"main/temp/{randint(0, 100) * time()}_patents.tsv"
@@ -179,7 +190,7 @@ def statistics(request):
     This view returns statistics about the patents that match the user's query.
     """
 
-    if (form_data := request.session.get("form_data", None)) is None: 
+    if (form_data := get_patents_form_data(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
     statistics = {}
@@ -219,7 +230,7 @@ def time_series(request):
     This view returns a set of time series based on the user's query.
     """
 
-    if (form_data := request.session.get("form_data", None)) is None: 
+    if (form_data := get_patents_form_data(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
     patents = Patent.filter(form_data)
@@ -247,18 +258,11 @@ def time_series(request):
 
 def entity_info(request):
     """
-    https://github.com/Leaflet/Leaflet.heat
-
-    * More graphs
-        * Inventor
-            * A heatmap based on the location of the inventors
-        * Assignee
-            * A heatmap based on the location of the assignees
+    This view returns information about different entities matching the user's query.
     """
 
-    if (form_data := request.session.get("form_data", None)) is None: 
+    if (form_data := get_patents_form_data(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
-
 
     patents = Patent.filter(form_data)
     return JsonResponse({

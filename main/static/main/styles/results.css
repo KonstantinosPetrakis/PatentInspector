@@ -37,3 +37,7 @@ canvas:not(.global-map canvas) {
     width: 80%;
     height: 20rem !important;
 }
+
+#statistics-table th, td {
+    width: 1rem;
+}
