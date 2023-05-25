@@ -19,8 +19,8 @@ function addProcessingMessage(selector, table=false) {
         </div>
     `;
 
-    if (table) container.innerHTML = `<tr class="fetch-message"> <td class="text-center" colspan="100"> ${message} </td> </tr>`;
-    else container.innerHTML = `<div class="text-center"> ${message} </div>`;
+    if (table) container.innerHTML += `<tr class="fetch-message"> <td class="text-center" colspan="100"> ${message} </td> </tr>`;
+    else container.innerHTML += `<div class="fetch-message text-center"> ${message} </div>`;
 }
 
 /**
@@ -28,7 +28,7 @@ function addProcessingMessage(selector, table=false) {
  * @param {String} selector the selector of the container that contains the message.
  */
 function removeProcessingMessage(selector) {
-    document.querySelector(selector).innerHTML = "";
+    document.querySelector(selector).removeChild(document.querySelector(`${selector} .fetch-message`));
 }
 
 
@@ -67,6 +67,10 @@ function create2DPlot(datasets, title) {
                 title: {
                     display: !singleLine,
                     text: title
+                },
+                legend: {
+                    // We do that because text gets cut off in small screens
+                    align: window.outerWidth > 768 ? "center" : "start",
                 }
             }
         }
@@ -83,6 +87,7 @@ function create2DPlot(datasets, title) {
 function createPie(dataset, title, wrapperId) {
     const wrapper = document.createElement("div");
     const canvas = document.createElement("canvas");
+    canvas.className = "pie";
     wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
     wrapper.appendChild(canvas);
     document.querySelector(`#${wrapperId}`).appendChild(wrapper);
@@ -101,6 +106,10 @@ function createPie(dataset, title, wrapperId) {
                 title: {
                     display: true,
                     text: title
+                },
+                legend: {
+                    // We do that because text gets cut off in small screens
+                    align: window.outerWidth > 768 ? "center" : "start",
                 }
             },
             responsive: true,
@@ -205,35 +214,59 @@ function createTopicAnalysisPlot(topics) {
  * @param {String} wrapperSelector the selector of the element that will contain the graph.
  */
 function createGraph(data, wrapperSelector) {
-    const darkMode = document.querySelector("html").getAttribute("data-bs-theme") == "dark";
-    const nodes = {};
-    const links = [];
+    function _createGraph(data, wrapper) {
+        const darkMode = document.querySelector("html").getAttribute("data-bs-theme") == "dark";
+        const nodes = {};
+        const links = [];
+    
+        data.forEach(item => {
+            const citingNode = {id: item.citing_patent_id, code: item.citing_patent_code, title: item.citing_patent__title, granted_date: item.citing_patent__granted_date};
+            const citedNode = {id: item.cited_patent_id, code: item.cited_patent_code, title: item.cited_patent__title, granted_date: item.cited_patent__granted_date};
+    
+            nodes[citingNode.id] = citingNode;
+            nodes[citedNode.id] = citedNode;
+    
+            links.push({source: citingNode.id, target: citedNode.id});
+        });
+    
+        const graph = ForceGraph3D({controlType: 'orbit'})(wrapper)
+            .graphData({nodes: Object.values(nodes), links})
+            .nodeLabel(node => `${node.code} - ${node.title} - ${node.granted_date}`)
+            .linkDirectionalArrowLength(3.5)
+            .linkDirectionalArrowRelPos(1)
+            .linkCurvature(0.25)
+            .width(window.screen.width * 0.8)
+            .height(window.screen.height * 0.8)
+            .backgroundColor(darkMode ? "#212529" : "#fff")
+            .linkColor(() => darkMode ? "#fff" : "#000")
+            .nodeColor(() => "#d45087")
+            .onNodeClick(node => window.open(`https://patents.google.com/?oq=${node.code}`))
+            .warmupTicks(30)
+            .cooldownTicks(0)
+            .enableNodeDrag(false);
+    }
+    
+    const wrapper = document.querySelector(wrapperSelector);
+    if (data.length < 5000) _createGraph(data, wrapper);
+    else {
+        const graphMessage = document.createElement("div");
+        graphMessage.textContent = `
+        The citation graph consist of ${data.length} citations and it would need a lot of processing power
+        to be drawn. This could lead to an unresponsive page, some PCs might handle it. If you want to try
+        you can click on the button below. Although a graph of this size is not so easy to read/understand.`;
+        
+        const graphButton = document.createElement("button");
+        graphButton.className = "btn btn-outline-secondary";
+        graphButton.textContent = "Draw graph";
+        graphButton.addEventListener("click", () => {
+            wrapper.innerHTML = "";
+            _createGraph(data, wrapper);
+        });
 
-    data.forEach(item => {
-        const citingNode = {id: item.citing_patent_id, code: item.citing_patent_code, title: item.citing_patent__title, granted_date: item.citing_patent__granted_date};
-        const citedNode = {id: item.cited_patent_id, code: item.cited_patent_code, title: item.cited_patent__title, granted_date: item.cited_patent__granted_date};
-
-        nodes[citingNode.id] = citingNode;
-        nodes[citedNode.id] = citedNode;
-
-        links.push({source: citingNode.id, target: citedNode.id});
-    });
-
-    const graph = ForceGraph3D({controlType: 'orbit'})(document.querySelector(wrapperSelector))
-        .graphData({nodes: Object.values(nodes), links})
-        .nodeLabel(node => `${node.code} - ${node.title} - ${node.granted_date}`)
-        .linkDirectionalArrowLength(3.5)
-        .linkDirectionalArrowRelPos(1)
-        .linkCurvature(0.25)
-        .width(window.screen.width * 0.8)
-        .height(window.screen.height * 0.8)
-        .backgroundColor(darkMode ? "#212529" : "#fff")
-        .linkColor(() => darkMode ? "#fff" : "#000")
-        .nodeColor(() => "#d45087")
-        .onNodeClick(node => window.open(`https://patents.google.com/?oq=${node.code}`))
-        .warmupTicks(50)
-        .cooldownTicks(0)
-}
+        wrapper.appendChild(graphMessage);
+        wrapper.appendChild(graphButton);
+    }
+}   
 
 /**
  * This function populates the table with the given data.
@@ -406,15 +439,17 @@ async function getTopicModeling() {
 
 
 /**
- * This function fetches the citation graph data and creates the graph.
+ * This function fetches the citation data and creates some pies and a 3D graph.
  */
-async function getGraphData() {
-    addProcessingMessage("#citation-graph", false);
-    const response = await fetch("/api/citation-graph");
+async function getCitationData() {
+    addProcessingMessage("#network-analysis", false);
+    const response = await fetch("/api/citation-data");
     const data = await response.json();
-    removeProcessingMessage("#citation-graph");
+    removeProcessingMessage("#network-analysis");
 
-    createGraph(data, "#citation-graph");
+    createGraph(data.graph, "#citation-graph");
+    createPie(data.most_cited_patents_global, "Most cited patents globally", "most-cited");
+    createPie(data.most_cited_patents_local, "Most cited patents locally", "most-cited");
 }
 
 
@@ -424,5 +459,5 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchTimeSeries();
     fetchEntityInfo();
     getTopicModeling();
-    getGraphData();
+    getCitationData();
 });

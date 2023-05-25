@@ -51,6 +51,10 @@ html[data-bs-theme="dark"] .leaflet-tile  {
     color: var(--bs-body-bg)
 }
 
+.min-max-slider input {
+    width: 5rem !important;
+}
+
 /* Customize noUiSlider library */
 .min-max-slider .slider, .min-max-slider .noUi-base {
     background-color: var(--bs-secondary-bg);

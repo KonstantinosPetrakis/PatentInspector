@@ -312,9 +312,10 @@ def topic_modeling(request):
     return JsonResponse(format_topic_analysis_results(nmf.fit(tfidf), tfidf_vectorizer.get_feature_names_out(), 10), safe=False) 
 
 
-def citation_graph(request):
+def citation_data(request):
     """
-    This view returns the local patent to patent (P2P) citation graph for the patents matching the user's query.
+    This view returns the local patent to patent (P2P) citation graph and some data about the most 
+    cited patents for the patents matching the user's query.
     """
 
     if (form_data := get_patents_form_data(request)) is None: 
@@ -328,4 +329,12 @@ def citation_graph(request):
         "citing_patent_id", "citing_patent_code", "citing_patent__title", "citing_patent__granted_date",
         "cited_patent_id", "cited_patent_code", "cited_patent__title", "cited_patent__granted_date")
 
-    return JsonResponse(list(graph), safe=False, encoder=DjangoJSONEncoder)
+    cited_patent_repr = {"patent": Concat("cited_patent__office", "cited_patent__office_patent_id", Value(" - "), Cast("cited_patent__title", fields.CharField()))}
+    most_cited_patents_global = PatentCitation.objects.filter(cited_patent_id__in=patent_ids).annotate(**cited_patent_repr).values("patent").annotate(count=Count("id")).order_by("-count")[:10]
+    most_cited_patents_local = PatentCitation.objects.filter(citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids).annotate(**cited_patent_repr).values("patent").annotate(count=Count("id")).order_by("-count")[:10]
+
+    return JsonResponse({
+        "graph": list(graph),
+        "most_cited_patents_global": group_fields(most_cited_patents_global, "patent"),
+        "most_cited_patents_local":  group_fields(most_cited_patents_local, "patent"),
+    }, safe=False, encoder=DjangoJSONEncoder)

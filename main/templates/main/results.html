@@ -56,17 +56,19 @@
         <div class="tab-contents shadow-lg">
             <div id="descriptive-analysis">
                 <h3> Basic statistical measures </h3>
-                <table id="statistics-table" class="table table-sm"> 
-                    <thead>
-                        <th> Variable </th>
-                        <th> Average </th>
-                        <th> Median </th>
-                        <th> Standard deviation </th>
-                        <th> Minimum </th>
-                        <th> Maximum </th>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="table-responsive">
+                    <table id="statistics-table" class="table table-sm"> 
+                        <thead>
+                            <th> Variable </th>
+                            <th> Average </th>
+                            <th> Median </th>
+                            <th> Standard deviation </th>
+                            <th> Minimum </th>
+                            <th> Maximum </th>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
                 <h3> Variables over time  </h3>
                 <div id="time-series" class="row justify-content-center"> </div>
                 <h3> Information for each entity </h3>
@@ -91,6 +93,7 @@
                 <div class="row" id="topic-analysis"> </div>
             </div>
             <div id="network-analysis"> 
+                <div id="most-cited" class="row justify-content-center"> </div>
                 <div id="citation-graph"> </div>
             </div>
         </div>
@@ -99,29 +102,31 @@
         Export to TSV
     </a>
 
-    <table id="patent-table" class="table table-sm">
-        <thead>
-            <tr>
-                <th> Office </th>
-                <th> Office Patent ID </th>
-                <th> Type </th>
-                <th> Application Filled Date </th>
-                <th> Granted Date </th>
-                <th> Title </th>
-                <th> Abstract </th>
-                <th> Claims count </th>
-                <th> Figures count </th>
-                <th> Withdrawn </th>
-                <th> CPC Groups </th>
-                <th> PCT Documents </th>
-                <th> Inventor names </th>
-                <th> Inventor locations </th>
-                <th> Assignee names </th>
-                <th> Assignee locations </th>
-            </tr>
-        </thead>
-        <tbody> </tbody>
-    </table>
+    <div class="table-responsive">
+        <table id="patent-table" class="table table-sm">
+            <thead>
+                <tr>
+                    <th> Office </th>
+                    <th> Office Patent ID </th>
+                    <th> Type </th>
+                    <th> Application Filled Date </th>
+                    <th> Granted Date </th>
+                    <th> Title </th>
+                    <th> Abstract </th>
+                    <th> Claims count </th>
+                    <th> Figures count </th>
+                    <th> Withdrawn </th>
+                    <th> CPC Groups </th>
+                    <th> PCT Documents </th>
+                    <th> Inventor names </th>
+                    <th> Inventor locations </th>
+                    <th> Assignee names </th>
+                    <th> Assignee locations </th>
+                </tr>
+            </thead>
+            <tbody> </tbody>
+        </table>
+    </div>
     <nav aria-label="See more patents">
         <ul class="pagination"> </ul>
     </nav>

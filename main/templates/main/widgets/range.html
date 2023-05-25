@@ -1,6 +1,7 @@
 <div class="min-max-slider d-flex align-items-center" data-min="{{widget.subwidgets.0.attrs.min}}" data-max="{{widget.subwidgets.0.attrs.max}}">
     <input 
         size="{{widget.subwidgets.0.attrs.max|stringformat:"d"|length}}"
+        maxlength="{{widget.subwidgets.0.attrs.max|stringformat:"d"|length}}"
         class="form-control w-auto me-4 min-input"
         {% if widget.subwidgets.0.value %} value="{{widget.subwidgets.0.value}}"{% endif %}
         type="number" name="{{widget.subwidgets.0.name}}"
@@ -9,6 +10,7 @@
     <div class="slider w-100"> </div>
     <input 
         size="{{widget.subwidgets.0.attrs.max|stringformat:"d"|length}}"
+        maxlength="{{widget.subwidgets.0.attrs.max|stringformat:"d"|length}}"
         class="form-control w-auto ms-4 max-input"
         {% if widget.subwidgets.1.value %} value="{{widget.subwidgets.1.value}}"{% endif %}
         type="number" name="{{widget.subwidgets.1.name}}"

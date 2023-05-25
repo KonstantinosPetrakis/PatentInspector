@@ -1,14 +1,3 @@
-table {
-    position: relative;
-}
-
-th {
-    position: sticky;
-    top: 0;
-    z-index: 1;
-    background-color: var(--bs-body-bg) !important;
-}
-
 td > div {
     max-height: 10rem;
     overflow: auto;
@@ -40,4 +29,11 @@ canvas:not(.global-map canvas) {
 
 #statistics-table th, td {
     width: 1rem;
+}
+
+/* Fix incredibly small pies (and maybe other plots) on mobile */
+@media (max-width: 768px) {
+    canvas:not(.global-map canvas) {
+        height: 40rem !important;
+    }
 }
