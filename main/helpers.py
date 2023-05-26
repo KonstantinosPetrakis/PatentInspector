@@ -5,6 +5,24 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from main.models import *
 
 
+ENGLISH_STOP_WORDS = ['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're",
+    "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him',
+    'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself',
+    'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this',
+    'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been',
+    'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the',
+    'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for',
+    'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after',
+    'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under',
+    'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all',
+    'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not',
+    'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just',
+    'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y',
+    'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't",
+    'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn',
+    "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't",
+    'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"]
+
 cpc_section_titles = {record["section"]: record["title"] # That's used for appending the section title to the section code
     for record in CPCSection.objects.all().values("section", "title")}
 
@@ -121,7 +139,8 @@ def group_fields(results, key="year"):
     Returns:
         Dict[Dict]: The results grouped by the key.
     """
-    
+
+    if results is None or len(results) == 0: return {}
     many_values = len(results[0]) > 2 # 2 means there's only one value and the key to group by
 
     # Simple case: only one value, just create a dict {key: value} instead of the given list [{key: value}, ...]
@@ -168,6 +187,7 @@ def append_title_to_cpc(cpc_dict):
         Dict: The updated dictionary with keys the CPC section codes and the section title.
     """
     
+    if cpc_dict is None or len(cpc_dict) == 0: return {}
     cpc_levels = list(cpc_dict.keys())
     cpc_level_len = len(cpc_levels[0])
 
@@ -188,6 +208,10 @@ def append_title_to_cpc(cpc_dict):
         
 
 def get_coordinates(field):
+    """
+    This function creates a query to get the coordinates of a point field.
+    """
+
     return {
         "lng": Func(field, function="ST_X", output_field=fields.FloatField()),
         "lat": Func(field, function="ST_Y", output_field=fields.FloatField()),
@@ -195,12 +219,20 @@ def get_coordinates(field):
 
 
 def patents_to_tfidf(patents):
+    """
+    This function converts a queryset of patents to a tfidf matrix used by sklearn NMF.
+    """
+
     text_columns = patents.annotate(content=Concat('title', Value(' '), 'abstract', output_field=fields.TextField())).values_list('content', flat=True)
     tfidf_vectorizer = TfidfVectorizer(max_df=0.8, min_df=2, max_features=1000000, stop_words='english')
     return tfidf_vectorizer, tfidf_vectorizer.fit_transform(text_columns)
 
 
-def format_topic_analysis_results(model, feature_names, n_top_words):
+def format_topic_analysis_results_sklearn(model, feature_names, n_top_words):
+    """
+    This function formats the results of a topic analysis model when sklearn is used.
+    """
+
     # Check https://scikit-learn.org/stable/auto_examples/applications/plot_topics_extraction_with_nmf_lda.html
     
     topics = []
@@ -209,8 +241,31 @@ def format_topic_analysis_results(model, feature_names, n_top_words):
         top_features = [feature_names[i] for i in top_features_ind]
         weights = topic[top_features_ind]
         topics.append({
-            "top_features": top_features,
+            "words": top_features,
             "weights": weights.tolist()
         })
-    
+    return topics
+
+
+def prepare_texts_for_tomotopy_analysis(texts):
+    """
+    This function prepares the texts for tomotopy analysis. It splits sentences into words and removes stop words.
+    This whole function could be replaced by a big sql query for optimization in the future.
+    """
+
+    return [list(filter(lambda word: word not in ENGLISH_STOP_WORDS, text.strip().lower().split())) for text in texts]
+
+
+def format_topic_analysis_results_tomotopy(model, n_top_words):
+    """
+    This function formats the results of a topic analysis model when tomotopy is used.
+    """
+
+    topics = []
+    for k in range(model.k):
+        topic_words = model.get_topic_words(k, top_n=n_top_words)
+        topics.append({
+            "words": [word for word, _ in topic_words],
+            "weights": [weight for _, weight in topic_words]
+        })
     return topics

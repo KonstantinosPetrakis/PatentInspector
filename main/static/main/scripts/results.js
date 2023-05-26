@@ -173,7 +173,7 @@ function createBarPlotForTopic(topic, title, wrapperId) {
     new Chart(canvas, {
         type: "bar",
         data: {
-            labels: topic.top_features,
+            labels: topic.words,
             datasets: [{
                 data: topic.weights,
                 backgroundColor: colors
@@ -353,6 +353,8 @@ async function goToPage(page) {
  * This function fetches the statistics and populates the table.
  */
 async function fetchStatisticsTable() {
+    let formatNumber = num => num == null ? "N/A" : num.toFixed(2);
+
     addProcessingMessage("#statistics-table tbody", true);
     const response = await fetch("/api/statistics");
     const data = await response.json();
@@ -362,11 +364,11 @@ async function fetchStatisticsTable() {
         html += `
             <tr>
                 <td> ${field} </td>
-                <td> ${data[field].avg.toFixed(2)} </td>
-                <td> ${data[field].med.toFixed(2)} </td>
-                <td> ${data[field].std_dev.toFixed(2)} </td>
-                <td> ${data[field].min.toFixed(2)} </td>
-                <td> ${data[field].max.toFixed(2)} </td>
+                <td> ${formatNumber(data[field].avg)} </td>
+                <td> ${formatNumber(data[field].med)} </td>
+                <td> ${formatNumber(data[field].std_dev)} </td>
+                <td> ${formatNumber(data[field].min)} </td>
+                <td> ${formatNumber(data[field].max)} </td>
             </tr>
         `;
     }
@@ -429,11 +431,17 @@ async function fetchEntityInfo() {
  * This function fetches the topic modeling data and creates the plots.
  */
 async function getTopicModeling() {
+    const wrapper = document.querySelector("#topic-analysis");
+    let model = document.querySelector(`select[name="topic-analysis-method"]`).value;
+    let createdMessage = document.createElement("div");
+    createdMessage.textContent = `Created topics using ${model} model/algorithm.`;
+
+    wrapper.innerHTML = "";
     addProcessingMessage("#topic-analysis", false);
-    const response = await fetch("/api/topic-modeling");
+    const response = await fetch(`/api/topic-modeling/${model}`);
     const data = await response.json();
     removeProcessingMessage("#topic-analysis");
-
+    wrapper.appendChild(createdMessage);
     createTopicAnalysisPlot(data);
 }
 

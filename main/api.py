@@ -10,6 +10,7 @@ from main.helpers import *
 from main.models import *
 from os import remove
 from time import time
+import tomotopy as tp
 import json
 
 
@@ -208,7 +209,7 @@ def statistics(request):
             **calculate_statistics("title", WordCount, "title_word_count"),
             **calculate_statistics("abstract", WordCount, "abstract_word_count"))))
 
-    # Handle statistics that need joins one by one (one by one probably yields better performance)
+    # Handle statistics that need joins one by one (single query for each one probably yields better performance)
     statistics.update(format_statistics(patents.annotate(
         cpc_group_count=Count("cpc_groups")).aggregate(**calculate_statistics("cpc_group_count"))))
 
@@ -223,7 +224,7 @@ def statistics(request):
     
     statistics.update(format_statistics(patents.annotate(
         outgoing_citation_count=Count("cited_by")).aggregate(**calculate_statistics("outgoing_citation_count"))))
-
+    
     return JsonResponse({k.replace("_", " ").title(): v for k, v in statistics.items()})
 
 
@@ -298,7 +299,7 @@ def entity_info(request):
     })
 
 
-def topic_modeling(request):
+def topic_modeling(request, model="NMF"):
     """
     This view returns the results of the topic modeling analysis.
     """
@@ -306,10 +307,36 @@ def topic_modeling(request):
     if (form_data := get_patents_form_data(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
     
+    tp_remove_top = 10
+    topics = 10
+    n_top_words = 10
+    tp_model_map = {
+        "LDA": tp.LDAModel(k=topics, rm_top=tp_remove_top),
+        "LLDA": tp.LLDAModel(k=topics, rm_top=tp_remove_top),
+        "SLDA": tp.SLDAModel(k=topics, rm_top=tp_remove_top),
+        "DMR": tp.DMRModel(k=topics, rm_top=tp_remove_top),
+        "HDP": tp.HDPModel(rm_top=tp_remove_top),
+        "HLDA": tp.HLDAModel(rm_top=tp_remove_top),
+        "MGLDA": tp.MGLDAModel(rm_top=tp_remove_top),
+        "PA": tp.PAModel(rm_top=tp_remove_top),
+        "HPA": tp.HPAModel(rm_top=tp_remove_top),
+        "CTM": tp.CTModel(k=topics, rm_top=tp_remove_top),
+        "PTM": tp.PTModel(k=topics, rm_top=tp_remove_top),
+    }
+
     patents = Patent.filter(form_data)
-    nmf = NMF(n_components=10, random_state=1, init='nndsvd')
-    tfidf_vectorizer, tfidf = patents_to_tfidf(patents)
-    return JsonResponse(format_topic_analysis_results(nmf.fit(tfidf), tfidf_vectorizer.get_feature_names_out(), 10), safe=False) 
+    if model == "NMF":
+        nmf = NMF(n_components=10, init='nndsvd')
+        tfidf_vectorizer, tfidf = patents_to_tfidf(patents)
+        return JsonResponse(format_topic_analysis_results_sklearn(nmf.fit(tfidf), tfidf_vectorizer.get_feature_names_out(), n_top_words), safe=False) 
+    elif model in tp_model_map:
+        text_columns = patents.annotate(content=Concat('title', Value(' '), 'abstract', output_field=fields.TextField())).values_list('content', flat=True)
+        model = tp_model_map[model]
+        for doc in prepare_texts_for_tomotopy_analysis(text_columns): model.add_doc(doc)
+        model.train(1000)
+        return JsonResponse(format_topic_analysis_results_tomotopy(model, n_top_words), safe=False)
+    else:
+        return HttpResponseBadRequest("Invalid model name.")
 
 
 def citation_data(request):

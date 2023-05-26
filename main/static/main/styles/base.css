@@ -38,7 +38,7 @@ html[data-bs-theme="dark"] .btn.btn-theme { /* This is the bootstrap .btn-dark *
 
 .map {
     width: 100%;
-    aspect-ratio: 16 / 9;
+    height: 25rem;
 }
 
 html[data-bs-theme="dark"] .leaflet-tile  {

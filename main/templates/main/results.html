@@ -29,14 +29,6 @@
                 </a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" href="#business-analysis"> 
-                    Business Analysis
-                    <span data-bs-toggle="tooltip" data-bs-title="What is the business worth of the data?">
-                        <i class="ms-1 fa-solid fa-info"></i>
-                    </span>
-                </a>
-            </li>
-            <li class="nav-item">
                 <a class="nav-link" href="#thematic-analysis"> 
                     Thematic Analysis
                     <span data-bs-toggle="tooltip" data-bs-title="What are the primary topics of the data?">
@@ -83,13 +75,34 @@
                     <div id="entity-cpc" class="row justify-content-center"> </div>
                 </div>
             </div>
-            <div id="business-analysis">
-                Business Analysis
-                Hello World
-            </div>
             <div id="thematic-analysis">
                 <h3> Topic analysis </h3>
-                <p> 10 different topics with the most important 10 words </p>
+                <p> 
+                    10 different topics (some methods don't accept number of topics as argument so 
+                    this number could vary) with the most important 10 words 
+                </p>
+                <div class="d-flex align-items-center">
+                    <div>
+                        You can choose the topic analysis method of your liking:
+                    </div>
+                    <select class="d-block ms-2 me-2" name="topic-analysis-method" id="topic-analysis-method">
+                        <option value="NMF"> NMF (Non-negative matrix factorization) </option>
+                        <option value="LDA"> LDA (Latent Dirichlet Allocation)</option>
+                        <option value="LLDA"> LLDA (Labeled LDA) </option>
+                        <option value="SLDA"> SLDA (Supervised LDA) </option>
+                        <option value="DMR"> DMR (Dirichlet Multinomial Regression) </option>
+                        <option value="HDP"> HDP (Hierarchical Dirichlet Process) </option>
+                        <option value="HLDA"> HLDA (Hierarchical LDA) </option>
+                        <option value="MGLDA"> MGLDA (Multi Grain LDA) </option>
+                        <option value="PA"> PA (Pachinko Allocation) </option>
+                        <option value="HPA"> HPA (Hierarchical PA) </option>
+                        <option value="CTM"> CTM (Correlated Topic Model) </option>
+                        <option value="PTM"> PTM (Pseudo-document based Topic Model) </option>
+                    </select>
+                    <button class="btn btn-sm btn-theme border" onClick="getTopicModeling()">
+                        Create topics
+                    </button>
+                </div>
                 <div class="row" id="topic-analysis"> </div>
             </div>
             <div id="network-analysis"> 
