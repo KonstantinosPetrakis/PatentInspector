@@ -333,7 +333,7 @@ def topic_modeling(request, model="NMF"):
         text_columns = patents.annotate(content=Concat('title', Value(' '), 'abstract', output_field=fields.TextField())).values_list('content', flat=True)
         model = tp_model_map[model]
         for doc in prepare_texts_for_tomotopy_analysis(text_columns): model.add_doc(doc)
-        model.train(1000)
+        model.train(500)
         return JsonResponse(format_topic_analysis_results_tomotopy(model, n_top_words), safe=False)
     else:
         return HttpResponseBadRequest("Invalid model name.")

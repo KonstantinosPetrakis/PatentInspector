@@ -200,11 +200,14 @@ function createBarPlotForTopic(topic, title, wrapperId) {
 
 /**
  * This function creates the plots for the topic analysis.
- * @param {Array<Object>} topics the topics that will be used to create the plots.
+ * @param {{topics: Array<{words: Array<String>, weights: Array<Number>}>, coherence: String}} data the data that will be used to create the plots.
  */
-function createTopicAnalysisPlot(topics) {
-    for (let i=0; i<topics.length; i++) 
-        createBarPlotForTopic(topics[i], `Topic ${i+1}`, "topic-analysis");
+function createTopicAnalysisPlot(data) {
+    const coherenceText = document.createElement("div");
+    coherenceText.textContent = `Topic Coherence: ${data.coherence}`;
+    document.querySelector("#topic-analysis").appendChild(coherenceText);
+    for (let i=0; i<data.topics.length; i++) 
+        createBarPlotForTopic(data.topics[i], `Topic ${i+1}`, "topic-analysis");
 }
 
 

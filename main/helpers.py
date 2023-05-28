@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 from django.db.models.aggregates import Avg, StdDev, Min, Max
 from django.db.models import Aggregate, TextField, Func, F, Q, fields
 from sklearn.feature_extraction.text import TfidfVectorizer
+import tomotopy as tp
 from main.models import *
 
 
@@ -244,7 +245,7 @@ def format_topic_analysis_results_sklearn(model, feature_names, n_top_words):
             "words": top_features,
             "weights": weights.tolist()
         })
-    return topics
+    return {"topics": topics, "coherence": "N/A"}
 
 
 def prepare_texts_for_tomotopy_analysis(texts):
@@ -268,4 +269,4 @@ def format_topic_analysis_results_tomotopy(model, n_top_words):
             "words": [word for word, _ in topic_words],
             "weights": [weight for _, weight in topic_words]
         })
-    return topics
+    return {"topics": topics, "coherence": f"{tp.coherence.Coherence(model, coherence='c_v', top_n=n_top_words).get_score():.3f}"}
