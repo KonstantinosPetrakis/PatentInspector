@@ -2,7 +2,9 @@ from __future__ import unicode_literals
 from django.db.models.aggregates import Avg, StdDev, Min, Max
 from django.db.models import Aggregate, TextField, Func, F, Q, fields
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import NMF
 import tomotopy as tp
+from numpy import argmax
 from main.models import *
 
 
@@ -270,3 +272,16 @@ def format_topic_analysis_results_tomotopy(model, n_top_words):
             "weights": [weight for _, weight in topic_words]
         })
     return {"topics": topics, "coherence": f"{tp.coherence.Coherence(model, coherence='c_v', top_n=n_top_words).get_score():.3f}"}
+
+
+def predict_patent_topic(model, patent, tfidf_vectorizer=None):
+    """
+    This function predicts the topic of a patent.
+    """
+
+    if tfidf_vectorizer is not None: # sklearn
+        return argmax(model.transform(tfidf_vectorizer.transform([f"{patent.title} {patent.abstract}"]))[0]) 
+    else: # tomotopy
+        doc_inst = model.make_doc(prepare_texts_for_tomotopy_analysis([f"{patent.title} {patent.abstract}"])[0])
+        return argmax(model.infer(doc_inst)[0])
+    

@@ -10,6 +10,7 @@ from main.helpers import *
 from main.models import *
 from os import remove
 from time import time
+from datetime import timedelta, datetime
 import tomotopy as tp
 import json
 
@@ -299,7 +300,7 @@ def entity_info(request):
     })
 
 
-def topic_modeling(request, model="NMF"):
+def topic_modeling(request):
     """
     This view returns the results of the topic modeling analysis.
     """
@@ -308,35 +309,72 @@ def topic_modeling(request, model="NMF"):
         return HttpResponseBadRequest("No patent query in the current session.")
     
     tp_remove_top = 10
-    topics = 10
+    n_topics = 10
     n_top_words = 10
     tp_model_map = {
-        "LDA": tp.LDAModel(k=topics, rm_top=tp_remove_top),
-        "LLDA": tp.LLDAModel(k=topics, rm_top=tp_remove_top),
-        "SLDA": tp.SLDAModel(k=topics, rm_top=tp_remove_top),
-        "DMR": tp.DMRModel(k=topics, rm_top=tp_remove_top),
+        "LDA": tp.LDAModel(k=n_topics, rm_top=tp_remove_top),
+        "LLDA": tp.LLDAModel(k=n_topics, rm_top=tp_remove_top),
+        "SLDA": tp.SLDAModel(k=n_topics, rm_top=tp_remove_top),
+        "DMR": tp.DMRModel(k=n_topics, rm_top=tp_remove_top),
         "HDP": tp.HDPModel(rm_top=tp_remove_top),
         "HLDA": tp.HLDAModel(rm_top=tp_remove_top),
         "MGLDA": tp.MGLDAModel(rm_top=tp_remove_top),
         "PA": tp.PAModel(rm_top=tp_remove_top),
         "HPA": tp.HPAModel(rm_top=tp_remove_top),
-        "CTM": tp.CTModel(k=topics, rm_top=tp_remove_top),
-        "PTM": tp.PTModel(k=topics, rm_top=tp_remove_top),
+        "CTM": tp.CTModel(k=n_topics, rm_top=tp_remove_top),
+        "PTM": tp.PTModel(k=n_topics, rm_top=tp_remove_top),
     }
 
+
     patents = Patent.filter(form_data)
+    patents_count = patents.count()
+    
+    model = request.GET.get("model", "LDA")
+    if (end_date := request.GET.get("end_date", None)) is None:
+        end_date = patents.aggregate(max_date=Max("granted_date"))["max_date"]
+    else:
+        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+    if (start_date := request.GET.get("start_date", None)) is None:
+        start_date = end_date - timedelta(days=365)
+    else:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+    years_diff = (end_date - start_date).days / 365
+
     if model == "NMF":
-        nmf = NMF(n_components=10, init='nndsvd')
         tfidf_vectorizer, tfidf = patents_to_tfidf(patents)
-        return JsonResponse(format_topic_analysis_results_sklearn(nmf.fit(tfidf), tfidf_vectorizer.get_feature_names_out(), n_top_words), safe=False) 
+        nmf = NMF(n_components=n_topics, init='nndsvd').fit(tfidf)
+
+        # Group patents by topic
+        topics = tfidf_vectorizer.get_feature_names_out()
+        patents_per_topic = [[] for _ in range(n_topics)]
+        results = format_topic_analysis_results_sklearn(nmf, topics, n_top_words)
+        for patent in patents:
+            patents_per_topic[predict_patent_topic(nmf, patent, tfidf_vectorizer)].append(patent.id)
+
     elif model in tp_model_map:
         text_columns = patents.annotate(content=Concat('title', Value(' '), 'abstract', output_field=fields.TextField())).values_list('content', flat=True)
         model = tp_model_map[model]
         for doc in prepare_texts_for_tomotopy_analysis(text_columns): model.add_doc(doc)
         model.train(500)
-        return JsonResponse(format_topic_analysis_results_tomotopy(model, n_top_words), safe=False)
+        patents_per_topic = [[] for _ in range(model.k)]
+        results = format_topic_analysis_results_tomotopy(model, n_top_words)
+        # Group patents by topic
+        for patent in patents:
+            patents_per_topic[predict_patent_topic(model, patent)].append(patent.id)
     else:
         return HttpResponseBadRequest("Invalid model name.")
+
+    # Calculate the ratio and cagr of patents per topic
+    for i, patents in enumerate(patents_per_topic):
+        patents_in_end_year = Patent.objects.filter(id__in=patents, granted_date__gte=end_date - timedelta(days=365), granted_date__lte=end_date).count()
+        patents_in_start_year = Patent.objects.filter(id__in=patents, granted_date__gte=start_date - timedelta(days=365), granted_date__lte=start_date).count()
+        results["topics"][i]["ratio"] = len(patents) / patents_count
+        # The +1 is to avoid division by zero
+        results["topics"][i]["cagr"] = (patents_in_end_year / (patents_in_start_year + 1)) ** (1 / years_diff) - 1
+    # Echo the start and end dates in case they were not specified
+    results["start_date"] = start_date.strftime("%Y-%m-%d")
+    results["end_date"] = end_date.strftime("%Y-%m-%d")
+    return JsonResponse(results, safe=False) 
 
 
 def citation_data(request):

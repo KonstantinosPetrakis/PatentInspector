@@ -210,6 +210,123 @@ function createTopicAnalysisPlot(data) {
         createBarPlotForTopic(data.topics[i], `Topic ${i+1}`, "topic-analysis");
 }
 
+/**
+ * This function creates the scatter plot for the topic analysis.
+ * @param {{topics: Object, start_date: String, end_date: String}} data the data that will be used to create the plot.
+ */
+function createTopicAnalysisScatter(data) {
+    const wrapper = document.createElement("div");
+    const canvas = document.createElement("canvas");
+    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
+    wrapper.appendChild(canvas);
+    document.querySelector("#topic-analysis").appendChild(wrapper);
+
+    const scatterData = data.topics.map(topic => ({x: topic.ratio, y: topic.cagr}));
+    const labels = [];
+    for (let i=0; i<data.topics.length; i++) labels.push(`Topic ${i+1}`);
+
+    let averageRatio = scatterData.reduce((acc, curr) => acc + curr.x, 0) / scatterData.length;
+
+    new Chart(canvas, {
+        type: "scatter",
+        data: {
+            labels,
+            datasets: [{
+                data: scatterData,
+                backgroundColor: colors,
+            }]
+        },
+        options: {
+            plugins: {
+                legend: {
+                    display: false
+                },
+                labels,
+                annotation: {
+                    annotations: {
+                        emerging: {
+                            type: "box",
+                            xMax: averageRatio,
+                            yMin: 0,
+                            backgroundColor: 'rgba(250, 250, 3, 0.25)',
+                            label: {
+                                drawTime: 'afterDraw',
+                                display: true,
+                                content: 'Emerging Topics',
+                                position: {
+                                    x: 'center',
+                                    y: 'start'
+                                }
+                            }
+                        },
+                        dominant: {
+                            type: "box",
+                            xMin: averageRatio,
+                            yMin: 0,
+                            backgroundColor: 'rgba(250, 106, 3, 0.25)',
+                            label: {
+                                drawTime: 'afterDraw',
+                                display: true,
+                                content: 'Dominant Topics',
+                                position: {
+                                    x: 'center',
+                                    y: 'start'
+                                }
+                            }
+                        },
+                        declining: {
+                            type: "box",
+                            xMax: averageRatio,
+                            yMax: 0,
+                            backgroundColor: 'rgba(52, 58, 59, 0.25)',
+                            label: {
+                                drawTime: 'afterDraw',
+                                display: true,
+                                content: 'Declining Topics',
+                                position: {
+                                    x: 'center',
+                                    y: 'start'
+                                }
+                            }
+                        },
+                        saturated: {
+                            type: "box",
+                            xMin: averageRatio,
+                            yMax: 0,
+                            backgroundColor: 'rgba(130, 157, 129, 0.25)',
+                            label: {
+                                drawTime: 'afterDraw',
+                                display: true,
+                                content: 'Saturated Topics',
+                                position: {
+                                    x: 'center',
+                                    y: 'start'
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: "Ratio",
+                }
+            },
+            y: {
+                title: {
+                    display: true,
+                    text: "CAGR",
+                }
+            }
+        }
+    });
+}
 
 /**
  * This function creates the citation graph given the data retrieved from the server api.
@@ -436,16 +553,24 @@ async function fetchEntityInfo() {
 async function getTopicModeling() {
     const wrapper = document.querySelector("#topic-analysis");
     let model = document.querySelector(`select[name="topic-analysis-method"]`).value;
-    let createdMessage = document.createElement("div");
-    createdMessage.textContent = `Created topics using ${model} model/algorithm.`;
+    let start_date = document.querySelector(`input[name="topic-analysis-start-date"]`)?.value;
+    let end_date = document.querySelector(`input[name="topic-analysis-end-date"]`)?.value;
+    let arguments = {model: model};
+    if (start_date) arguments.start_date = start_date;
+    if (end_date) arguments.end_date = end_date;
 
     wrapper.innerHTML = "";
     addProcessingMessage("#topic-analysis", false);
-    const response = await fetch(`/api/topic-modeling/${model}`);
+    const response = await fetch("/api/topic-modeling?" + new URLSearchParams(arguments));
     const data = await response.json();
     removeProcessingMessage("#topic-analysis");
-    wrapper.appendChild(createdMessage);
+    createTopicAnalysisScatter(data);
     createTopicAnalysisPlot(data);
+
+    let createdMessage = document.createElement("div");
+    createdMessage.textContent = `Created topics using ${model} model/algorithm. `;
+    createdMessage.textContent += `Classified topics using range ${data.start_date} to ${data.end_date}.`
+    wrapper.prepend(createdMessage);
 }
 
 

@@ -10,11 +10,12 @@
     <script src="{% static 'main/scripts/heatmap.min.js' %}"></script>
     <script src="{% static 'main/scripts/leaflet-heatmap.js' %}"></script>
     <script src="{% static 'main/scripts/3d-force-graph.min.js' %}"></script>
+    <script src="{% static 'main/scripts/chartjs-plugin-annotation.min.js' %}"></script>
     <script src="{% static 'main/scripts/results.js' %}"></script>
 {% endblock %}
 
 {% block contentBig %}
-    <h2 class="fs-3 text-center mt-2"> Query Result Page </h2>
+    <h2 class="fs-3 text-center mt-2"> Query Result </h2>
 
     <p id="result-counts"></p>
 
@@ -81,11 +82,11 @@
                     10 different topics (some methods don't accept number of topics as argument so 
                     this number could vary) with the most important 10 words 
                 </p>
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center mb-2">
                     <div>
                         You can choose the topic analysis method of your liking:
                     </div>
-                    <select class="d-block ms-2 me-2" name="topic-analysis-method" id="topic-analysis-method">
+                    <select class="d-block ms-2 me-2 form-select form-select-sm w-25" name="topic-analysis-method" id="topic-analysis-method">
                         <option value="NMF"> NMF (Non-negative matrix factorization) </option>
                         <option value="LDA"> LDA (Latent Dirichlet Allocation)</option>
                         <option value="LLDA"> LLDA (Labeled LDA) </option>
@@ -101,6 +102,22 @@
                     </select>
                     <button class="btn btn-sm btn-theme border" onClick="getTopicModeling()">
                         Create topics
+                    </button>
+                </div>
+                <div class="d-flex align-items-center">
+                    <div>
+                        Select a date range to classify the topics (default is newest_patent_date -1 year, newest_patent_date):
+                    </div>
+                    <div class="ms-2 me-2 form-inline d-flex">
+                        <div class="me-2">
+                            <input class="form-control form-control-sm" type="date" name="topic-analysis-start-date">
+                        </div>
+                        <div>
+                            <input class="form-control form-control-sm" type="date" name="topic-analysis-end-date">
+                        </div>
+                    </div>
+                    <button class="btn btn-sm btn-theme border" onClick="getTopicModeling()">
+                        Classify topics
                     </button>
                 </div>
                 <div class="row" id="topic-analysis"> </div>
