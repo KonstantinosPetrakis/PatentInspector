@@ -351,7 +351,7 @@ function createGraph(data, wrapperSelector) {
     
         const graph = ForceGraph3D({controlType: 'orbit'})(wrapper)
             .graphData({nodes: Object.values(nodes), links})
-            .nodeLabel(node => `${node.code} - ${node.title} - ${node.granted_date}`)
+            .nodeLabel(node => `<span style="color: ${darkMode ? "#fff" : "#000"}">${node.code} - ${node.title} - ${node.granted_date}</span>`)
             .linkDirectionalArrowLength(3.5)
             .linkDirectionalArrowRelPos(1)
             .linkCurvature(0.25)

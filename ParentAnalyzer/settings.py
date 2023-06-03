@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'admin_reorder',
     'leaflet',
-    'debug_toolbar',
+    #'debug_toolbar',
     'macros'
 ]
 
@@ -53,7 +53,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'admin_reorder.middleware.ModelAdminReorder',
-    "debug_toolbar.middleware.DebugToolbarMiddleware",
+    # "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
 ROOT_URLCONF = 'ParentAnalyzer.urls'
