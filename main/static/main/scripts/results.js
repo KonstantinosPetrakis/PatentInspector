@@ -223,7 +223,8 @@ function createTopicAnalysisScatter(data) {
 
     const scatterData = data.topics.map(topic => ({x: topic.ratio, y: topic.cagr}));
     const labels = [];
-    for (let i=0; i<data.topics.length; i++) labels.push(`Topic ${i+1}`);
+    for (let i=0; i<data.topics.length; i++) 
+        labels.push(`Topic ${i+1}: ${data.topics[i].words.join()}`);
 
     let averageRatio = scatterData.reduce((acc, curr) => acc + curr.x, 0) / scatterData.length;
 
@@ -265,7 +266,7 @@ function createTopicAnalysisScatter(data) {
                             yMin: 0,
                             backgroundColor: 'rgba(250, 106, 3, 0.25)',
                             label: {
-                                drawTime: 'afterDraw',
+                                drawTime: 'beforeDraw',
                                 display: true,
                                 content: 'Dominant Topics',
                                 position: {
