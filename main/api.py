@@ -66,16 +66,38 @@ def id_and_title(model):
     return map[model] if model in map else None
 
 
-def get_patents_form_data(request):
+def get_form_data(request):
     """
-    This function returns the patent form data from the session for the given request.
+    Returns the form data from the session.
+
+    :param request: the request object passed by django
+    :return: the form data from the session
+    """
+
+    if (form_data_str := request.session.get("form_data", None)) is not None: 
+        return json.loads(form_data_str)
+
+
+def get_patent_ids(request):
+    """
+    This function returns the patent ids, based on the form data in the session.
 
     :param request: the request object passed by django
     """
 
-    if (data := request.session.get("form_data", None)) is not None: 
-        data = json.loads(data)
-    return data
+    if (patent_ids_str := request.session.get("patent_ids", None)) is not None: 
+        return json.loads(patent_ids_str)
+    
+
+def get_patents(request):
+    """
+    This function returns the patents, based on the form data in the session.
+
+    :param request: the request object passed by django
+    """
+
+    if (patent_ids := get_patent_ids(request)) is not None:
+        return Patent.objects.filter(id__in=patent_ids)
 
 
 def model(request, model, query=""):
@@ -151,13 +173,12 @@ def patents(request):
     This view returns a list of patents, given a page number as a query parameter, it's used for pagination.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patents := get_patents(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    patents = Patent.fetch_representation(Patent.filter(form_data))
-
+    form_data = get_form_data(request)
     page = int(request.GET.get("page", 1))
-    paginator = Paginator(patents, 50)
+    paginator = Paginator(Patent.fetch_representation(patents), 50)
 
     return JsonResponse({
         "patents": list(paginator.page(page).object_list.values()),
@@ -177,11 +198,11 @@ def download_tsv(request):
     This view allows the user to download the patents he filtered as a tsv file.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patents := get_patents(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
     
     file_name = f"main/temp/{randint(0, 100) * time()}_patents.tsv"
-    Patent.fetch_representation(Patent.filter(form_data)).to_csv(file_name, delimiter="\t")
+    Patent.fetch_representation(patents).to_csv(file_name, delimiter="\t")
     response = HttpResponse(content_type="text/tab-separated-values")
     response["Content-Disposition"] = f"attachment; filename={file_name}"
     response.write(open(file_name, "rb").read())
@@ -194,11 +215,10 @@ def statistics(request):
     This view returns statistics about the patents that match the user's query.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patents := get_patents(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
     statistics = {}
-    patents = Patent.filter(form_data)
 
     # Handle statistics that don't need joins
     statistics.update(format_statistics(patents.annotate(
@@ -234,10 +254,8 @@ def time_series(request):
     This view returns a set of time series based on the user's query.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patents := get_patents(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
-
-    patents = Patent.filter(form_data)
 
     applications_per_year = patents.annotate(year=ExtractYear("application_filed_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
     granted_patents_per_year = patents.annotate(year=ExtractYear("granted_date")).values("year").annotate(count=Count("id")).order_by("year").values("year", "count")
@@ -265,10 +283,9 @@ def entity_info(request):
     This view returns information about different entities matching the user's query.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patents := get_patents(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    patents = Patent.filter(form_data)
     return JsonResponse({
         "patent": {
             "pct": {
@@ -305,7 +322,7 @@ def topic_modeling(request):
     This view returns the results of the topic modeling analysis.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patents := get_patents(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
     
     tp_remove_top = 10
@@ -325,8 +342,6 @@ def topic_modeling(request):
         "PTM": tp.PTModel(k=n_topics, rm_top=tp_remove_top),
     }
 
-
-    patents = Patent.filter(form_data)
     patents_count = patents.count()
     
     model = request.GET.get("model", "LDA")
@@ -383,10 +398,9 @@ def citation_data(request):
     cited patents for the patents matching the user's query.
     """
 
-    if (form_data := get_patents_form_data(request)) is None: 
+    if (patent_ids := get_patent_ids(request)) is None: 
         return HttpResponseBadRequest("No patent query in the current session.")
     
-    patent_ids = Patent.filter(form_data).values_list("id", flat=True)
     graph = PatentCitation.objects.filter(citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids).annotate(
         citing_patent_code=Concat("citing_patent__office", "citing_patent__office_patent_id"),
         cited_patent_code=Concat("cited_patent__office", "cited_patent__office_patent_id")

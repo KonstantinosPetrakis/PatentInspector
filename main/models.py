@@ -152,7 +152,7 @@ class Patent(models.Model):
             pct_documents=StringAgg(Concat(
                 Cast("pct_data__published_or_filed_date", CharField()),
                 Case(When(pct_data__granted=True, then=Value(" - granted"))),
-                Case(When(pct_data__granted=False, then=Value(" - refused")))
+                Case(When(pct_data__granted=False, then=Value(" - not granted")))
             ), delimiter=", ", distinct=True),
             inventor_names=StringAgg(Concat(
                 F("inventors__first_name"), Value(" "), F("inventors__last_name")
