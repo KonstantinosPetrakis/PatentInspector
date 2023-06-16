@@ -42,6 +42,38 @@ class PatentPCTDataInline(admin.TabularInline):
     extra = 0
 
 
+class PatentCitedByInline(admin.TabularInline):
+    verbose_name = "Cited by"
+    verbose_name_plural = "Cited by"
+    fk_name = "cited_patent"
+    model = PatentCitation
+    autocomplete_fields = ("cited_patent", "citing_patent")
+    extra = 0
+    classes = ['collapse']
+
+
+class PatentCitesInline(admin.TabularInline):
+    verbose_name = "Citation"
+    verbose_name_plural = "Citations"
+    fk_name = "citing_patent"
+    model = PatentCitation
+    autocomplete_fields = ("cited_patent", "citing_patent")
+    extra = 0
+    classes = ['collapse']
+
+
+class InventorInline(admin.TabularInline):
+    model = Inventor
+    autocomplete_fields = ("location", )
+    extra = 0
+
+
+class AssigneeInline(admin.TabularInline):
+    model = Assignee
+    autocomplete_fields = ("location", )
+    extra = 0
+
+
 class PatentAdmin(FastCountAdmin):
     class HasPCTApplicationFilter(admin.SimpleListFilter):
         title = "existence of a PCT application"
@@ -60,7 +92,7 @@ class PatentAdmin(FastCountAdmin):
     list_display = ("id", "office", "office_patent_id", "title", "type")
     list_filter = ("type", "office", HasPCTApplicationFilter)
     search_fields = ("title", "abstract", "office", "office_patent_id")
-    inlines = [PatentCPCGroupInline, PatentPCTDataInline]
+    inlines = [InventorInline, AssigneeInline, PatentCPCGroupInline, PatentPCTDataInline, PatentCitedByInline, PatentCitesInline,]
 
 
 class PatentCitationAdmin(FastCountAdmin):
