@@ -106,9 +106,6 @@ def get_patent_ids(request: HttpRequest) -> list[int] | None:
 
     if (patent_ids_str := request.session.get("patent_ids", None)) is not None: 
         return json.loads(patent_ids_str)
-    
-
-# ---------------- Route handlers ----------------
 
 
 def get_patents(request: HttpRequest) -> models.QuerySet[Patent] | None:
@@ -124,6 +121,9 @@ def get_patents(request: HttpRequest) -> models.QuerySet[Patent] | None:
 
     if (patent_ids := get_patent_ids(request)) is not None:
         return Patent.objects.filter(id__in=patent_ids)
+
+
+# ---------------- Route handlers ----------------
 
 
 def records_field_from_exact_list(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
@@ -150,7 +150,7 @@ def records_field_from_exact_list(request: HttpRequest) -> JsonResponse | HttpRe
         return HttpResponseBadRequest("Missing query parameters.")
 
     model = class_from_string(model)
-    exact_values = exact_values.split(",")
+    exact_values = exact_values.split("~#") # ~# is the separator between values instead of commas
     wanted_fields = wanted_fields.split(",")
 
     if len(wanted_fields) == 1:
@@ -158,7 +158,8 @@ def records_field_from_exact_list(request: HttpRequest) -> JsonResponse | HttpRe
             *wanted_fields, flat=True)
     else:
         data = model.objects.filter(**{f"{exact_field}__in": exact_values}).values(*wanted_fields)
-    return JsonResponse(data, safe=False)
+    
+    return JsonResponse(list(data), safe=False)
 
     
 def records_field_from_query(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
@@ -421,7 +422,7 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
 
     if model == "NMF":
         tfidf_vectorizer, tfidf = patents_to_tfidf(patents)
-        nmf = NMF(n_components=n_topics, init='nndsvd').fit(tfidf)
+        nmf = NMF(n_components=n_topics, init='nndsvd', random_state=settings.RANDOM_STATE).fit(tfidf)
 
         # Group patents by topic
         topics = tfidf_vectorizer.get_feature_names_out()

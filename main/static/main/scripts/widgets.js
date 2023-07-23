@@ -85,7 +85,7 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     /**
      * This function is used to populate the choices element with the results of a query.
      * @param {String} value the query that will be used for filtering in the backend.
-     * @returns {Array<Object|String>} the data returned from the API.
+     * @returns {Promise<Array<Object|String>>} the data returned from the API.
      */
     async function populateChoicesFromQuery(value = "") {
         const response = await fetch(`${queryURL}&query=${encodeURIComponent(value)}`);
@@ -98,7 +98,7 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
      * This function is used to populate the choices element by asking the backend more info about the
      * given values.
      * @param {Array} values the values that will be used for filtering in the backend.
-     * @returns  {Array<Object|String>} the data returned from the API.
+     * @returns  {Promise<Array<Object|String>>} the data returned from the API.
      */
     async function populateChoicesFromValues(values) {
         const response = await fetch(`${exactURL}&exact-values=${encodeURIComponent(values.join("~#"))}`);
@@ -108,7 +108,7 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     }
 
     const populateChoicesFromQueryEventDebounced = debounce(
-        (event) => populateChoicesFromQuery(event.detail.value), 500);
+        async (event) => await populateChoicesFromQuery(event.detail.value), 500);
 
     const exactURL = choiceKeywordInput.getAttribute("data-exact-url");
     const queryURL = choiceKeywordInput.getAttribute("data-query-url");
@@ -125,7 +125,7 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
 
     // Try to populate choices immediately, if results are found, remove the event listener.
     // Results could not be found if there's a minimum query length required by the backend.
-    const data = populateChoicesFromQuery();
+    const data = await populateChoicesFromQuery();
     if (Array.isArray(data) && data.length) 
         fakeSelect.removeEventListener("search", populateChoicesFromQueryEventDebounced);
 
@@ -136,7 +136,10 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
         const alreadyExistingChoices = choiceKeywords._currentState.choices.map(choice => choice.value);
         // Fetch choices only if there are not already fetched (there wasn't a query limit)
         if (choices.some(choice => !alreadyExistingChoices.includes(choice))) 
-            populateChoicesFromValues(choices);
+            await populateChoicesFromValues(choices);
+        
+        // Select choices in the fake select
+        for (let choice of choices) choiceKeywords.setChoiceByValue(choice);
     }
 
     // Copy the value of the fake select to the hidden input field
