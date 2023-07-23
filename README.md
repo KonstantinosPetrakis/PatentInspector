@@ -16,6 +16,3 @@ python manage.py uspto
 python manage.py index # not necessary but recommended
 python manage.py runserver
 ```
-
-### To-do
-* Add random seed to topic modeling algorithms so they produce stable results. 

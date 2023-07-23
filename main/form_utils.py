@@ -1,11 +1,54 @@
 """
-In this file, we define custom form fields. To define the fields we either us
+In this file, we define custom form fields. To define the fields we either use
 some existing field (e.g MultiValueField or the ChoiceField) or just a hidden input
 and a lot of javascript in the frontend. 
+
+We also define utilities functions used in forms, either in frontend or in admin.
 """
 
 
+from typing import Type
+
+from django.utils.safestring import mark_safe, SafeString
+from django.conf import settings
 from django import forms
+
+
+def id_and_default_field(model: Type) -> tuple | None:
+    """
+    This function will return the id and default field of the given model.
+    It is used to build the exact url for the ChoiceKeywordsField.
+    It is useful when no model_field is given to the ChoiceKeywordsField.
+
+    Args:
+        model (Type): The model to get the id and default field of.
+
+    Returns:
+        tuple | None: The id and default field of the given model or None if the model is not supported.
+    """
+    
+    map = {
+        "CPCSection": ("section", "title"),
+        "CPCClass": ("_class", "title"),
+        "CPCSubclass": ("subclass", "title"),
+        "CPCGroup": ("group", "title"),
+    }
+    return map[model] if model in map else None
+
+
+def get_help_text(field: str) -> SafeString:
+    """
+    This function will return the help text of the given field from the help_texts directory.
+
+    Args:
+        field (str): The field to get the help text of.
+
+    Returns:
+        SafeString: The HTML help text ready to be rendered.
+    """
+
+    with open(f"{settings.BASE_DIR}/main/help_texts/patent/{field}.html", "r") as f:
+        return mark_safe(f.read())
 
 
 class EmptyChoiceField(forms.ChoiceField):
@@ -119,24 +162,71 @@ class TriStateField(forms.CharField):
 
 class ChoiceKeywordsField(forms.CharField):
     """
-    THis field is a choice keywords field. It returns a list of keywords entered by the user.
+    This field is a choice keywords field. It returns a list of keywords entered by the user.
     The difference between this field and the KeywordField is that this field has a dropdown menu
-    that allows the user to select from a list of keywords, the list of keywords is fetched from the
-    URL specified in the "url" keyword argument.
+    that allows the user to select from a list of keywords.
+    
+    The list of keywords is retrieved from the API using the model and wanted_fields arguments,
+    the URL is automatically generated for the supported models and fields. The first field in
+    the wanted_fields is the field that the filtering will be done on. If not wanted_fields
+    specified, the id and a default field will be used.
     """
 
     def __init__(self, *args, **kwargs):
-        url = kwargs.pop("url")
-        min_query_length = kwargs.pop("min_query_length", 0)
+        model = kwargs.pop("model")
+        wanted_fields = kwargs.pop("wanted_fields", None)
+        # If not wanted_fields specified, we will use the id and default field.
+        if wanted_fields is None: wanted_fields = id_and_default_field(model)
+        filter_field = wanted_fields[0]
+        wanted_fields = ",".join(wanted_fields)
+
+        exact_url = self.build_exact_url(model, wanted_fields, filter_field)
+        query_url = self.build_query_url(model, wanted_fields, filter_field)
 
         kwargs.setdefault("required", False)
         kwargs.setdefault("widget", forms.HiddenInput(attrs={"class": "choice-keywords-input",
-            "data-url": url, "data-minQueryLength": min_query_length}))
+            "data-exact-url": exact_url, "data-query-url": query_url}))
         
         super().__init__(*args, **kwargs)
     
+
+    def build_exact_url(self, model: str, wanted_fields: str, exact_field: str) -> str:
+        """
+        This function will build the exact url for the ChoiceKeywordsField.
+
+        Args:
+            model (str): The model to build the url for.
+            wanted_fields (str): The fields to retrieve from the API (comma separated).
+            exact_field (str): The field to filter on.
+
+        Returns:
+            str: The exact url for the ChoiceKeywordsField.
+        """
+
+        base_url = "api/records-field-from-exact-list"
+        return f"{base_url}?model={model}&wanted-fields={wanted_fields}&exact-field={exact_field}"
+
+    
+    def build_query_url(self, model: str, wanted_fields: str, query_field: str) -> str:
+        """
+        This function will build the query url for the ChoiceKeywordsField.
+
+        Args:
+            model (str): The model to build the url for.
+            wanted_fields (list[str]): The fields to retrieve from the API (comma separated).
+            query_field (str): The field to filter on.
+
+        Returns:
+            str: The query url for the ChoiceKeywordsField.
+        """
+
+        base_url = "api/records-field-from-query"
+        return f"{base_url}?model={model}&wanted-fields={wanted_fields}&query-field={query_field}"
+
+
     def to_python(self, value):
-        return value.split(",") if value else []
+        # ~# is used as separator instead of ',' can be included in the keywords.
+        return value.split("~#") if value else []
 
 
 class RadiusField(forms.CharField):
@@ -156,6 +246,11 @@ class RadiusField(forms.CharField):
     
 
 class SwitchInputValuesField(forms.BooleanField):
+    """
+    This field is a switch input values field. It returns the value of the selected choice.
+    It is used when the user has to choose between two values (e.g 'blue' or 'red').
+    """
+
     def __init__(self, *args, **kwargs):  
         self.choices = kwargs.pop("choices")
         kwargs.setdefault("required", False)
@@ -164,3 +259,4 @@ class SwitchInputValuesField(forms.BooleanField):
 
     def to_python(self, value):
         return self.choices[bool(value)]
+    

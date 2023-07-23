@@ -51,7 +51,8 @@ function initializeMinMaxSlider(sliderWrapper) {
     const maxValue = inputs[1].value == "" ? max : inputs[1].value;
     noUiSlider.create(slider, { start: [minValue, maxValue], step: 1, range: { min, max } });
     slider.noUiSlider.on("update", (values, handle) => inputs[handle].value = parseInt(values[handle]));
-    inputs.forEach((input, handle) => input.addEventListener("change", () => slider.noUiSlider.setHandle(handle, input.value)));  
+    inputs.forEach((input, handle) => input.addEventListener("change", 
+        () => slider.noUiSlider.setHandle(handle, input.value)));  
 }
 
 
@@ -61,88 +62,87 @@ function initializeMinMaxSlider(sliderWrapper) {
  */
 async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     /**
-     * This function searches for keywords and updates the available choices.
-     * @param {string} value the value to search for. 
+     * This function is used to put the options in the choices element.
+     * @param {Array<Object|String>} data the data returned from the API. 
      */
-    async function searchKeywords(value = "") {
-        if (value.length < minQueryLength) return;
-        const response = await fetch(`${url}${noQueryLimit ? '' : '/'}${value}`);
+    function putChoicesFromData(data) {
+        if (!Array.isArray(data) || !data.length) return;
+
+        // If the array contains objects, the id and the representation are the 1st and 2nd key
+        if (typeof data[0] === 'object') {
+            const [id, repr] = Object.keys(data[0]);
+            // The id is the 1st key, the representation is the 2nd
+            data.forEach(o => {
+                delete Object.assign(o, {["id"]: o[id] })[id];
+                delete Object.assign(o, {["repr"]: `${o["id"]} - ${o[repr]}` })[repr];
+            });
+        }
+        // If the array contains strings, the id and the representation are the same
+        else data = data.map(val => ({ "id": val, "repr": val }));
+        choiceKeywords.setChoices(data, "id", "repr", true);
+    }
+
+    /**
+     * This function is used to populate the choices element with the results of a query.
+     * @param {String} value the query that will be used for filtering in the backend.
+     * @returns {Array<Object|String>} the data returned from the API.
+     */
+    async function populateChoicesFromQuery(value = "") {
+        const response = await fetch(`${queryURL}&query=${encodeURIComponent(value)}`);
         const data = await response.json();
-        formatData(data);
-        choiceKeywords.setChoices(data, "search_id", "representation", true)
+        putChoicesFromData(data);
+        return data;
     }
 
     /**
-     * This function searches for keywords and updates the available choices.
-     * @param {Event} event the event choice.js triggers when the user searches for a choice.
+     * This function is used to populate the choices element by asking the backend more info about the
+     * given values.
+     * @param {Array} values the values that will be used for filtering in the backend.
+     * @returns  {Array<Object|String>} the data returned from the API.
      */
-    async function searchKeywordsByEvent(event) { await searchKeywords(event.detail.value) }
-    const searchKeywordsByEventDebounced = debounce(searchKeywordsByEvent, 500);
-
-    /**
-     * This function populates the choices with the given values.
-     * It's used to add choices that were already selected when the page was loaded (e.g. when the form is invalid).
-     * @param {Array<String>} values the IDs of the values to populate the choices with.
-     */
-    async function populateChoices(values) {
-        console.log("populating choices with values: ", values);
-        // Make a POST request via fetch
-        const response = await fetch(`${url}?ids=${encodeURIComponent(JSON.stringify(values))}`, { method: "GET", headers: { "Content-Type": "application/json" } });
+    async function populateChoicesFromValues(values) {
+        const response = await fetch(`${exactURL}&exact-values=${encodeURIComponent(values.join("~#"))}`);
         const data = await response.json();
-        formatData(data);
-        console.log(data);
-        choiceKeywords.setChoices(data, "search_id", "representation", false)
+        putChoicesFromData(data);
+        return data;
     }
 
-    /**
-     * This function formats the data to be displayed in the choices.
-     * @param {Array<Object>} data the data returned by the API to be formatted.  
-     */
-    function formatData(data) {
-        if (data == null || data.length == 0) return;
-        if (data[0].search_title == undefined)
-            data.map(item => item.representation = `${item.search_id}`);
-        else
-            data.map(item => item.representation = `${item.search_id} - ${item.search_title}`);
-    }
+    const populateChoicesFromQueryEventDebounced = debounce(
+        (event) => populateChoicesFromQuery(event.detail.value), 500);
 
-    const url = choiceKeywordInput.getAttribute("data-url");
-    const minQueryLength = parseInt(choiceKeywordInput.getAttribute("data-minQueryLength"));
-    const noQueryLimit = minQueryLength == 0;
+    const exactURL = choiceKeywordInput.getAttribute("data-exact-url");
+    const queryURL = choiceKeywordInput.getAttribute("data-query-url");
 
-    // Choices need a multiple select element to work, but we can't afford to have one 
-    // in the backend because choices are fetched via JS and default backend validation 
-    // wouldn't work. So we create a fake multiple select element and we copy its value to 
-    // a comma separated string in the hidden input field.
+    // Create a fake multiple select element and copy its value to 
+    // a '~#' separated string in the hidden input field.
     const fakeSelect = document.createElement("select");
     fakeSelect.multiple = true;
     choiceKeywordInput.insertAdjacentElement("afterend", fakeSelect);
 
-    const choiceKeywords = new Choices(fakeSelect, { allowHTML: true, removeItemButton: true, duplicateItemsAllowed: false, shouldSort: false, searchResultLimit: 10000 });
-    fakeSelect.addEventListener("search", searchKeywordsByEventDebounced);
+    const choiceKeywords = new Choices(fakeSelect, { allowHTML: true, removeItemButton: true,
+        duplicateItemsAllowed: false, shouldSort: false, searchResultLimit: 10000 });
+    fakeSelect.addEventListener("search", populateChoicesFromQueryEventDebounced);
 
-    // If there is no query limit, trigger a search event to get all keywords and don't
-    // listen to search events anymore.
-    if (noQueryLimit) {
-        fakeSelect.removeEventListener("search", searchKeywordsByEventDebounced);
-        await searchKeywords();
-    }
+    // Try to populate choices immediately, if results are found, remove the event listener.
+    // Results could not be found if there's a minimum query length required by the backend.
+    const data = populateChoicesFromQuery();
+    if (Array.isArray(data) && data.length) 
+        fakeSelect.removeEventListener("search", populateChoicesFromQueryEventDebounced);
 
     // If hidden input field has a value, add the corresponding choices
+    // The values could be filled by the backend if the form is invalid or for prefilling
     if (choiceKeywordInput.value) {
-        const choices = choiceKeywordInput.value.split(",");
+        const choices = choiceKeywordInput.value.split("~#");
         const alreadyExistingChoices = choiceKeywords._currentState.choices.map(choice => choice.value);
         // Fetch choices only if there are not already fetched (there wasn't a query limit)
         if (choices.some(choice => !alreadyExistingChoices.includes(choice))) 
-            await populateChoices(choices);
-
-        // Add choices
-        choices.forEach(choice => choiceKeywords.setChoiceByValue(choice));
+            populateChoicesFromValues(choices);
     }
 
     // Copy the value of the fake select to the hidden input field
     fakeSelect.addEventListener("change", () => {
-        choiceKeywordInput.value = Array.from(fakeSelect.selectedOptions).map(option => option.value).join(",")
+        choiceKeywordInput.value = Array.from(fakeSelect.selectedOptions).map(
+            option => option.value).join("~#");
     });
 }
 
@@ -239,6 +239,10 @@ function initializeSwitchInput(inputElement) {
 }
 
 
+/**
+ * This function initializes a tabbed in-page navigation.
+ * @param {Element} tabsWrapper the wrapper element that contains the tabs and the tab contents.
+ */
 function initializeInPageNavTab(tabsWrapper) {
     const tabs = tabsWrapper.querySelectorAll(".nav-link");
     const tabContents = tabsWrapper.querySelectorAll(".tab-contents > div");

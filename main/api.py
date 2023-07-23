@@ -1,176 +1,215 @@
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse
-from django.db.models.functions import Length, Substr, ExtractYear
-from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import F, Q, OuterRef, Exists
-from django.db.models.aggregates import Count
-from django.core.paginator import Paginator
-from sklearn.decomposition import NMF
+from datetime import timedelta, datetime
 from random import randint
-from main.helpers import *
-from main.models import *
+from typing import Type
 from os import remove
 from time import time
-from datetime import timedelta, datetime
-import tomotopy as tp
 import json
 
+from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, HttpRequest
+from django.db.models.functions import Substr, ExtractYear
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Q, OuterRef, Exists
+from django.apps import apps
+from django.db.models.aggregates import Count
+from django.core.paginator import Paginator
+from django.conf import settings
+from sklearn.decomposition import NMF
+import tomotopy as tp
 
-CLASS_MAP = {
-    "cpc_section": CPCSection,
-    "cpc_class": CPCClass,
-    "cpc_subclass": CPCSubclass,
-    "cpc_group": CPCGroup,
-    "inventor": Inventor,
-    "assignee": Assignee,
+
+from main.helpers import *
+from main.models import *
+
+
+# ---------------- Constants and helpers ----------------
+
+MIN_QUERY_LENGTH = {
+    (CPCSubclass, "subclass"): 1,
+    (CPCGroup, "group"): 3,
+    (Inventor, "first_name"): 2,
+    (Inventor, "last_name"): 2,
+    (Assignee, "first_name"): 2,
+    (Assignee, "last_name"): 2,
+    (Assignee, "organization"): 2,
 }
 
-REVERSE_CLASS_MAP = {v: k for k, v in CLASS_MAP.items()}
-
-
-def class_from_string(string):
+def class_from_string(string: str) -> Type | None:
     """
-    Returns the model class for the given string.
+    This function returns the model class from the given string.
 
-    :param string: the string to get the model class for
-    :return: the model class for the given string
-    """
+    Args:
+        string (str): The string representation of the model class.
 
-    return CLASS_MAP[string] if string in CLASS_MAP else None
-
-
-def string_from_class(_class):
-    """
-    Returns the string representation of the given model class.
-
-    :param _class: the model class to get the string representation for
-    :return: the string representation of the given model class
+    Returns:
+        Type: The model class or None if the string is not a valid model class.
     """
 
-    return REVERSE_CLASS_MAP[_class] if _class in REVERSE_CLASS_MAP else None
+    try: return apps.get_model("main", string)
+    except LookupError: return None
 
 
-def id_and_title(model):
+def string_from_class(_class: Type) -> str:
     """
-    Returns the id and title fields for the given model. Title field is a form of representation of the model.
+    This function returns the string representation of the given model class.
 
-    :param model: the class of the model to get the id and title fields for
-    :return: a tuple containing the id and title fields
+    Args:
+        _class (Type): The model class.
+
+    Returns:
+        str: The string representation of the model class.
     """
 
-    map = {
-        CPCSection: ("section", "title"),
-        CPCClass: ("_class", "title"),
-        CPCSubclass: ("subclass", "title"),
-        CPCGroup: ("group", "title"),
-    }
-    return map[model] if model in map else None
+    return _class.__name__
 
 
-def get_form_data(request):
+def get_min_query_length(model: Type, field: str = None) -> int:
     """
-    Returns the form data from the session.
+    This function returns the minimum query length for the given model and field.
 
-    :param request: the request object passed by django
-    :return: the form data from the session
+    Args:
+        model (Type): The model class.
+        field (str, optional): The field of the model. Defaults to None.
+
+    Returns:
+        int: The minimum query length.
     """
+
+    return MIN_QUERY_LENGTH[(model, field)] if (model, field) in MIN_QUERY_LENGTH else 0
+
+
+def get_form_data(request: HttpRequest) -> dict | None:
+    """
+    This function returns the form data from the session.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+
+    Returns:
+        dict | None: The form data or None if it's not in the session.
+    """
+
 
     if (form_data_str := request.session.get("form_data", None)) is not None: 
         return json.loads(form_data_str)
 
 
-def get_patent_ids(request):
+def get_patent_ids(request: HttpRequest) -> list[int] | None:
     """
-    This function returns the patent ids, based on the form data in the session.
+    This function returns the patent ids from the session.
 
-    :param request: the request object passed by django
+    Args:
+        request (HttpRequest): The request object passed by django.
+
+    Returns:
+        list[int] | None: The patent ids or None if they're not in the session.
     """
 
     if (patent_ids_str := request.session.get("patent_ids", None)) is not None: 
         return json.loads(patent_ids_str)
     
 
-def get_patents(request):
-    """
-    This function returns the patents, based on the form data in the session.
+# ---------------- Route handlers ----------------
 
-    :param request: the request object passed by django
+
+def get_patents(request: HttpRequest) -> models.QuerySet[Patent] | None:
+    """
+    This function returns the patents based on the ids stored in the session.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+
+    Returns:
+        models.QuerySet[Patent] | None: The patents or None if they're not in the session.
     """
 
     if (patent_ids := get_patent_ids(request)) is not None:
         return Patent.objects.filter(id__in=patent_ids)
 
 
-def model(request, model, query=""):
+def records_field_from_exact_list(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
-    This is a view for fetching model data for autocomplete form fields (ChoiceKeywordsField for now).
-    If the content type of the request can be application/json or not.
-    If it is application/json, it expects a json body containing a list of ids to fetch data for.
-    If it is not application/json, it expects a query parameter to search for.
-    
-    :param request: the request object passed by django
-    :param model: the model to fetch data for
-    :param query: the query to search for, defaults to ""
-    :return: a JsonResponse containing the model data or an HttpResponseBadRequest if the request is invalid
+    This view returns a list of records, given a list of exact values for a field.
+
+    Args:
+        request (HttpRequest): The request object passed by django, the request method must contain 
+        the following query parameters:
+        * model: The model class.
+        * wanted-fields: The wanted field of the model.
+        * exact-field: The field of the model to filter by exact values.
+        * exact-values: The exact values to filter by.
+
+    Returns:
+        JsonResponse | HttpResponseBadRequest: A list containing the wanted_field from the filtered
+        records or an error response.
     """
+
+    model, wanted_fields, exact_field, exact_values = [request.GET.get(k, None)
+        for k in ("model", "wanted-fields", "exact-field", "exact-values")]
+
+    if any([f is None for f in (model, wanted_fields, exact_field, exact_values)]):
+        return HttpResponseBadRequest("Missing query parameters.")
 
     model = class_from_string(model)
-    if model is None:
-        return HttpResponseBadRequest("Invalid model name.")
-    id, title = id_and_title(model)
-    
-    if request.META.get('CONTENT_TYPE', '') == "application/json":
-        ids = json.loads(request.GET.get("ids", None))
-        if ids is not None: 
-            data = model.objects.filter(**{f"{id}__in": ids}).values(id, title)
-            data = list(data.annotate(search_id=F(id), search_title=F(title)).values("search_id", "search_title"))
-            return JsonResponse(data, safe=False)
-        return HttpResponseBadRequest("Expected ids in json body.")
-    
-    data = model.objects.filter(**{f"{id}__iregex": f"^{query}"}).values(id, title)
-    data = list(data.annotate(search_id=F(id), search_title=F(title)).values("search_id", "search_title"))
+    exact_values = exact_values.split(",")
+    wanted_fields = wanted_fields.split(",")
+
+    if len(wanted_fields) == 1:
+        data = model.objects.filter(**{f"{exact_field}__in": exact_values}).values_list(
+            *wanted_fields, flat=True)
+    else:
+        data = model.objects.filter(**{f"{exact_field}__in": exact_values}).values(*wanted_fields)
     return JsonResponse(data, safe=False)
 
-
-def model_field(request, model, field, query=""):
-    """
-    This is a view for fetching model data for autocomplete form fields (ChoiceKeywordsField for now).
     
-    It's the same as the model view, but instead of fetching 2 columns id and title 
-    it fetches the column specified by the field parameter.
-    
-    For example, if the model is Location and the field is city, 
-    it will fetch the distinct values of the city column of the Location model.
-
-    :param request: the request object passed by django
-    :param model: the model to fetch data for
-    :param field: the field of the model to fetch data for
-    :param query: the query to search data for, defaults to ""
+def records_field_from_query(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
+    This view returns a list of records, given a query string.
+
+    Args:
+        request (HttpRequest): The request object passed by django, the request method must contain
+        the following query parameters:
+        * model: The model class.
+        * wanted-fields: The wanted fields of the model.
+        * query-field: The field of the model to filter by.
+        * query: The query string to filter by.
+
+    Returns:
+        JsonResponse | HttpResponseBadRequest: An array containing the wanted_fields
+        from the filtered records or an error response.
+    """
+
+    model, wanted_fields, query_field, query = [request.GET.get(k, None) 
+        for k in ("model", "wanted-fields", "query-field", "query")]
+    
+    if any([f is None for f in (model, wanted_fields, query_field, query)]):
+        return HttpResponseBadRequest("Missing query parameters.")
+    
+    min_query_length = get_min_query_length(class_from_string(model), query_field)
+    if len(query) < min_query_length: return JsonResponse([], safe=False)
 
     model = class_from_string(model)
-    if model is None:
-        return HttpResponseBadRequest("Invalid model name.")
-    
-    if request.META.get('CONTENT_TYPE', '') == "application/json":
-        distinct_field_values = json.loads(request.GET.get("ids", None))
-        if distinct_field_values is not None:
-            data = model.objects.filter(**{f"{field}__in": distinct_field_values}).distinct(field).values(field)
-            # front-end expects search_id field, an identifier for the model
-            # in our case, it's the same as the field value itself 
-            # you can compare it with model function that goes like (search_id, title_field) 
-            # instead of (field, field)
-            data = list(data.annotate(search_id=F(field)).values("search_id")) 
-            return JsonResponse(data, safe=False)
-        return HttpResponseBadRequest("Expected ids in json body.")
-    
-    data = model.objects.filter(**{f"{field}__iregex": f"^{query}"}).values(field).distinct().order_by(Length(field))[:1000]
-    data = list(data.annotate(search_id=F(field), search_title=F(field)).values("search_id"))
-    return JsonResponse(data, safe=False)
+    wanted_fields = wanted_fields.split(",")
+
+    if len(wanted_fields) == 1:
+        data = model.objects.filter(**{f"{query_field}__istartswith": query}).values_list(
+            wanted_fields[0], flat=True).distinct().order_by(wanted_fields[0])[: 500]
+    else:
+        data = model.objects.filter(**{f"{query_field}__istartswith": query}).values(
+            *wanted_fields).distinct().order_by(wanted_fields[0])[: 500]
+
+    return JsonResponse(list(data), safe=False)
 
 
-def patents(request):
+def patents(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
     This view returns a list of patents, given a page number as a query parameter, it's used for pagination.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+    
+    Returns:
+        JsonResponse | HttpResponseBadRequest: An object containing the patents and other info or
+        an error response.
     """
 
     if (patents := get_patents(request)) is None: 
@@ -193,9 +232,15 @@ def patents(request):
     })
 
 
-def download_tsv(request):
+def download_tsv(request: HttpRequest) -> HttpResponse | HttpResponseBadRequest:
     """
     This view allows the user to download the patents he filtered as a tsv file.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+    
+    Returns:
+        HttpResponse: The tsv file or an error response.
     """
 
     if (patents := get_patents(request)) is None: 
@@ -210,9 +255,15 @@ def download_tsv(request):
     return response
 
 
-def statistics(request):
+def statistics(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
     This view returns statistics about the patents that match the user's query.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+    
+    Returns:
+        JsonResponse | HttpResponseBadRequest: An object containing the statistics or an error response.
     """
 
     if (patents := get_patents(request)) is None: 
@@ -249,9 +300,15 @@ def statistics(request):
     return JsonResponse({k.replace("_", " ").title(): v for k, v in statistics.items()})
 
 
-def time_series(request):
+def time_series(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
     This view returns a set of time series based on the user's query.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+    
+    Returns:
+        JsonResponse | HttpResponseBadRequest: An object containing the time series or an error response.
     """
 
     if (patents := get_patents(request)) is None: 
@@ -278,7 +335,7 @@ def time_series(request):
     })
 
 
-def entity_info(request):
+def entity_info(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
     This view returns information about different entities matching the user's query.
     """
@@ -317,9 +374,16 @@ def entity_info(request):
     })
 
 
-def topic_modeling(request):
+def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
     This view returns the results of the topic modeling analysis.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+    
+    Returns:
+        JsonResponse | HttpResponseBadRequest: An object containing the topic modeling
+        results or an error response.
     """
 
     if (patents := get_patents(request)) is None: 
@@ -329,17 +393,17 @@ def topic_modeling(request):
     n_topics = 10
     n_top_words = 10
     tp_model_map = {
-        "LDA": tp.LDAModel(k=n_topics, rm_top=tp_remove_top),
-        "LLDA": tp.LLDAModel(k=n_topics, rm_top=tp_remove_top),
-        "SLDA": tp.SLDAModel(k=n_topics, rm_top=tp_remove_top),
-        "DMR": tp.DMRModel(k=n_topics, rm_top=tp_remove_top),
-        "HDP": tp.HDPModel(rm_top=tp_remove_top),
-        "HLDA": tp.HLDAModel(rm_top=tp_remove_top),
-        "MGLDA": tp.MGLDAModel(rm_top=tp_remove_top),
-        "PA": tp.PAModel(rm_top=tp_remove_top),
-        "HPA": tp.HPAModel(rm_top=tp_remove_top),
-        "CTM": tp.CTModel(k=n_topics, rm_top=tp_remove_top),
-        "PTM": tp.PTModel(k=n_topics, rm_top=tp_remove_top),
+        "LDA": tp.LDAModel(k=n_topics, rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "LLDA": tp.LLDAModel(k=n_topics, rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "SLDA": tp.SLDAModel(k=n_topics, rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "DMR": tp.DMRModel(k=n_topics, rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "HDP": tp.HDPModel(rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "HLDA": tp.HLDAModel(rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "MGLDA": tp.MGLDAModel(rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "PA": tp.PAModel(rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "HPA": tp.HPAModel(rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "CTM": tp.CTModel(k=n_topics, rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
+        "PTM": tp.PTModel(k=n_topics, rm_top=tp_remove_top, seed=settings.RANDOM_SEED),
     }
 
     patents_count = patents.count()
@@ -392,10 +456,17 @@ def topic_modeling(request):
     return JsonResponse(results, safe=False) 
 
 
-def citation_data(request):
+def citation_data(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     """
     This view returns the local patent to patent (P2P) citation graph and some data about the most 
     cited patents for the patents matching the user's query.
+
+    Args:
+        request (HttpRequest): The request object passed by django.
+    
+    Returns:
+        JsonResponse | HttpResponseBadRequest: An object containing the citation graph and the most
+        cited patents or an error response.
     """
 
     if (patent_ids := get_patent_ids(request)) is None: 

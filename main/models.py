@@ -1,19 +1,14 @@
 from django.db.models import CharField, Case, When, Value, F, Q, Func
 from django.contrib.postgres.aggregates import StringAgg
 from django.db.models.functions import Concat, Cast
-from django.utils.safestring import mark_safe
 from django.contrib.gis.geos import Point
 from django.contrib.gis.measure import D
 from django.contrib.gis.db import models
-from postgres_copy import CopyManager
-from django.conf import settings
 from django.db import connection
+from postgres_copy import CopyManager
 
 
-
-def get_help_text(field):
-    with open(f"{settings.BASE_DIR}/main/help_texts/patent/{field}.html", "r") as f:
-        return mark_safe(f.read())
+from main.form_utils import get_help_text
 
 
 class CPCSection(models.Model):
@@ -80,13 +75,32 @@ class Patent(models.Model):
         return f"{self.office} - {self.office_patent_id}"
     
     @staticmethod
-    def approximate_count():
+    def approximate_count() -> int:
+        """
+        This function will return the approximate count of the patents in the database.
+        This is much faster than the default count function of Django ORM.
+        Counts need sequential scans of the table, which is very slow.
+
+        Returns:
+            int: The approximate count of the patents in the database.
+        """
+
         cursor = connection.cursor()
         cursor.execute("SELECT reltuples FROM pg_class WHERE relname = %s", [Patent._meta.db_table])
         return int(cursor.fetchone()[0])
 
     @staticmethod
-    def filter(data):
+    def filter(data: dict) -> models.QuerySet:
+        """
+        This function will filter the patents based on the given data from the main form.
+
+        Args:
+            data (dict): The data from the main form.
+
+        Returns:
+            models.QuerySet: The filtered patents.
+        """
+
         def exact_query(field, value):
             return Q(**{field: value}) if value else Q()
 
@@ -114,6 +128,7 @@ class Patent(models.Model):
 
         cpc_query = Q()    
         # Remove redundant keywords from the lower levels of the hierarchy for each level.
+        # For example if the user selected A01 we don't need to include A01B, A01C, etc.
         hierarchies = ["cpc_section", "cpc_class", "cpc_subclass", "cpc_group"]
         for level_index, level in enumerate(hierarchies): 
             for hierarchy_below in hierarchies[level_index+1:]:
@@ -146,7 +161,19 @@ class Patent(models.Model):
         return Patent.objects.filter(query)
 
     @staticmethod
-    def fetch_representation(patents):
+    def fetch_representation(patents: models.QuerySet) -> models.QuerySet:
+        """
+        This function will fetch the representation of the given patents.
+        Essentially it will fetch all the related data of the patents in one query.
+        Useful for exporting the data to excel or displaying summary data in the frontend.
+
+        Args:
+            patents (models.QuerySet): The patents to fetch the representation of.
+
+        Returns:
+            models.QuerySet: The patents with their representation.
+        """
+
         return patents.annotate(
             cpc_groups_groups=StringAgg("cpc_groups__cpc_group__group", delimiter=", ", distinct=True),
             pct_documents=StringAgg(Concat(

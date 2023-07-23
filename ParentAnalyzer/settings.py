@@ -136,6 +136,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Custom apps configuration
+RANDOM_SEED = 42
+
 # Leaflet
 LEAFLET_CONFIG = {
     'DEFAULT_CENTER': (44.638569, -63.586262),

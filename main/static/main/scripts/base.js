@@ -23,6 +23,7 @@ function debounce(func, timeout = 500){
     };
   }
 
+  
 document.querySelector("html").setAttribute("data-bs-theme", localStorage.getItem("theme") || "dark");
 addEventListener("DOMContentLoaded", () => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')

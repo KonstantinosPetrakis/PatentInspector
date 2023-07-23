@@ -1,16 +1,7 @@
-from django.utils.safestring import mark_safe
-
-from main.api_urls import build_url
-from django.conf import settings
+from django import forms
 
 from main.form_utils import *
 from main.models import *
-from django import forms
-
-
-def get_help_text(field):
-    with open(f"{settings.BASE_DIR}/main/help_texts/patent/{field}.html", "r") as f:
-        return mark_safe(f.read())
 
 
 class MainForm(forms.Form):
@@ -27,23 +18,23 @@ class MainForm(forms.Form):
     patent_sheets_count = RangeField(min=0, max=200, help_text="The number of sheets in the patent.")
     patent_withdrawn = TriStateField(help_text="Whether the patent has been withdrawn.")
     
-    cpc_section = ChoiceKeywordsField(url=build_url(CPCSection), help_text="The section of the CPC classification. E.g 'A - HUMAN NECESSITIES'")
-    cpc_class = ChoiceKeywordsField(url=build_url(CPCClass), help_text="The class of the CPC classification. E.g 'A01 - AGRICULTURE; FORESTRY; ANIMAL HUSBANDRY; HUNTING; TRAPPING; FISHING'")
-    cpc_subclass = ChoiceKeywordsField(min_query_length=1, url=build_url(CPCSubclass), help_text="The subclass of the CPC classification. E.g 'A01B - SOIL WORKING IN AGRICULTURE OR FORESTRY; PARTS, DETAILS, OR ACCESSORIES OF AGRICULTURAL MACHINES OR IMPLEMENTS, IN GENERAL'")
-    cpc_group = ChoiceKeywordsField(min_query_length=3, url=build_url(CPCGroup), help_text="The group of the CPC classification. E.g 'A01B1/00	Hand tools'")
+    cpc_section = ChoiceKeywordsField(model="CPCSection", help_text="The section of the CPC classification. E.g 'A - HUMAN NECESSITIES'")
+    cpc_class = ChoiceKeywordsField(model="CPCClass", help_text="The class of the CPC classification. E.g 'A01 - AGRICULTURE; FORESTRY; ANIMAL HUSBANDRY; HUNTING; TRAPPING; FISHING'")
+    cpc_subclass = ChoiceKeywordsField(model="CPCSubclass", help_text="The subclass of the CPC classification. E.g 'A01B - SOIL WORKING IN AGRICULTURE OR FORESTRY; PARTS, DETAILS, OR ACCESSORIES OF AGRICULTURAL MACHINES OR IMPLEMENTS, IN GENERAL'")
+    cpc_group = ChoiceKeywordsField(model="CPCGroup", help_text="The group of the CPC classification. E.g 'A01B1/00	Hand tools'")
     
     pct_application_date = RangeDateField(help_text="The date when the PCT application was filed. To retrieve all patents that have a PCT application you can add 2 dates that are really far apart effectively encompassing all PCT applications.")
     pct_granted = TriStateField(help_text="Whether the patent has been granted protection under the PCT.")
     
     inventor_location = RadiusField(help_text="The location of the inventor. If there are multiple inventors, at least one of them must be in this location.")
-    inventor_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "first_name"), help_text="The first name of the inventor. If there are multiple inventors, at least one of them will have this first name.")
-    inventor_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Inventor, "last_name"), help_text="The last name of the inventor. If there are multiple inventors, at least one of them must have this last name.")
+    inventor_first_name = ChoiceKeywordsField(model="Inventor", wanted_fields=["first_name"], help_text="The first name of the inventor. If there are multiple inventors, at least one of them will have this first name.")
+    inventor_last_name = ChoiceKeywordsField(model="Inventor", wanted_fields=["last_name"], help_text="The last name of the inventor. If there are multiple inventors, at least one of them must have this last name.")
     inventor_male = TriStateField(help_text="Whether the inventor is male or not. Currently there are no inventor records with gender declared.")
     
     assignee_location = RadiusField(help_text="The location of the assignee. If there are multiple assignees, at least one of them must be in this location.")
-    assignee_first_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "first_name"), help_text="The first name name of the assignee if it is an individual. If there are multiple assignees, at least one of them will have this first name.")
-    assignee_last_name = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "last_name"), help_text="The last name of the assignee if it is an individual. If there are multiple assignees, at least one of them must have this last name.")
-    assignee_organization = ChoiceKeywordsField(min_query_length=2, url=build_url(Assignee, "organization"), help_text="The name of the organization if the assignee is an organization. If there are multiple assignees, at least one of them must have this name.")
+    assignee_first_name = ChoiceKeywordsField(model="Assignee", wanted_fields=["first_name"], help_text="The first name name of the assignee if it is an individual. If there are multiple assignees, at least one of them will have this first name.")
+    assignee_last_name = ChoiceKeywordsField(model="Assignee", wanted_fields=["last_name"], help_text="The last name of the assignee if it is an individual. If there are multiple assignees, at least one of them must have this last name.")
+    assignee_organization = ChoiceKeywordsField(model="Assignee", wanted_fields=["organization"], help_text="The name of the organization if the assignee is an organization. If there are multiple assignees, at least one of them must have this name.")
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

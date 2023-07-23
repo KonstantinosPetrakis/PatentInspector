@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
+
 from django.db.models.aggregates import Avg, StdDev, Min, Max
 from django.db.models import Aggregate, TextField, Func, F, Q, fields
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.decomposition import NMF
 import tomotopy as tp
 from numpy import argmax
+
 from main.models import *
 
 

@@ -1,8 +1,10 @@
+import json
+
 from django.shortcuts import render
+from django.core.serializers.json import DjangoJSONEncoder
+
 from main.forms import *
 from main.models import *
-from django.core.serializers.json import DjangoJSONEncoder
-import json
 
 
 def index(request):
