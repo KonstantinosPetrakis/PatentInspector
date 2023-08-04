@@ -20,7 +20,3 @@ python manage.py runserver
 
 In the upcoming versions there will be a database dump in the cloud and a docker image for easier installation. So running commands like `python manage.py uspto` will not be necessary.
 This is going to be especially useful when multiple offices are supported and the number of scripts that need to be run will increase.
-
-Optimization ideas:
-* Remove as many conditions as possible from fetch_representation of patents
-* Maybe use table joins instead of substring in cpc in entity info
