@@ -9,7 +9,10 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         command = input("What do you want to do? (create/drop): ")
         if command == "create":
-            copy("./main/management/commands/files/index_migration.py", "./main/migrations/")
+            copy(
+                "./main/management/commands/files/index_migration.py",
+                "./main/migrations/",
+            )
             os.system("python manage.py migrate main")
         elif command == "drop":
             os.system("python manage.py migrate main 0001_initial")

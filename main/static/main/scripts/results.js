@@ -34,7 +34,7 @@ function removeProcessingMessage(selector) {
 
 /**
  * This function creates a 2D plot with the given datasets and title.
- * @param {Object} datasets an object with keys the names of the lines, and values the data of the lines
+ * @param {Object} datasets an object with keys the names of the lines, and values the data of the lines (e.g line1: {x1: y1, x2: y2, ...}, line2: {x1: y1, x2: y2, ...}, ...})
  * @param {String} title the title of the plot 
  */
 function create2DPlot(datasets, title) {
@@ -506,11 +506,11 @@ async function fetchTimeSeries() {
     const data = await response.json();
     removeProcessingMessage("#time-series");
 
-    create2DPlot({"": data.applications_per_year}, "Applications per year");
-    create2DPlot({"": data.granted_patents_per_year}, "Granted patents per year");
-    create2DPlot({"": data.pct_protected_patents_per_year}, "PCT protected patents per year");
-    create2DPlot({"": data.citations_made_per_year}, "Citations made per year");
-    create2DPlot({"": data.citations_received_per_year}, "Citations received per year");
+    create2DPlot(data.applications_per_year, "Applications per year");
+    create2DPlot(data.granted_patents_per_year, "Granted patents per year");
+    create2DPlot(data.pct_protected_patents_per_year, "PCT protected patents per year");
+    create2DPlot(data.citations_made_per_year, "Citations made per year");
+    create2DPlot(data.citations_received_per_year, "Citations received per year");
     create2DPlot(data.granted_patents_per_type_year, "Granted patents of different types per year");
     create2DPlot(data.granted_patents_per_office_year, "Granted patents of different offices per year");
     create2DPlot(data.granted_patents_per_cpc_year, "Granted patents of different CPC sections per year");

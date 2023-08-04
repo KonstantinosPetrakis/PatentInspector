@@ -98,8 +98,8 @@ class PatentAdmin(FastCountAdmin):
 
 class PatentCitationAdmin(FastCountAdmin):
     model = PatentCitation
-    list_display = ("id", "record_name", "citation_date", "cited_patent_number")
-    search_fields = ("cited_patent_number", "record_name")
+    list_display = ("id", "citation_date", "cited_patent_number")
+    search_fields = ("cited_patent_number", )
     autocomplete_fields = ("citing_patent", "cited_patent")
 
 
