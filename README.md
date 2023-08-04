@@ -14,7 +14,6 @@ cp .env.example .env # fill in the .env file (you must create a postgres db and 
 psql -c "CREATE DATABASE patentanalyzer;"
 python manage.py resetdb
 python manage.py uspto
-python manage.py precompute
 python manage.py index
 python manage.py runserver
 ```
