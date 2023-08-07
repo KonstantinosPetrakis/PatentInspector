@@ -608,7 +608,7 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
 
         tfidf_vectorizer = TfidfVectorizer(max_df=3, max_features=1000000)
         tfidf = tfidf_vectorizer.fit_transform(text_columns)
-        nmf = NMF(n_components=n_topics, init="nndsvd").fit(tfidf)
+        nmf = NMF(n_components=n_topics, init="nndsvd", max_iter=2000).fit(tfidf)
 
         # Group patents by topic
         topics = tfidf_vectorizer.get_feature_names_out()
@@ -642,7 +642,7 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
             corpus.add_doc(patent.doc)
 
         model.add_corpus(corpus)
-        model.train()  # workers = 1 so that the results are reproducible
+        model.train(iter=1000)  # workers = 1 so that the results are reproducible
 
         patents_per_topic = [[] for _ in range(model.k)]
         results = format_topic_analysis_results_tomotopy(model, n_top_words)

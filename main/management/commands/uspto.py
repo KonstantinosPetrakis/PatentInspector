@@ -25,12 +25,11 @@ Moreover, one can download the tables manually from the following URL:
 https://patentsview.org/download/data-download-tables
 """
 
-
-from collections import Counter
 import zipfile
 import os
 
 from django.core.management.base import BaseCommand
+from django.db.models import Subquery, OuterRef, Count, IntegerField
 from django.contrib.gis.geos import Point
 from django.conf import settings
 import requests as r
@@ -42,7 +41,7 @@ from main.management.commands.helpers import *
 
 
 # Constant definitions and initial setup
-CHUNK_SIZE = 10000  # Lower it if you have memory issues
+CHUNK_SIZE = 1000000  # Lower it if you have memory issues
 DATA_DIRECTORY = f"{settings.BASE_DIR}/main/data"
 ENDPOINT = "https://s3.amazonaws.com/data.patentsview.org/download/"
 os.makedirs(DATA_DIRECTORY, exist_ok=True)
@@ -52,11 +51,6 @@ location_id_map = {}  # Will be used to map USPTO ids,
 
 patent_id_map = {}  # Will be used to map USPTO ids to new generated IDs
 # so relationships can be created.
-
-citations_received = (
-    Counter()
-)  # Will be used to count citations received by each patent
-citations_made = Counter()  # Will be used to count citations made by each patent
 
 
 class Command(BaseCommand):
@@ -208,7 +202,8 @@ class Command(BaseCommand):
                 "num_claims": "Int64",
                 "withdrawn": bool,
             },
-            chunksize=CHUNK_SIZE
+            # Patents are big, so we will split them into small chunks
+            chunksize=CHUNK_SIZE / 50, 
         )
 
         application = pd.read_csv(
@@ -293,10 +288,10 @@ class Command(BaseCommand):
             ) / 31536000.0  # 365 * 24 * 60 * 60 seconds in a year
             patent_chunk["title_word_count_without_processing"] = (
                 patent_chunk["title"].str.split().str.len()
-            )
+            ).astype("Int64")
             patent_chunk["abstract_word_count_without_processing"] = (
                 patent_chunk["abstract_processed"].str.split().str.len()
-            )
+            ).astype("Int64")
             patent_chunk[
                 ["title_word_count_with_processing", "title_processed"]
             ] = multiprocessing_apply(patent_chunk["title"], lemma_text)
@@ -340,7 +335,6 @@ class Command(BaseCommand):
             chunksize=CHUNK_SIZE,
         )
 
-        cpc_group_counts = Counter()
         for i, patent_cpc_groups_chunk in enumerate(patent_cpc_groups):
             patent_cpc_groups_chunk = patent_cpc_groups_chunk.rename(
                 columns={"cpc_group": "cpc_group_id"}
@@ -359,23 +353,12 @@ class Command(BaseCommand):
                 patent_cpc_groups_chunk["cpc_group_id"].isin(valid_cpcs)
             ]
 
-            # Precalculate fields
-            cpc_group_counts += Counter(
-                patent_cpc_groups_chunk.groupby(["patent_id"]).size().to_dict()
-            )
-
             patent_cpc_groups_chunk.to_csv(
                 f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv",
                 index=False,
                 header=i == 0,
                 mode="a",
             )
-
-        patents = [
-            Patent(id=patent_id, cpc_groups_count=count)
-            for patent_id, count in cpc_group_counts.items()
-        ]
-        Patent.objects.bulk_update(patents, fields=["cpc_groups_count"], batch_size=100)
 
         # Load data
         PatentCPCGroup.objects.from_csv(
@@ -477,7 +460,6 @@ class Command(BaseCommand):
             chunksize=CHUNK_SIZE,
         )
 
-        inventor_counts = Counter()
         for i, inventors_chunk in enumerate(inventors_chunks):
             # Process chunk
             inventors_chunk = inventors_chunk.rename(
@@ -504,23 +486,12 @@ class Command(BaseCommand):
                 {"F": False, "M": True}
             )
 
-            # Precalculate fields
-            inventor_counts += Counter(
-                inventors_chunk.groupby(["patent_id"]).size().to_dict()
-            )
-
             inventors_chunk.to_csv(
                 f"{DATA_DIRECTORY}/g_inventor_disambiguated_preprocessed.csv",
                 index=False,
                 header=i == 0,
                 mode="a",
             )
-
-        patents = [
-            Patent(id=patent_id, inventor_count=count)
-            for patent_id, count in inventor_counts.items()
-        ]
-        Patent.objects.bulk_update(patents, fields=["inventor_count"], batch_size=100)
 
         # Load data
         Inventor.objects.from_csv(
@@ -554,7 +525,6 @@ class Command(BaseCommand):
             chunksize=CHUNK_SIZE,
         )
 
-        assignee_counter = Counter()
         for i, assignee_chunk in enumerate(assignee_chunks):
             # Process chunk
             assignee_chunk = assignee_chunk.rename(
@@ -579,9 +549,6 @@ class Command(BaseCommand):
             assignee_chunk["is_organization"] = assignee_chunk["organization"].apply(
                 lambda x: not pd.isnull(x)
             )
-            assignee_counter += Counter(
-                assignee_chunk.groupby("patent_id").size().to_dict()
-            )
 
             assignee_chunk.to_csv(
                 f"{DATA_DIRECTORY}/g_assignee_disambiguated_preprocessed.csv",
@@ -589,12 +556,6 @@ class Command(BaseCommand):
                 header=i == 0,
                 mode="a",
             )
-
-        patents = [
-            Patent(id=patent_id, assignee_count=count)
-            for patent_id, count in assignee_counter.items()
-        ]
-        Patent.objects.bulk_update(patents, fields=["assignee_count"], batch_size=100)
 
         # Load data
         Assignee.objects.from_csv(
@@ -643,12 +604,6 @@ class Command(BaseCommand):
             # Precalculate fields
             citations_chunk["citation_year"] = (
                 citations_chunk["citation_date"].str[:4].astype("Int64")
-            )
-            citations_made += Counter(
-                citations_chunk.groupby(["citing_patent_id"]).size().to_dict()
-            )
-            citations_received += Counter(
-                citations_chunk.groupby(["cited_patent_id"]).size().to_dict()
             )
 
             citations_chunk.to_csv(
@@ -708,9 +663,6 @@ class Command(BaseCommand):
             citation_chunk["citation_year"] = (
                 citation_chunk["citation_date"].str[:4].astype("Int64")
             )
-            citations_made += Counter(
-                citation_chunk.groupby(["citing_patent_id"]).size().to_dict()
-            )
 
             citation_chunk.to_csv(
                 f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv",
@@ -728,6 +680,46 @@ class Command(BaseCommand):
         os.remove(f"{DATA_DIRECTORY}/g_foreign_citation_preprocessed.csv")
         print("PatentCitation table (global) inserted successfully!")
 
+    def handle_counts(self):
+        Patent.objects.update(
+            cpc_groups_count=Subquery(
+                PatentCPCGroup.objects.filter(patent_id=OuterRef("id"))
+                .values("patent_id")
+                .annotate(count=Count("patent_id"))
+                .values("count"),
+                output_field=IntegerField(),
+            ),
+            assignee_count=Subquery(
+                Assignee.objects.filter(patent_id=OuterRef("id"))
+                .values("patent_id")
+                .annotate(count=Count("patent_id"))
+                .values("count"),
+                output_field=IntegerField(),
+            ),
+            inventor_count=Subquery(
+                Inventor.objects.filter(patent_id=OuterRef("id"))
+                .values("patent_id")
+                .annotate(count=Count("patent_id"))
+                .values("count"),
+                output_field=IntegerField(),
+            ),
+            incoming_citations_count=Subquery(
+                PatentCitation.objects.filter(cited_patent_id=OuterRef("id"))
+                .values("cited_patent_id")
+                .annotate(count=Count("cited_patent_id"))
+                .values("count"),
+                output_field=IntegerField(),
+            ),
+            outgoing_citations_count=Subquery(
+                PatentCitation.objects.filter(citing_patent_id=OuterRef("id"))
+                .values("citing_patent_id")
+                .annotate(count=Count("citing_patent_id"))
+                .values("count"),
+                output_field=IntegerField(),
+            ),
+        )
+        print("Patent counts updated successfully!")
+
     def handle(self, *args, **options):
         self.handle_location()
         self.handle_cpc()
@@ -738,19 +730,4 @@ class Command(BaseCommand):
         self.handle_assignee()
         self.handle_us_patent_citation()
         self.handle_foreign_citation()
-
-        # Update citation counts
-        patents = []
-        for patent_id in set(citations_made.keys()) | set(citations_received.keys()):
-            patents.append(
-                Patent(
-                    id=patent_id,
-                    outgoing_citations_count=citations_made[patent_id],
-                    incoming_citations_count=citations_received[patent_id],
-                )
-            )
-        Patent.objects.bulk_update(
-            patents,
-            fields=["outgoing_citations_count", "incoming_citations_count"],
-            batch_size=100,
-        )
+        self.handle_counts()

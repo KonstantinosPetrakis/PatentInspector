@@ -18,7 +18,7 @@ class Migration(Migration):
             reverse_code=lambda *_: print("CPCGroup indexes dropped."),
         ),
         RunSQL(
-            "CREATE INDEX main_patent_title_abstract_idx ON main_patent USING GIN (title gin_trgm_ops, abstract gin_trgm_ops);",
+            "CREATE INDEX main_patent_title_abstract_idx ON main_patent USING GIN (title_processed gin_trgm_ops, abstract_processed gin_trgm_ops);",
             reverse_sql="DROP INDEX main_patent_title_abstract_idx;",
         ),
         AddIndex(
@@ -76,7 +76,7 @@ class Migration(Migration):
             reverse_sql="DROP INDEX main_assignee_last_name_idx;",
         ),
         RunSQL(
-            "CREATE INDEX f ON main_assignee_organization_idx USING GIN (organization gin_trgm_ops);",
+            "CREATE INDEX main_assignee_organization_idx ON main_assignee USING GIN (organization gin_trgm_ops);",
             reverse_sql="DROP INDEX main_assignee_organization_idx;",
         ),
         RunPython(

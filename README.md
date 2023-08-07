@@ -20,3 +20,16 @@ python manage.py runserver
 
 In the upcoming versions there will be a database dump in the cloud and a docker image for easier installation. So running commands like `python manage.py uspto` will not be necessary.
 This is going to be especially useful when multiple offices are supported and the number of scripts that need to be run will increase.
+
+
+# Must Todo
+* Add Trim texts on preprocessing
+* Fix multiple time-series graphs
+* Fix bad NMF results
+* Investigate whether is it ok to have only negative or positive CAGR
+* Run profiler for long tasks and optimize
+* Write back up and restore scripts
+
+# Aesthetic Todo
+* Add more information for the user in the UI
+z

@@ -79,11 +79,12 @@ class Patent(models.Model):
         ("utility", "Utility"),
         ("design", "Design"),
         ("plant", "Plant"),
-        ("reissue", "Reissue"),
+        ("reissue", "Plant"),
+        ("defensive publication", "Defensive Publication"),
     ]
 
     office_choices = [
-        ("USPTO", "USPTO"),
+        ("US", "US"),
     ]
 
     office = models.CharField(
@@ -183,10 +184,11 @@ class Patent(models.Model):
     objects = CopyManager()
 
     def __str__(self):
-        return self.representation
+        print(self.type)
+        return "patent"
 
-    def __repr__(self):
-        return self.representation
+    # def __repr__(self):
+    #     return self.representation
 
     @staticmethod
     def approximate_count() -> int:
@@ -245,8 +247,8 @@ class Patent(models.Model):
             patent_query &= Q(withdrawn=data["patent_withdrawn"])
 
         if data["patent_keywords"]:
-            patent_query &= Q(title__iregex=f"({keywords})") | Q(
-                abstract__iregex=f"({keywords})"
+            patent_query &= Q(title_processed__iregex=f"({keywords})") | Q(
+                abstract_processed__iregex=f"({keywords})"
             )
 
         cpc_query = Q()
