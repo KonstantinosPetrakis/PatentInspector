@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta, datetime
 from random import randint
 from typing import Type
@@ -8,18 +9,16 @@ import json
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, HttpRequest
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.fields import TextField
-from django.db.models.functions import Substr
 from django.core.serializers.json import DjangoJSONEncoder
-from django.db.models import Q, OuterRef, Exists
 from django.apps import apps
 from django.db.models.aggregates import Count
 from django.core.paginator import Paginator
-from django.conf import settings
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
 from tomotopy.utils import Corpus
 import tomotopy as tp
 from numpy import argmax
+import pandas as pd
 
 from main.helpers import *
 from main.models import *
@@ -246,7 +245,7 @@ def patents(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
 
     form_data = get_form_data(request)
     page = int(request.GET.get("page", 1))
-    paginator = Paginator(Patent.fetch_representation(patents), 50)
+    paginator = Paginator(Patent.fetch_minimal_representation(patents), 25)
 
     return JsonResponse(
         {
@@ -271,26 +270,33 @@ def patents(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     )
 
 
-def download_tsv(request: HttpRequest) -> HttpResponse | HttpResponseBadRequest:
+def download_excel(request: HttpRequest) -> HttpResponse | HttpResponseBadRequest:
     """
-    This view allows the user to download the patents he filtered as a tsv file.
+    This view allows the user to download the patents he filtered as an excel file.
 
     Args:
         request (HttpRequest): The request object passed by django.
 
     Returns:
-        HttpResponse: The tsv file or an error response.
+        HttpResponse: The excel file or an error response.
     """
 
     if (patents := get_patents(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    file_name = f"main/temp/{randint(0, 100) * time()}_patents.tsv"
-    Patent.fetch_representation(patents).to_csv(file_name, delimiter="\t")
-    response = HttpResponse(content_type="text/tab-separated-values")
-    response["Content-Disposition"] = f"attachment; filename={file_name}"
-    response.write(open(file_name, "rb").read())
-    remove(file_name)
+    base_file_name = f"main/temp/{randint(0, 100) * time()}_patents"
+    tsv_file_name = f"{base_file_name}.tsv"
+    excel_file_name = f"{base_file_name}.xlsx"
+
+    Patent.fetch_representation(patents).to_csv(tsv_file_name, delimiter="\t")
+    pd.read_csv(tsv_file_name, delimiter="\t").to_excel(excel_file_name, index=False)
+
+    response = HttpResponse(content_type="application/vnd.ms-excel")
+    response["Content-Disposition"] = f"attachment; filename={excel_file_name}"
+    response.write(open(excel_file_name, "rb").read())
+
+    remove(tsv_file_name)
+    remove(excel_file_name)
     return response
 
 
@@ -342,88 +348,63 @@ def time_series(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
         JsonResponse | HttpResponseBadRequest: An object containing the time series or an error response.
     """
 
-    # Check this StackOverflow thread to see how group by works in Django:
-    # https://stackoverflow.com/a/629691/11718554
-
     if (patents := get_patents(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    applications_per_year = (
-        patents.values("application_year")
-        .annotate(count=Count("id"))
-        .order_by("application_year")
-        .values("application_year", "count")
-    )
-    granted_patents_per_year = (
-        patents.values("granted_year")
-        .annotate(count=Count("id"))
-        .order_by("granted_year")
-        .values("granted_year", "count")
-    )
-    granted_patents_per_type_year = (
-        patents.values("granted_year", "type")
-        .annotate(count=Count("id"))
-        .order_by("granted_year", "type")
-        .values("granted_year", "type", "count")
-    )
-    granted_patents_per_office_year = (
-        patents.values("granted_year", "office")
-        .annotate(count=Count("id"))
-        .order_by("granted_year", "office")
-        .values("granted_year", "office", "count")
-    )
-    pct_protected_patents_per_year = (
-        patents.filter(pct_data__granted=True)
-        .values("granted_year")
-        .annotate(count=Count("id"))
-        .order_by("granted_year")
-        .values("granted_year", "count")
-    )
-    granted_patents_per_cpc_year = (
-        patents.annotate(cpc_section=Substr("cpc_groups__cpc_group", 1, 1))
-        .values("granted_year", "cpc_section")
-        .annotate(count=Count("id"))
-        .order_by("granted_year", "cpc_section")
-        .values("granted_year", "cpc_section", "count")
-    )
-    citations_made_per_year = (
-        patents.values("citations__citation_year")
-        .annotate(count=Count("id"))
-        .order_by("citations__citation_year")
-        .values("citations__citation_year", "count")
-    )
-    citations_received_per_year = (
-        patents.values("cited_by__citation_year")
-        .annotate(count=Count("id"))
-        .order_by("cited_by__citation_year")
-        .values("cited_by__citation_year", "count")
-    )
+    patent_ids = get_patent_ids(request)
+
+    def thread_worker(i):
+        method_name = [
+            "applications_per_year",
+            "granted_patents_per_year",
+            "granted_patents_per_type_year",
+            "granted_patents_per_office_year",
+            "pct_protected_patents_per_year",
+            "granted_patents_per_cpc_year",
+            "citations_made_per_year",
+            "citations_received_per_year",
+        ][i]
+
+        method = getattr(Patent, method_name)
+        return method(patents) if i < 6 else method(patent_ids)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        (
+            applications_per_year,
+            granted_patents_per_year,
+            granted_patents_per_type_year,
+            granted_patents_per_office_year,
+            pct_protected_patents_per_year,
+            granted_patents_per_cpc_year,
+            citations_made_per_year,
+            citations_received_per_year,
+        ) = executor.map(thread_worker, range(8))
 
     return JsonResponse(
         {
             "applications_per_year": {
-                "": group_fields(applications_per_year, "application_year")
+                "": group_fields(applications_per_year, ["application_year"])
             },
             "granted_patents_per_year": {
-                "": group_fields(granted_patents_per_year, "granted_year")
+                "": group_fields(granted_patents_per_year, ["granted_year"])
             },
             "granted_patents_per_type_year": group_fields(
-                granted_patents_per_type_year, "type", "granted_year"
+                granted_patents_per_type_year, ["type", "granted_year"]
             ),
             "granted_patents_per_office_year": group_fields(
-                granted_patents_per_office_year, "office", "granted_year"
+                granted_patents_per_office_year, ["office", "granted_year"]
             ),
             "pct_protected_patents_per_year": {
-                "": group_fields(pct_protected_patents_per_year, "granted_year")
+                "": group_fields(pct_protected_patents_per_year, ["granted_year"])
             },
             "granted_patents_per_cpc_year": group_fields(
-                granted_patents_per_cpc_year, "cpc_section", "granted_year"
+                granted_patents_per_cpc_year, ["cpc_section", "granted_year"]
             ),
             "citations_made_per_year": {
-                "": group_fields(citations_made_per_year, "citations__citation_year")
+                "": group_fields(citations_made_per_year, ["citation_year"])
             },
             "citations_received_per_year": {
-                "": group_fields(citations_received_per_year, "cited_by__citation_year")
+                "": group_fields(citations_received_per_year, ["citation_year"])
             },
         }
     )
@@ -437,114 +418,86 @@ def entity_info(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     if (patents := get_patents(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
+    def thread_worker(i):
+        method_name = [
+            "pct_not_applied",
+            "pct_not_granted",
+            "pct_granted",
+            "types",
+            "offices",
+            "top_10_inventors",
+            "inventor_locations",
+            "top_10_assignees",
+            "corporation_assignees_count",
+            "individual_assignees_count",
+            "assignee_locations",
+            "cpc_sections",
+            "top_5_cpc_classes",
+            "top_5_cpc_subclasses",
+            "top_5_cpc_groups",
+        ][i]
+
+        method = getattr(Patent, method_name)
+        return method(patents)
+
+    with ThreadPoolExecutor(max_workers=15) as executor:
+        (
+            pct_not_applied,
+            pct_not_granted,
+            pct_granted,
+            types,
+            offices,
+            top_10_inventors,
+            inventor_locations,
+            top_10_assignees,
+            corporation_assignees_count,
+            individual_assignees_count,
+            assignee_locations,
+            cpc_sections,
+            top_5_cpc_classes,
+            top_5_cpc_subclasses,
+            top_5_cpc_groups,
+        ) = executor.map(thread_worker, range(15))
+
     return JsonResponse(
         {
             "patent": {
                 "pct": {
-                    "Did not apply": patents.filter(pct_data__isnull=True).count(),
-                    "Applied but not granted yet": patents.annotate(
-                        all_not_granted=~Exists(
-                            PCTData.objects.filter(
-                                Q(granted=True), patent_id=OuterRef("pk")
-                            )
-                        )
-                    )
-                    .filter(all_not_granted=True, pct_data__isnull=False)
-                    .count(),
-                    "Granted": patents.filter(pct_data__granted=True).count(),
+                    "Did not apply": pct_not_applied,
+                    "Applied but not granted yet": pct_not_granted,
+                    "Granted": pct_granted,
                 },
-                "type": group_fields(
-                    patents.values("type").annotate(count=Count("id")).order_by(),
-                    "type",
-                ),
-                "office": group_fields(
-                    patents.values("office").annotate(count=Count("id")).order_by(),
-                    "office",
-                ),
+                "type": group_fields(types, ["type"]),
+                "office": group_fields(offices, ["office"]),
             },
             "inventor": {
-                "top_10": group_fields(
-                    patents.annotate(
-                        inventor=Concat(
-                            "inventors__first_name", Value(" "), "inventors__last_name"
-                        )
-                    )
-                    .filter(~Q(inventor__iregex=r"^\s*$"))
-                    .values("inventor")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")[:10],
-                    "inventor",
-                ),
-                "locations": list(
-                    patents.annotate(**get_coordinates("inventors__location__point"))
-                    .filter(lat__isnull=False, lng__isnull=False)
-                    .values("lat", "lng")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")
-                    .values("lat", "lng", "count")
-                ),
+                "top_10": group_fields(top_10_inventors, ["inventor"]),
+                "locations": inventor_locations,
             },
             "assignee": {
-                "top_10": group_fields(
-                    patents.annotate(
-                        assignee=Concat(
-                            "assignees__first_name",
-                            Value(" "),
-                            "assignees__last_name",
-                            Value(" "),
-                            "assignees__organization",
-                        )
-                    )
-                    .filter(~Q(assignee__iregex=r"^\s*$"))
-                    .values("assignee")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")[:10],
-                    "assignee",
-                ),
+                "top_10": group_fields(top_10_assignees, ["assignee"]),
                 "corporation_vs_individual": {
-                    "Corporation": patents.filter(
-                        assignees__is_organization=True
-                    ).count(),
-                    "Individual": patents.filter(
-                        assignees__is_organization=False
-                    ).count(),
+                    "Corporation": corporation_assignees_count,
+                    "Individual": individual_assignees_count,
                 },
-                "locations": list(
-                    patents.annotate(**get_coordinates("assignees__location__point"))
-                    .filter(lat__isnull=False, lng__isnull=False)
-                    .values("lat", "lng")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")
-                    .values("lat", "lng", "count")
-                ),
+                "locations": assignee_locations,
             },
             "cpc": {
                 "section": group_fields(
-                    patents.annotate(cpc_section=Substr("cpc_groups__cpc_group", 1, 1))
-                    .values("cpc_section")
-                    .annotate(count=Count("id"))
-                    .order_by("-count"),
-                    "cpc_section",
+                    cpc_sections,
+                    ["cpc_section"],
                 ),
                 "top_5_classes": group_fields(
-                    patents.annotate(cpc_class=Substr("cpc_groups__cpc_group", 1, 3))
-                    .values("cpc_class")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")[:5],
-                    "cpc_class",
+                    top_5_cpc_classes,
+                    ["cpc_class"],
                 ),
                 "top_5_subclasses": group_fields(
-                    patents.annotate(cpc_subclass=Substr("cpc_groups__cpc_group", 1, 4))
-                    .values("cpc_subclass")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")[:5],
-                    "cpc_subclass",
+                    top_5_cpc_subclasses,
+                    ["cpc_subclass"],
                 ),
                 "top_5_groups": group_fields(
-                    patents.values("cpc_groups__cpc_group")
-                    .annotate(count=Count("id"))
-                    .order_by("-count")[:5],
-                    "cpc_groups__cpc_group",
+                    top_5_cpc_groups,
+                    ["cpc_groups__cpc_group"],
                 ),
             },
         }
@@ -578,7 +531,7 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
     if (patents := get_patents(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    model = request.GET.get("model", "MMF")
+    model = request.GET.get("model", "LDA")
     if model not in list(tp_model_map.keys()) + ["NMF"]:
         return HttpResponseBadRequest("Invalid model.")
 
@@ -606,7 +559,7 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
         )
         text_columns = patents.values_list("text", flat=True)
 
-        tfidf_vectorizer = TfidfVectorizer(max_df=3, max_features=1000000)
+        tfidf_vectorizer = TfidfVectorizer(max_features=1000000)
         tfidf = tfidf_vectorizer.fit_transform(text_columns)
         nmf = NMF(n_components=n_topics, init="nndsvd", max_iter=2000).fit(tfidf)
 
@@ -642,7 +595,7 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
             corpus.add_doc(patent.doc)
 
         model.add_corpus(corpus)
-        model.train(iter=1000)  # workers = 1 so that the results are reproducible
+        model.train(iter=500)
 
         patents_per_topic = [[] for _ in range(model.k)]
         results = format_topic_analysis_results_tomotopy(model, n_top_words)
@@ -693,63 +646,33 @@ def citation_data(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest
     if (patent_ids := get_patent_ids(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    local_network = PatentCitation.objects.filter(
-        citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids
+    def thread_worker(i):
+        if i == 0:
+            return PatentCitation.local_network_graph(local_network_ids)
+        elif i == 1:
+            return PatentCitation.most_cited_patents_local(local_network_ids)
+        else:
+            return PatentCitation.most_cited_patents_global(patent_ids)
+
+    local_network_ids = list(
+        PatentCitation.objects.filter(
+            citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids
+        ).values_list("id", flat=True)
     )
 
-    graph = local_network.annotate(
-        citing_patent_code=Concat(
-            "citing_patent__office", "citing_patent__office_patent_id"
-        ),
-        cited_patent_code=Concat(
-            "cited_patent__office", "cited_patent__office_patent_id"
-        ),
-    ).values(
-        "citing_patent_id",
-        "citing_patent_code",
-        "citing_patent__title",
-        "citing_patent__granted_date",
-        "cited_patent_id",
-        "cited_patent_code",
-        "cited_patent__title",
-        "cited_patent__granted_date",
-    )
-
-    patent_annotation = {
-        "patent": Concat(
-            F("cited_patent__office"),
-            F("cited_patent__office_patent_id"),
-            Value(" - "),
-            F("cited_patent__title"),
-            output_field=TextField(),
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        graph, most_cited_patents_local, most_cited_patents_global = executor.map(
+            thread_worker, range(3)
         )
-    }
-
-    most_cited_patents_global = (
-        PatentCitation.objects.filter(cited_patent_id__in=patent_ids)
-        .annotate(**patent_annotation)
-        .distinct("cited_patent__incoming_citations_count", "patent")
-        .order_by("-cited_patent__incoming_citations_count", "patent")[:10]
-        .values("patent", "cited_patent__incoming_citations_count")
-    )
-
-    most_cited_patents_local = (
-        local_network.values("cited_patent")
-        .annotate(**patent_annotation, count=Count("cited_patent_id"))
-        .order_by("-count")[:10]
-        .values("patent", "count")
-    )
 
     return JsonResponse(
         {
-            "graph": list(graph),
+            "graph": graph,
             "most_cited_patents_global": group_fields(
-                most_cited_patents_global, "patent"
+                most_cited_patents_global, ["patent"]
             ),
             "most_cited_patents_local": group_fields(
-                most_cited_patents_local, "patent"
+                most_cited_patents_local, ["patent"]
             ),
-        },
-        safe=False,
-        encoder=DjangoJSONEncoder,
+        }
     )

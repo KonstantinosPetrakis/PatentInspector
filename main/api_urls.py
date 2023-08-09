@@ -9,7 +9,7 @@ urlpatterns = [
     path("records-field-from-query", views.records_field_from_query, 
         name="records-field-from-query"),
     path("patents", views.patents, name="patents"),
-    path("download-tsv", views.download_tsv, name="download-tsv"),
+    path("download-excel", views.download_excel, name="download-excel"),
     path("statistics", views.statistics, name="statistics"),
     path("time-series", views.time_series, name="time-series"),
     path("entity-info", views.entity_info, name="entity-info"),

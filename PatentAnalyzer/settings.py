@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'admin_reorder',
     'leaflet',
-    #'debug_toolbar',
+    # 'debug_toolbar',
     'macros'
 ]
 
@@ -56,7 +56,7 @@ MIDDLEWARE = [
     # "debug_toolbar.middleware.DebugToolbarMiddleware",
 ]
 
-ROOT_URLCONF = 'ParentAnalyzer.urls'
+ROOT_URLCONF = 'PatentAnalyzer.urls'
 
 TEMPLATES = [
     {
@@ -74,7 +74,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'ParentAnalyzer.wsgi.application'
+WSGI_APPLICATION = 'PatentAnalyzer.wsgi.application'
 
 
 # Database
@@ -164,3 +164,7 @@ ADMIN_REORDER = (
         {'model': 'main.CPCGroup',       'label': 'Groups'},
     )}
 )
+
+# DEBUG_TOOLBAR_CONFIG = {
+#     "PROFILER_THRESHOLD_RATIO": 500
+# }

@@ -10,7 +10,7 @@ const colors = [
  * @param {String} selector the selector of the container that will contain the message.
  * @param {Boolean} table whether the container is a table or not. 
  */
-function addProcessingMessage(selector, table=false) {
+function addProcessingMessage(selector, table = false) {
     const container = document.querySelector(selector);
     const message = `
         <p> Processing in progress... Please wait. </p>
@@ -115,7 +115,7 @@ function createPie(dataset, title, wrapperId) {
             responsive: true,
             maintainAspectRatio: false,
             animation: false
-        }   
+        }
     });
 }
 
@@ -126,10 +126,10 @@ function createPie(dataset, title, wrapperId) {
  * @param {String} title the title of the plot 
  * @param {String} wrapperID the id of the element that will contain the plot 
  */
-function createHeatmap(points, title, wrapperID) {    
+function createHeatmap(points, title, wrapperID) {
     var mapWithLegendElement = document.createElement("div");
     mapWithLegendElement.textContent = title;
-    mapWithLegendElement.classList.add("col-12", "d-flex", "flex-column", "align-items-center"); 
+    mapWithLegendElement.classList.add("col-12", "d-flex", "flex-column", "align-items-center");
     var mapElement = document.createElement("div");
     mapElement.classList.add("map", "global-map");
     mapElement.id = `map-${(Math.round(Math.random() * 100))}`;
@@ -153,7 +153,7 @@ function createHeatmap(points, title, wrapperID) {
     });
 
     heatmapLayer.addTo(map);
-    heatmapLayer.setData({max: Math.max(...points.map((point) => point.count)), data: points});
+    heatmapLayer.setData({ max: Math.max(...points.map((point) => point.count)), data: points });
 }
 
 
@@ -193,7 +193,7 @@ function createBarPlotForTopic(topic, title, wrapperId) {
             responsive: true,
             maintainAspectRatio: false,
             animation: false
-        }   
+        }
     });
 }
 
@@ -206,8 +206,8 @@ function createTopicAnalysisPlot(data) {
     const coherenceText = document.createElement("div");
     coherenceText.textContent = `Topic Coherence: ${data.coherence}`;
     document.querySelector("#topic-analysis").appendChild(coherenceText);
-    for (let i=0; i<data.topics.length; i++) 
-        createBarPlotForTopic(data.topics[i], `Topic ${i+1}`, "topic-analysis");
+    for (let i = 0; i < data.topics.length; i++)
+        createBarPlotForTopic(data.topics[i], `Topic ${i + 1}`, "topic-analysis");
 }
 
 /**
@@ -221,10 +221,10 @@ function createTopicAnalysisScatter(data) {
     wrapper.appendChild(canvas);
     document.querySelector("#topic-analysis").appendChild(wrapper);
 
-    const scatterData = data.topics.map(topic => ({x: topic.ratio, y: topic.cagr}));
+    const scatterData = data.topics.map(topic => ({ x: topic.ratio, y: topic.cagr }));
     const labels = [];
-    for (let i=0; i<data.topics.length; i++) 
-        labels.push(`Topic ${i+1}: ${data.topics[i].words.join()}`);
+    for (let i = 0; i < data.topics.length; i++)
+        labels.push(`Topic ${i + 1}: ${data.topics[i].words.join()}`);
 
     let averageRatio = scatterData.reduce((acc, curr) => acc + curr.x, 0) / scatterData.length;
 
@@ -339,19 +339,19 @@ function createGraph(data, wrapperSelector) {
         const darkMode = document.querySelector("html").getAttribute("data-bs-theme") == "dark";
         const nodes = {};
         const links = [];
-    
+
         data.forEach(item => {
-            const citingNode = {id: item.citing_patent_id, code: item.citing_patent_code, title: item.citing_patent__title, granted_date: item.citing_patent__granted_date};
-            const citedNode = {id: item.cited_patent_id, code: item.cited_patent_code, title: item.cited_patent__title, granted_date: item.cited_patent__granted_date};
-    
+            const citingNode = { id: item.citing_patent_id, code: item.citing_patent_code, title: item.citing_patent__title, granted_date: item.citing_patent__granted_date };
+            const citedNode = { id: item.cited_patent_id, code: item.cited_patent_code, title: item.cited_patent__title, granted_date: item.cited_patent__granted_date };
+
             nodes[citingNode.id] = citingNode;
             nodes[citedNode.id] = citedNode;
-    
-            links.push({source: citingNode.id, target: citedNode.id});
+
+            links.push({ source: citingNode.id, target: citedNode.id });
         });
-    
-        const graph = ForceGraph3D({controlType: 'orbit'})(wrapper)
-            .graphData({nodes: Object.values(nodes), links})
+
+        const graph = ForceGraph3D({ controlType: 'orbit' })(wrapper)
+            .graphData({ nodes: Object.values(nodes), links })
             .nodeLabel(node => `<span style="color: ${darkMode ? "#fff" : "#000"}">${node.code} - ${node.title} - ${node.granted_date}</span>`)
             .linkDirectionalArrowLength(3.5)
             .linkDirectionalArrowRelPos(1)
@@ -366,7 +366,7 @@ function createGraph(data, wrapperSelector) {
             .cooldownTicks(0)
             .enableNodeDrag(false);
     }
-    
+
     const wrapper = document.querySelector(wrapperSelector);
     if (data.length < 5000) _createGraph(data, wrapper);
     else {
@@ -375,7 +375,7 @@ function createGraph(data, wrapperSelector) {
         The citation graph consist of ${data.length} citations and it would need a lot of processing power
         to be drawn. This could lead to an unresponsive page, some PCs might handle it. If you want to try
         you can click on the button below. Although a graph of this size is not so easy to read/understand.`;
-        
+
         const graphButton = document.createElement("button");
         graphButton.className = "btn btn-outline-secondary";
         graphButton.textContent = "Draw graph";
@@ -387,7 +387,7 @@ function createGraph(data, wrapperSelector) {
         wrapper.appendChild(graphMessage);
         wrapper.appendChild(graphButton);
     }
-}   
+}
 
 /**
  * This function populates the table with the given data.
@@ -396,6 +396,7 @@ function createGraph(data, wrapperSelector) {
 function populatePatentTable(data) {
     const tbody = document.querySelector("#patent-table tbody");
     let html = "";
+    let replaceNullWithZero = (val) => val == null ? 0 : val;
     for (const patent of data.patents) {
         html += `
             <tr>
@@ -405,16 +406,16 @@ function populatePatentTable(data) {
                 <td> <div> ${patent.application_filed_date} </div> </td>
                 <td> <div> ${patent.granted_date} </div> </td>
                 <td> <div> ${patent.title} </div> </td>
-                <td> <div> ${patent.abstract != null ? patent.abstract : "No abstract"} </div> </td>
-                <td> <div> ${patent.claims_count} </div> </td>
-                <td> <div> ${patent.figures_count} </div> </td>
+                <td> <div> ${patent.abstract_processed != null ? patent.abstract_processed : "No abstract"} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.claims_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.figures_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.sheets_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.cpc_groups_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.inventor_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.assignee_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.incoming_citations_count)} </div> </td>
+                <td> <div> ${replaceNullWithZero(patent.outgoing_citations_count)} </div> </td>
                 <td> <div> ${patent.withdrawn} </div> </td>
-                <td> <div> ${patent.cpc_groups_groups} </div> </td>
-                <td> <div> ${patent.pct_documents} </div> </td>
-                <td> <div> ${patent.inventor_names} </div> </td>
-                <td> <div class="point-map" data-circle="${data.inventor_circle}" data-points="${patent.inventor_points}"> </div> </td>
-                <td> <div> ${patent.assignee_names} </div> </td>
-                <td> <div class="point-map" data-circle="${data.assignee_circle}" data-points="${patent.assignee_points}"> </div> </td>
             </tr>
         `;
     }
@@ -505,7 +506,6 @@ async function fetchTimeSeries() {
     const response = await fetch("/api/time-series");
     const data = await response.json();
     removeProcessingMessage("#time-series");
-
     create2DPlot(data.applications_per_year, "Applications per year");
     create2DPlot(data.granted_patents_per_year, "Granted patents per year");
     create2DPlot(data.pct_protected_patents_per_year, "PCT protected patents per year");
@@ -556,7 +556,7 @@ async function getTopicModeling() {
     let model = document.querySelector(`select[name="topic-analysis-method"]`).value;
     let start_date = document.querySelector(`input[name="topic-analysis-start-date"]`)?.value;
     let end_date = document.querySelector(`input[name="topic-analysis-end-date"]`)?.value;
-    let arguments = {model: model};
+    let arguments = { model: model };
     if (start_date) arguments.start_date = start_date;
     if (end_date) arguments.end_date = end_date;
 

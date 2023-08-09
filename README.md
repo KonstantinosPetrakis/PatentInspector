@@ -23,13 +23,9 @@ This is going to be especially useful when multiple offices are supported and th
 
 
 # Must Todo
-* Add Trim texts on preprocessing
-* Fix multiple time-series graphs
-* Fix bad NMF results
-* Investigate whether is it ok to have only negative or positive CAGR
-* Run profiler for long tasks and optimize
 * Write back up and restore scripts
+* Allow deployment through docker
 
 # Aesthetic Todo
 * Add more information for the user in the UI
-z
+* Add CPC titles in the UI

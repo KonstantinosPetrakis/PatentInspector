@@ -87,8 +87,8 @@
                         You can choose the topic analysis method of your liking:
                     </div>
                     <select class="d-block ms-2 me-2 form-select form-select-sm w-25" name="topic-analysis-method" id="topic-analysis-method">
-                        <option value="NMF"> NMF (Non-negative matrix factorization) </option>
                         <option value="LDA"> LDA (Latent Dirichlet Allocation)</option>
+                        <option value="NMF"> NMF (Non-negative matrix factorization) </option>
                         <option value="LLDA"> LLDA (Labeled LDA) </option>
                         <option value="SLDA"> SLDA (Supervised LDA) </option>
                         <option value="DMR"> DMR (Dirichlet Multinomial Regression) </option>
@@ -123,10 +123,14 @@
             </div>
         </div>
     </div>    
-    <a href="/api/download-tsv" download="patents.tsv" class="btn btn-outline-secondary mb-2 mt-5"> 
-        Export to TSV
-    </a>
-
+    <div class="d-flex align-items-center  my-3">
+        <a href="/api/download-excel" download="patents.xls" class="btn btn-outline-secondary"> 
+            Export to Excel
+        </a>
+        <div class="ms-2">
+            ( More information is available in the downloadable excel )
+        </div>
+    </div>
     <div class="table-responsive">
         <table id="patent-table" class="table table-sm">
             <thead>
@@ -137,16 +141,16 @@
                     <th> Application Filled Date </th>
                     <th> Granted Date </th>
                     <th> Title </th>
-                    <th> Abstract </th>
-                    <th> Claims count </th>
-                    <th> Figures count </th>
+                    <th> Abstract Processed </th>
+                    <th> Claims Count </th>
+                    <th> Figures Count </th>
+                    <th> Sheets Count </th>
+                    <th> CPC Groups Count </th>
+                    <th> Inventor Count </th>
+                    <th> Assignee Count </th>
+                    <th> Incoming Citation Count </th>
+                    <th> Outgoing Citation Count </th>
                     <th> Withdrawn </th>
-                    <th> CPC Groups </th>
-                    <th> PCT Documents </th>
-                    <th> Inventor names </th>
-                    <th> Inventor locations </th>
-                    <th> Assignee names </th>
-                    <th> Assignee locations </th>
                 </tr>
             </thead>
             <tbody> </tbody>

@@ -1,11 +1,11 @@
 from typing import Iterable, Any
-from itertools import groupby
+from collections import defaultdict
+from functools import reduce
+import operator
 
 from django.db.models.aggregates import Avg, StdDev, Min, Max
 from django.db.models import Aggregate, Func, fields
 import tomotopy as tp
-
-from main.models import *
 
 
 class Median(Aggregate):
@@ -81,44 +81,92 @@ def get_coordinates(field):
     }
 
 
-counter = 0
-
-
-def group_fields(
-    results: Iterable[dict], field1: str, field2: str = ""
-) -> dict[dict | Any]:
+def group_fields(results: Iterable[dict], fields: list) -> dict:
     """
-    This function groups the results of a query by two fields.
+    This function groups the results of a query by the specified fields.
 
     Args:
         results (Iterable[dict]): The results of a query.
-        field1 (str): The first field to group by.
-        field2 (str, optional): The second field to group by. Defaults to "".
+        fields (list): The fields to group by.
 
     Returns:
-        dict[dict | Any]: A dict with the results grouped by the field(s).
+        dict: The results grouped by the specified fields.
     """
 
-    def pop_and_return_dict(d: dict, key: Any) -> dict | Any:
-        d.pop(key)
-        return d.popitem()[1] if len(d) == 1 else d
+    # https://stackoverflow.com/a/59039243/11718554
+    def ddict() -> defaultdict:
+        """
+        This function creates a defaultdict of defaultdicts.
+        It allows 'infinite' nesting of defaultdicts.
 
-    # Simple case where there is only one field
-    if not field2:
-        return {
-            key: pop_and_return_dict(next(results), field1)
-            for key, results in groupby(results, lambda x: x[field1])
-            if key is not None
-        }
+        Returns:
+            defaultdict: A defaultdict of defaultdicts.
+        """
 
-    # Case where there are two fields
-    return {
-        key: group_fields(
-            [pop_and_return_dict(result, field1) for result in results], field2
+        return defaultdict(ddict)
+
+    # https://stackoverflow.com/a/26496899
+    def ddict_to_dict(d: defaultdict) -> dict:
+        """
+        This function converts a defaultdict of defaultdicts to a dict.
+
+        Args:
+            d (defaultdict): The defaultdict to convert.
+
+        Returns:
+            dict: The converted defaultdict.
+        """
+
+        if isinstance(d, defaultdict):
+            d = {k: ddict_to_dict(v) for k, v in d.items()}
+        return d
+
+    # https://stackoverflow.com/a/14692747
+    def getFromDict(dataDict: dict, mapList: list) -> Any:
+        """
+        This function gets a value from a dict using a list of keys.
+
+        Args:
+            dataDict (dict): The dict to get the value from.
+            mapList (list): The list of keys to use.
+
+        Returns:
+            Any: The value from the dict.
+        """
+
+        return reduce(operator.getitem, mapList, dataDict)
+
+    def setInDict(dataDict: dict, mapList: list, value: Any):
+        """
+        This function sets a value in a dict using a list of keys.
+
+        Args:
+            dataDict (dict): The dict to set the value in.
+            mapList (list): The list of keys to use.
+            value (Any): The value to set.
+        """
+
+        getFromDict(dataDict, mapList[:-1])[mapList[-1]] = value
+
+    grouped_data = ddict()
+    value_fields = list(set(results[0].keys() - set(fields)))
+    single_value = len(value_fields) == 1
+
+    for result in results:
+        keys = [result[field] for field in fields]
+        
+        if any(key is None for key in keys):
+            continue
+        
+        values = (
+            result[value_fields[0]]
+            if single_value
+            else {field: result[field] for field in value_fields}
         )
-        for key, results in groupby(results, lambda x: x[field1])
-        if key is not None
-    }
+
+        setInDict(grouped_data, keys, values)
+
+    return ddict_to_dict(grouped_data)
 
 
 def format_topic_analysis_results_sklearn(model, feature_names, n_top_words):
