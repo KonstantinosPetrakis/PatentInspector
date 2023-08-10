@@ -48,7 +48,11 @@
         </ul>
         <div class="tab-contents shadow-lg">
             <div id="descriptive-analysis">
-                <h3> Basic statistical measures </h3>
+                <h3> Basic statistical measures 
+                    <span data-bs-toggle="tooltip" data-bs-title="Look at a summary of different variables of the patent set.">
+                        <i class="ms-1 fa-solid fa-info"></i>
+                    </span>
+                </h3>
                 <div class="table-responsive">
                     <table id="statistics-table" class="table table-sm"> 
                         <thead>
@@ -62,17 +66,42 @@
                         <tbody></tbody>
                     </table>
                 </div>
-                <h3> Variables over time  </h3>
+                <h3> 
+                    Variables over time 
+                    <span data-bs-toggle="tooltip" data-bs-title="Observe how different variables change with the course of time.">
+                        <i class="ms-1 fa-solid fa-info"></i>
+                    </span>
+                </h3>
                 <div id="time-series" class="row justify-content-center"> </div>
                 <h3> Information for each entity </h3>
                 <div id="entity-info"> 
-                    <h4> Patent </h4>
+                    <h4> 
+                        Patent 
+                        <span data-bs-toggle="tooltip" data-bs-title="Discover how patent variables are distributed.">
+                            <i class="ms-1 fa-solid fa-info"></i>
+                        </span>
+                    </h4>
                     <div id="entity-patent" class="row justify-content-center"> </div>
-                    <h4> Inventor </h4>
+                    <h4> 
+                        Inventor 
+                        <span data-bs-toggle="tooltip" data-bs-title="Notice the most fruitful inventors and other inventor information.">
+                            <i class="ms-1 fa-solid fa-info"></i>
+                        </span>
+                    </h4>
                     <div id="entity-inventor" class="row justify-content-center"> </div>
-                    <h4> Assignee </h4>
+                    <h4> 
+                        Assignee 
+                        <span data-bs-toggle="tooltip" data-bs-title="Discover the most compelling assignees and other assignee information.">
+                            <i class="ms-1 fa-solid fa-info"></i>
+                        </span>
+                    </h4>
                     <div id="entity-assignee" class="row justify-content-center"> </div>
-                    <h4> CPC </h4>
+                    <h4> 
+                        CPC 
+                        <span data-bs-toggle="tooltip" data-bs-title="Spot the most common CPC entities among the patent set.">
+                            <i class="ms-1 fa-solid fa-info"></i>
+                        </span>
+                    </h4>
                     <div id="entity-cpc" class="row justify-content-center"> </div>
                 </div>
             </div>
@@ -118,6 +147,22 @@
                 <div class="row" id="topic-analysis"> </div>
             </div>
             <div id="network-analysis"> 
+                <div class="p-1">
+                    <p>
+                        In this section, you can observe information about how patents are connected
+                        to each other over citations.
+                        <br>
+                        When we say 'local network', we refer to the network of patents in the filtered 
+                        patent set.
+                        <br>
+                        And when we say 'global network', we refer to the network of
+                        all the patents in the filtered patent set, plus the ones they mention
+                        and the ones that mention them.
+                        <br>
+                        You'll find a 3D representation of the local network, 
+                        along with statistics for both the local and global networks.
+                    </p>
+                </div>
                 <div id="most-cited" class="row justify-content-center"> </div>
                 <div id="citation-graph"> </div>
             </div>

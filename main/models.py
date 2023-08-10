@@ -1,4 +1,4 @@
-from django.db.models import Value, F, Q, Func, Q, OuterRef, Exists, TextField
+from django.db.models import Value, F, Q, Func, Q, OuterRef, Exists, TextField, fields
 from django.contrib.postgres.aggregates import StringAgg
 from django.db.models.functions import Concat, Cast, Substr
 from django.db.models.functions import Substr
@@ -10,7 +10,17 @@ from django.db import connection
 from postgres_copy import CopyManager
 
 from main.form_utils import get_help_text
-from main.helpers import get_coordinates
+
+
+def get_coordinates(field):
+    """
+    This function creates a query to get the coordinates of a point field.
+    """
+
+    return {
+        "lng": Func(field, function="ST_X", output_field=fields.FloatField()),
+        "lat": Func(field, function="ST_Y", output_field=fields.FloatField()),
+    }
 
 
 class CPCSection(models.Model):
@@ -395,7 +405,7 @@ class Patent(models.Model):
             "assignee_count",
             "incoming_citations_count",
             "outgoing_citations_count",
-            "withdrawn"
+            "withdrawn",
         )
 
     @staticmethod
@@ -577,6 +587,7 @@ class Patent(models.Model):
     def top_5_cpc_classes(patents: models.QuerySet) -> list:
         return list(
             patents.annotate(cpc_class=Substr("cpc_groups__cpc_group", 1, 3))
+            .filter(~Q(cpc_class=""))
             .values("cpc_class")
             .annotate(count=Count("id"))
             .order_by("-count")[:5],
@@ -586,6 +597,7 @@ class Patent(models.Model):
     def top_5_cpc_subclasses(patents: models.QuerySet) -> list:
         return list(
             patents.annotate(cpc_subclass=Substr("cpc_groups__cpc_group", 1, 4))
+            .filter(~Q(cpc_subclass=""))
             .values("cpc_subclass")
             .annotate(count=Count("id"))
             .order_by("-count")[:5],
@@ -594,7 +606,8 @@ class Patent(models.Model):
     @staticmethod
     def top_5_cpc_groups(patents: models.QuerySet) -> list:
         return list(
-            patents.values("cpc_groups__cpc_group")
+            patents.filter(cpc_groups__cpc_group__isnull=False)
+            .values("cpc_groups__cpc_group")
             .annotate(count=Count("id"))
             .order_by("-count")[:5],
         )
@@ -809,17 +822,19 @@ class PatentCitation(models.Model):
 
     @staticmethod
     def most_cited_patents_global(patent_ids: list) -> list:
+        """
+        That's a really heavy operation. For example there are 150k citations within 5k patents.
+        You can imagine how this escalates with more patents.
+        """
+
         return list(
-            Patent.objects.filter(id__in=patent_ids, incoming_citations_count__gt=0)
-            .annotate(
-                patent=Concat(
-                    "office",
-                    "office_patent_id",
-                    Value(" - "),
-                    "title",
-                    output_field=TextField(),
-                )
+            PatentCitation.objects.filter(
+                Q(citing_patent_id__in=patent_ids) | Q(cited_patent_id__in=patent_ids)
             )
-            .order_by("-incoming_citations_count")[:10]
-            .values("patent", "incoming_citations_count")
+            .values("cited_patent_id")
+            .annotate(
+                **PatentCitation.patent_annotation, count=Count("cited_patent_id")
+            )
+            .order_by("-count")[:10]
+            .values("patent", "count")
         )

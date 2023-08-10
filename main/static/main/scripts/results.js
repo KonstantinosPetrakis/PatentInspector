@@ -266,7 +266,7 @@ function createTopicAnalysisScatter(data) {
                             yMin: 0,
                             backgroundColor: 'rgba(250, 106, 3, 0.25)',
                             label: {
-                                drawTime: 'beforeDraw',
+                                drawTime: 'afterDraw',
                                 display: true,
                                 content: 'Dominant Topics',
                                 position: {
@@ -532,19 +532,19 @@ async function fetchEntityInfo() {
     createPie(data.patent.office, "Offices of patents", "entity-patent");
 
     // Inventor
-    createPie(data.inventor.top_10, "Top 10 inventors", "entity-inventor");
+    createPie(data.inventor.top_10, "Inventors with the most inventions ", "entity-inventor");
     createHeatmap(data.inventor.locations, "Inventor Locations", "entity-inventor");
 
     // Assignee
-    createPie(data.assignee.top_10, "Top 10 assignees", "entity-assignee");
+    createPie(data.assignee.top_10, "Most common assignees", "entity-assignee");
     createPie(data.assignee.corporation_vs_individual, "Corporation and individual assignees", "entity-assignee");
     createHeatmap(data.assignee.locations, "Assignee Locations", "entity-assignee");
 
     // CPC
     createPie(data.cpc.section, "CPC sections", "entity-cpc");
-    createPie(data.cpc.top_5_classes, "Top 5 CPC classes", "entity-cpc");
-    createPie(data.cpc.top_5_subclasses, "Top 5 CPC subclasses", "entity-cpc");
-    createPie(data.cpc.top_5_groups, "Top 5 CPC groups", "entity-cpc");
+    createPie(data.cpc.top_5_classes, "Most common CPC classes", "entity-cpc");
+    createPie(data.cpc.top_5_subclasses, "Most common CPC subclasses", "entity-cpc");
+    createPie(data.cpc.top_5_groups, "Most common CPC groups", "entity-cpc");
 }
 
 

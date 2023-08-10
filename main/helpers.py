@@ -7,6 +7,8 @@ from django.db.models.aggregates import Avg, StdDev, Min, Max
 from django.db.models import Aggregate, Func, fields
 import tomotopy as tp
 
+from main.models import *
+
 
 class Median(Aggregate):
     """
@@ -70,20 +72,10 @@ def format_statistics(result):
     }
 
 
-def get_coordinates(field):
-    """
-    This function creates a query to get the coordinates of a point field.
-    """
-
-    return {
-        "lng": Func(field, function="ST_X", output_field=fields.FloatField()),
-        "lat": Func(field, function="ST_Y", output_field=fields.FloatField()),
-    }
-
-
 def group_fields(results: Iterable[dict], fields: list) -> dict:
     """
     This function groups the results of a query by the specified fields.
+    If the field is related to the cpc, the title of the cpc entity is also included.
 
     Args:
         results (Iterable[dict]): The results of a query.
@@ -154,10 +146,10 @@ def group_fields(results: Iterable[dict], fields: list) -> dict:
 
     for result in results:
         keys = [result[field] for field in fields]
-        
+
         if any(key is None for key in keys):
             continue
-        
+
         values = (
             result[value_fields[0]]
             if single_value
@@ -166,7 +158,37 @@ def group_fields(results: Iterable[dict], fields: list) -> dict:
 
         setInDict(grouped_data, keys, values)
 
-    return ddict_to_dict(grouped_data)
+    d = ddict_to_dict(grouped_data)
+
+    # If the field is related to the cpc, the title of the cpc entity is also included.
+    if fields[0].startswith("cpc"):
+        keys = list(d.keys())
+        key_len = len(keys[0])
+
+        if key_len == 1:
+            model = CPCSection
+        elif key_len == 3:
+            model = CPCClass
+        elif key_len == 4:
+            model = CPCSubclass
+        else:
+            model = CPCGroup
+
+        cpc_entities = (
+            model.objects.filter(pk__in=keys)
+            .annotate(
+                repr=Concat(
+                    "pk", Value(" - "), "title", output_field=models.CharField()
+                )
+            )
+            .values("pk", "repr")
+        )
+
+        cpc_entities = {entity["pk"]: entity["repr"] for entity in cpc_entities}
+        for key in keys:
+            d[cpc_entities[key]] = d.pop(key)
+
+    return d
 
 
 def format_topic_analysis_results_sklearn(model, feature_names, n_top_words):

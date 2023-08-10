@@ -22,10 +22,6 @@ In the upcoming versions there will be a database dump in the cloud and a docker
 This is going to be especially useful when multiple offices are supported and the number of scripts that need to be run will increase.
 
 
-# Must Todo
+# Todo
 * Write back up and restore scripts
 * Allow deployment through docker
-
-# Aesthetic Todo
-* Add more information for the user in the UI
-* Add CPC titles in the UI
