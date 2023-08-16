@@ -23,5 +23,9 @@ This is going to be especially useful when multiple offices are supported and th
 
 
 # Todo
+* Input the numbers topics for topic analysis and other options
+* Tabs for descriptive analysis (per entities) - biblioshiny
+* Add tables pane for plots and export options
+* Add date filtering in uspto management command so it is between 1836 and current year
 * Write back up and restore scripts
 * Allow deployment through docker

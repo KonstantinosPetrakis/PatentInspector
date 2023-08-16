@@ -47,13 +47,26 @@ function create2DPlot(datasets, title) {
 
     const singleLine = Object.keys(datasets)[0] == "";
 
+    let minYear = Infinity;
+    let maxYear = -Infinity;
+
+    for (let dataset of Object.values(datasets)) {
+        for (let year of Object.keys(dataset)) {
+            year = +year;
+            if (year < minYear) minYear = year;
+            if (year > maxYear) maxYear = year;
+        }
+    }
+
+    labels = [];
+    for (let i = minYear; i <= maxYear; i++) labels.push(i.toString());
+
     new Chart(canvas, {
         type: "line",
         data: {
-            labels: Object.keys(datasets).values()[0], // labels are the same for all datasets, 
+            labels,
             datasets: Object.entries(datasets).map(([name, data]) => ({
                 label: singleLine ? title : name,
-                data: Object.values(data),
                 data,
                 tension: 0.1,
                 backgroundColor: colors[Object.keys(datasets).indexOf(name)],

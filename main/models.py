@@ -289,7 +289,7 @@ class Patent(models.Model):
         inventor_query = Q()
         if data["inventor_first_name"]:
             inventor_query &= Q(
-                inventors__first_name__iregex=f"^({''.join(data['inventor_first_name'])})"
+                inventors__first_name__iregex=f"^({'|'.join(data['inventor_first_name'])})"
             )
         if data["inventor_last_name"]:
             inventor_query &= Q(inventors__last_name__in=data["inventor_last_name"])
@@ -306,7 +306,7 @@ class Patent(models.Model):
         assignee_query = Q()
         if data["assignee_first_name"]:
             assignee_query &= Q(
-                assignees__first_name__iregex=f"^({''.join(data['assignee_first_name'])})"
+                assignees__first_name__iregex=f"^({'|'.join(data['assignee_first_name'])})"
             )
         if data["assignee_last_name"]:
             assignee_query &= Q(assignees__last_name__in=data["assignee_last_name"])

@@ -105,34 +105,34 @@
                     <div id="entity-cpc" class="row justify-content-center"> </div>
                 </div>
             </div>
-            <div id="thematic-analysis">
+            <div id="thematic-analysis" class="p-2">
                 <h3> Topic analysis </h3>
                 <p> 
                     10 different topics (some methods don't accept number of topics as argument so 
                     this number could vary) with the most important 10 words 
                 </p>
-                <div class="d-flex align-items-center mb-2">
+                <div class="d-flex align-items-center mt-2 mb-2">
                     <div>
                         You can choose the topic analysis method of your liking:
                     </div>
-                    <select class="d-block ms-2 me-2 form-select form-select-sm w-25" name="topic-analysis-method" id="topic-analysis-method">
-                        <option value="LDA"> LDA (Latent Dirichlet Allocation)</option>
-                        <option value="NMF"> NMF (Non-negative matrix factorization) </option>
-                        <option value="LLDA"> LLDA (Labeled LDA) </option>
-                        <option value="SLDA"> SLDA (Supervised LDA) </option>
-                        <option value="DMR"> DMR (Dirichlet Multinomial Regression) </option>
-                        <option value="CTM"> CTM (Correlated Topic Model) </option>
-                        <option value="PTM"> PTM (Pseudo-document based Topic Model) </option>
-                    </select>
-                    <button class="btn btn-sm btn-theme border" onClick="getTopicModeling()">
-                        Create topics
-                    </button>
+                    <div>
+                        <select class="row d-block ms-2 form-select form-select-sm" 
+                            name="topic-analysis-method" id="topic-analysis-method">
+                            <option value="LDA"> LDA (Latent Dirichlet Allocation)</option>
+                            <option value="NMF"> NMF (Non-negative matrix factorization) </option>
+                            <option value="LLDA"> LLDA (Labeled LDA) </option>
+                            <option value="SLDA"> SLDA (Supervised LDA) </option>
+                            <option value="DMR"> DMR (Dirichlet Multinomial Regression) </option>
+                            <option value="CTM"> CTM (Correlated Topic Model) </option>
+                            <option value="PTM"> PTM (Pseudo-document based Topic Model) </option>
+                        </select>
+                    </div>
                 </div>
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center mt-2">
                     <div>
                         Select a date range to classify the topics (default is newest_patent_date -1 year, newest_patent_date):
                     </div>
-                    <div class="ms-2 me-2 form-inline d-flex">
+                    <div class="ms-2 d-flex flex-wrap">
                         <div class="me-2">
                             <input class="form-control form-control-sm" type="date" name="topic-analysis-start-date">
                         </div>
@@ -140,10 +140,24 @@
                             <input class="form-control form-control-sm" type="date" name="topic-analysis-end-date">
                         </div>
                     </div>
-                    <button class="btn btn-sm btn-theme border" onClick="getTopicModeling()">
-                        Classify topics
-                    </button>
                 </div>
+                <div class="d-flex align-items-center mt-2">
+                    <label for="topic-analysis-number-topics"> 
+                        Select the number of topics to be extracted: 
+                    </label>
+                    <input type="number" class="form-control form-control-sm small-number-input ms-2"
+                    min="2" max="99" id="topic-analysis-number-topics" name="topic-analysis-number-topics">          
+                </div>
+                <div class="d-flex align-items-center mt-2">
+                    <label for="topic-analysis-number-words"> 
+                        Select the number of words to be extracted for each topic: 
+                    </label>
+                    <input type="number" class="form-control form-control-sm small-number-input ms-2"
+                    min="2" max="99" id="topic-analysis-number-words" name="topic-analysis-number-words">          
+                </div>
+                <button class="btn btn-sm btn-theme border my-2" onClick="getTopicModeling()">
+                    Execute topic analysis
+                </button>
                 <div class="row" id="topic-analysis"> </div>
             </div>
             <div id="network-analysis"> 
@@ -168,7 +182,7 @@
             </div>
         </div>
     </div>    
-    <div class="d-flex align-items-center  my-3">
+    <div class="d-flex align-items-center mt-2  my-3">
         <a href="/api/download-excel" download="patents.xls" class="btn btn-outline-secondary"> 
             Export to Excel
         </a>

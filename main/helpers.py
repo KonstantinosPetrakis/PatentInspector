@@ -72,7 +72,7 @@ def format_statistics(result):
     }
 
 
-def group_fields(results: Iterable[dict], fields: list) -> dict:
+def group_fields(results: Iterable[dict], fields: list) -> dict | None:
     """
     This function groups the results of a query by the specified fields.
     If the field is related to the cpc, the title of the cpc entity is also included.
@@ -82,7 +82,7 @@ def group_fields(results: Iterable[dict], fields: list) -> dict:
         fields (list): The fields to group by.
 
     Returns:
-        dict: The results grouped by the specified fields.
+        dict | None: The results grouped by the specified fields or None if there are no results.
     """
 
     # https://stackoverflow.com/a/59039243/11718554
@@ -139,6 +139,8 @@ def group_fields(results: Iterable[dict], fields: list) -> dict:
         """
 
         getFromDict(dataDict, mapList[:-1])[mapList[-1]] = value
+
+    if not results: return None
 
     grouped_data = ddict()
     value_fields = list(set(results[0].keys() - set(fields)))

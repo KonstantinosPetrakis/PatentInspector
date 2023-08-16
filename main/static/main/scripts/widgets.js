@@ -195,6 +195,9 @@ function initializeRadiusInput(radiusInput) {
         radiusInput.value = `${circleCoords.lat},${circleCoords.lng},${circleRadius}`;
     });
 
+    // When a circle is deleted clear the hidden input field
+    map.on(L.Draw.Event.DELETED, () => radiusInput.value = "");
+
     // Fix bootstrap accordion mess with leaflet map
     const accordion = mapElement.closest(".accordion");
     if (accordion) accordion.addEventListener("shown.bs.collapse", () => map.invalidateSize());
