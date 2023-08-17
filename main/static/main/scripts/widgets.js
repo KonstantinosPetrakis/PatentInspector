@@ -44,15 +44,15 @@ function initializeTriStateCheckbox(hiddenElement) {
 function initializeMinMaxSlider(sliderWrapper) {
     const slider = sliderWrapper.querySelector(".slider");
     const inputs = [sliderWrapper.querySelector(".min-input"), sliderWrapper.querySelector(".max-input")];
-    
+
     const min = parseInt(sliderWrapper.getAttribute("data-min"));
     const max = parseInt(sliderWrapper.getAttribute("data-max"));
     const minValue = inputs[0].value == "" ? min : inputs[0].value;
     const maxValue = inputs[1].value == "" ? max : inputs[1].value;
     noUiSlider.create(slider, { start: [minValue, maxValue], step: 1, range: { min, max } });
     slider.noUiSlider.on("update", (values, handle) => inputs[handle].value = parseInt(values[handle]));
-    inputs.forEach((input, handle) => input.addEventListener("change", 
-        () => slider.noUiSlider.setHandle(handle, input.value)));  
+    inputs.forEach((input, handle) => input.addEventListener("change",
+        () => slider.noUiSlider.setHandle(handle, input.value)));
 }
 
 
@@ -73,8 +73,8 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
             const [id, repr] = Object.keys(data[0]);
             // The id is the 1st key, the representation is the 2nd
             data.forEach(o => {
-                delete Object.assign(o, {["id"]: o[id] })[id];
-                delete Object.assign(o, {["repr"]: `${o["id"]} - ${o[repr]}` })[repr];
+                delete Object.assign(o, { ["id"]: o[id] })[id];
+                delete Object.assign(o, { ["repr"]: `${o["id"]} - ${o[repr]}` })[repr];
             });
         }
         // If the array contains strings, the id and the representation are the same
@@ -119,14 +119,16 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
     fakeSelect.multiple = true;
     choiceKeywordInput.insertAdjacentElement("afterend", fakeSelect);
 
-    const choiceKeywords = new Choices(fakeSelect, { allowHTML: true, removeItemButton: true,
-        duplicateItemsAllowed: false, shouldSort: false, searchResultLimit: 10000 });
+    const choiceKeywords = new Choices(fakeSelect, {
+        allowHTML: true, removeItemButton: true,
+        duplicateItemsAllowed: false, shouldSort: false, searchResultLimit: 10000
+    });
     fakeSelect.addEventListener("search", populateChoicesFromQueryEventDebounced);
 
     // Try to populate choices immediately, if results are found, remove the event listener.
     // Results could not be found if there's a minimum query length required by the backend.
     const data = await populateChoicesFromQuery();
-    if (Array.isArray(data) && data.length) 
+    if (Array.isArray(data) && data.length)
         fakeSelect.removeEventListener("search", populateChoicesFromQueryEventDebounced);
 
     // If hidden input field has a value, add the corresponding choices
@@ -135,9 +137,9 @@ async function initializeChoiceKeywordsInputField(choiceKeywordInput) {
         const choices = choiceKeywordInput.value.split("~#");
         const alreadyExistingChoices = choiceKeywords._currentState.choices.map(choice => choice.value);
         // Fetch choices only if there are not already fetched (there wasn't a query limit)
-        if (choices.some(choice => !alreadyExistingChoices.includes(choice))) 
+        if (choices.some(choice => !alreadyExistingChoices.includes(choice)))
             await populateChoicesFromValues(choices);
-        
+
         // Select choices in the fake select
         for (let choice of choices) choiceKeywords.setChoiceByValue(choice);
     }
@@ -179,7 +181,7 @@ function initializeRadiusInput(radiusInput) {
             rectangle: false,
             circlemarker: false
         },
-        edit: { featureGroup: drawnItems}
+        edit: { featureGroup: drawnItems }
     });
     map.addControl(drawControl);
 
@@ -191,16 +193,17 @@ function initializeRadiusInput(radiusInput) {
         const circleRadius = circle.getRadius();
         drawnItems.clearLayers(); // clear old circle
         drawnItems.addLayer(circle); // Add the circle
-        drawnItems.addLayer(L.marker(circleCoords)); // Add a marker in the center
+        // drawnItems.addLayer(L.marker(circleCoords)); // Add a marker in the center
         radiusInput.value = `${circleCoords.lat},${circleCoords.lng},${circleRadius}`;
     });
 
     // When a circle is deleted clear the hidden input field
     map.on(L.Draw.Event.DELETED, () => radiusInput.value = "");
 
-    // Fix bootstrap accordion mess with leaflet map
-    const accordion = mapElement.closest(".accordion");
-    if (accordion) accordion.addEventListener("shown.bs.collapse", () => map.invalidateSize());
+    // Fix mess of hidden elements with leaflet map
+    const observer = new MutationObserver(() => map.invalidateSize());
+    const mapWrapper = mapElement.closest(".accordion-collapse, .tab-contents > div");
+    if (mapWrapper) observer.observe(mapWrapper, { attributes: true, attributeFilter: ["style", "class"] });
 
     // If the hidden input field has a value, add the corresponding circle
     if (radiusInput.value) {
@@ -222,12 +225,12 @@ function initializePointMap(pointMapElement) {
     pointMapElement.className = "map";
     if (circle.length) var map = L.map(pointMapElement.id).setView([+circle[0], +circle[1]], 3.5);
     else var map = L.map(pointMapElement.id).setView([37.8, -96], 3);
-    
+
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
     }).addTo(map);
 
-    if(circle.length) L.circle([+circle[0], +circle[1]], +circle[2]).addTo(map);
+    if (circle.length) L.circle([+circle[0], +circle[1]], +circle[2]).addTo(map);
     for (let point of points) {
         point = point.split("|");
         L.marker([+point[1], +point[0]]).addTo(map);
@@ -250,17 +253,17 @@ function initializeSwitchInput(inputElement) {
  * @param {Element} tabsWrapper the wrapper element that contains the tabs and the tab contents.
  */
 function initializeInPageNavTab(tabsWrapper) {
-    const tabs = tabsWrapper.querySelectorAll(".nav-link");
-    const tabContents = tabsWrapper.querySelectorAll(".tab-contents > div");
+    const tabs = tabsWrapper.querySelectorAll(":scope > .nav-tabs .nav-link");
+    const tabContents = tabsWrapper.querySelectorAll(":scope > .tab-contents > div");
 
     // Add the active class to the first tab and show its content
     tabs[0].classList.add("active");
     tabContents[0].classList.add("active");
 
-    for (let i=0; i<tabs.length; i++) {
+    for (let i = 0; i < tabs.length; i++) {
         tabs[i].addEventListener("click", (e) => {
             e.preventDefault();
-            for (let j=0; j<tabs.length; j++) {
+            for (let j = 0; j < tabs.length; j++) {
                 tabs[j].classList.remove("active");
                 tabContents[j].classList.remove("active");
             }

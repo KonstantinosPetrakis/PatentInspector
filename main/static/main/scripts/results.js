@@ -33,20 +33,97 @@ function removeProcessingMessage(selector) {
 
 
 /**
+ * This function creates a table from a data object.
+ * @param {Array[Array]} data an array of arrays containing the data (e.g [[x1, y1], [x2, y2], ...])
+ * @param {Array[String]} labels the labels of the columns (e.g ["x", "y"])
+ * @param {String} wrapperId the id of the element that will contain the table
+ */
+function createTable(data, labels, wrapperId) {
+    const wrapper = document.getElementById(wrapperId);
+
+    let headers = "";
+    for (let label of labels) headers += `<th> ${label} </th>`;
+
+    let rows = "";
+    for (let row of data) {
+        rows += "<tr>";
+        for (let value of row) rows += `<td> ${value} </td>`;
+        rows += "</tr>";
+    }
+
+    wrapper.innerHTML = `
+        <div class="table-responsive">
+            <div> <button class="btn btn-sm btn-theme"> 📋 </button> </div> 
+            <table
+                id="statistics-table"
+                class="table table-sm"
+            >
+                <thead> ${headers} </thead>
+                <tbody> ${rows} </tbody>
+            </table>
+        </div>
+        `;
+
+    wrapper.querySelector("button").addEventListener("click", () => 
+        navigator.clipboard.writeText(wrapper.querySelector("table").innerText.trim())
+    );
+}
+
+
+/**
+ * This function creates a table from a data object.
+ * @param {Object} object an object containing the data (e.g {x1: {y1: z1, y2: z2}, ...}
+ * @return {Array[Array]} an array of arrays containing the data (e.g [[x1, y1, z1], ...])
+ */
+function objectToArray(object) {
+    if (object[""] != undefined) object = object[""]; // Empty string is used for single dataset of datasets
+
+    let array = [];
+    for (let [key, value] of Object.entries(object)) {
+        if (typeof value !== 'object') array.push([key, value]);
+        else {
+            for (let subArrayItem of objectToArray(value)) array.push([key, ...subArrayItem]);
+        }
+    }
+    return array;
+}
+
+/**
+ * This function creates an in-page navigation tab used to accommodate a plot and its respective table.
+ * @param {String} id a unique id for the tab
+ * @param {Sting} wrapperId the id of the element that will contain the plot and the table
+ */
+function createPlotAndTableNav(id, wrapperId) {
+    const navWrapper = document.createElement("div");
+    navWrapper.innerHTML = `
+        <ul class="nav nav-tabs">
+            <li class="nav-item">
+                <a class="nav-link" style='font-size: .75rem' href="#${id}-plot"> Plot </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" style='font-size: .75rem'href="#${id}-table"> Table </a>
+            </li>
+        </ul>
+        <div class="tab-contents">
+            <div id="${id}-plot"> <canvas class="bar"> </canvas> </div>
+            <div id="${id}-table"> </div>
+        </div>
+    `;
+    navWrapper.className = "in-page-nav-tab col-12 col-md-6";
+    document.querySelector(`#${wrapperId}`).appendChild(navWrapper);
+    initializeInPageNavTab(navWrapper);
+}
+
+/**
  * This function creates a 2D plot with the given datasets and title.
  * @param {Object} datasets an object with keys the names of the lines, and values the data of the lines (e.g line1: {x1: y1, x2: y2, ...}, line2: {x1: y1, x2: y2, ...}, ...})
  * @param {String} title the title of the plot 
+ * @param {Array[String]} dataLabels the labels of the columns (e.g ["x", "y"])
  */
-function create2DPlot(datasets, title) {
-    const wrapper = document.createElement("div");
-    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
-
-    const canvas = document.createElement("canvas");
-    wrapper.appendChild(canvas);
-    document.getElementById("time-series").appendChild(wrapper);
-
+function create2DPlot(datasets, title, dataLabels) {    
     const singleLine = Object.keys(datasets)[0] == "";
 
+    // Find labels that fit all datasets
     let minYear = Infinity;
     let maxYear = -Infinity;
 
@@ -58,10 +135,20 @@ function create2DPlot(datasets, title) {
         }
     }
 
-    labels = [];
+    let labels = [];
     for (let i = minYear; i <= maxYear; i++) labels.push(i.toString());
 
-    new Chart(canvas, {
+    // Fill missing values with 0
+    for (let dataset of Object.values(datasets)) {
+        for (let label of labels) 
+            if (!dataset[label]) dataset[label] = 0;
+    }
+
+    const titleAsID = title.toLowerCase().replace(/ /g, "-");
+    createPlotAndTableNav(titleAsID, "time-series");
+    createTable(objectToArray(datasets), dataLabels, `${titleAsID}-table`);
+
+    new Chart(document.querySelector(`#${titleAsID}-plot > canvas`), {
         type: "line",
         data: {
             labels,
@@ -74,8 +161,6 @@ function create2DPlot(datasets, title) {
             }))
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
             plugins: {
                 title: {
                     display: !singleLine,
@@ -85,33 +170,36 @@ function create2DPlot(datasets, title) {
                     // We do that because text gets cut off in small screens
                     align: window.outerWidth > 768 ? "center" : "start",
                 }
-            }
+            },
+            responsive: true,
+			maintainAspectRatio: false,
+            animation: false,
         }
     });
 }
 
 
 /**
- * This function creates a pie chart with the given dataset and title.
- * @param {Object} dataset an object with keys the names of the slices, and values the data of the slices
- * @param {String} title the title of the plot 
+ * This function creates a bar chart with the given dataset and title.
+ * @param {Object} dataset an object with keys the names of the bars, and values the data of the bars
+ * @param {String} title the title of the plot (e.g "y with respect to x")
+ * @param {String} keyColumnName the title of the keys of the dataset (e.g "x")
+ * @param {String} valueColumnName the title of the values of the dataset (e.g "y")
  * @param {String} wrapperId the id of the element that will contain the plot 
  */
-function createPie(dataset, title, wrapperId) {
-    const wrapper = document.createElement("div");
-    const canvas = document.createElement("canvas");
-    canvas.className = "pie";
-    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
-    wrapper.appendChild(canvas);
-    document.querySelector(`#${wrapperId}`).appendChild(wrapper);
+function createBar(dataset, title, keyColumnName, valueColumnName, wrapperId) {
+    const titleAsID = title.toLowerCase().replace(/ /g, "-");
+    createPlotAndTableNav(titleAsID, wrapperId);
+    createTable(objectToArray(dataset), [keyColumnName, valueColumnName], `${titleAsID}-table`);
 
-    new Chart(canvas, {
-        type: "pie",
+    new Chart(document.querySelector(`#${titleAsID}-plot > canvas`), {
+        type: "bar",
         data: {
-            labels: Object.keys(dataset).map(key => key.length > 80 ? key.substring(0, 80) + "..." : key),
+            labels: Object.keys(dataset).map(key => key.length > 40 ? key.substring(0, 40) + "..." : key),
             datasets: [{
                 data: Object.values(dataset),
-                backgroundColor: colors
+                maxBarThickness: 25,
+                backgroundColor: colors[0]
             }]
         },
         options: {
@@ -121,12 +209,13 @@ function createPie(dataset, title, wrapperId) {
                     text: title
                 },
                 legend: {
-                    // We do that because text gets cut off in small screens
-                    align: window.outerWidth > 768 ? "center" : "start",
+                    display: false,
                 }
             },
+            indexAxis: 'y',
             responsive: true,
-            maintainAspectRatio: false,
+			maintainAspectRatio: false,
+            
             animation: false
         }
     });
@@ -140,6 +229,7 @@ function createPie(dataset, title, wrapperId) {
  * @param {String} wrapperID the id of the element that will contain the plot 
  */
 function createHeatmap(points, title, wrapperID) {
+    console.log(points);
     var mapWithLegendElement = document.createElement("div");
     mapWithLegendElement.textContent = title;
     mapWithLegendElement.classList.add("col-12", "d-flex", "flex-column", "align-items-center");
@@ -154,6 +244,11 @@ function createHeatmap(points, title, wrapperID) {
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
+
+    // Fix mess of hidden elements with leaflet map
+    const observer = new MutationObserver(() => map.invalidateSize());
+    const mapWrapper = mapElement.closest(".accordion-collapse, .tab-contents > div");
+    if (mapWrapper) observer.observe(mapWrapper, { attributes: true, attributeFilter: ["style", "class"] });
 
     var heatmapLayer = new HeatmapOverlay({
         "radius": 2,
@@ -171,61 +266,23 @@ function createHeatmap(points, title, wrapperID) {
 
 
 /**
- * This function creates a bar plot with the given topic and title.
- * @param {Object} topic the topic that will be used to create the plot.
- * @param {String} title the title of the plot.
- * @param {String} wrapperId the id of the element that will contain the plot.
- */
-function createBarPlotForTopic(topic, title, wrapperId) {
-    const wrapper = document.createElement("div");
-    const canvas = document.createElement("canvas");
-    wrapper.classList.add("col-12", "col-md-6", "col-lg-4");
-    wrapper.appendChild(canvas);
-    document.querySelector(`#${wrapperId}`).appendChild(wrapper);
-
-    new Chart(canvas, {
-        type: "bar",
-        data: {
-            labels: topic.words,
-            datasets: [{
-                data: topic.weights,
-                backgroundColor: colors
-            }]
-        },
-        options: {
-            plugins: {
-                title: {
-                    display: true,
-                    text: title
-                },
-                legend: {
-                    display: false
-                }
-            },
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false
-        }
-    });
-}
-
-
-/**
  * This function creates the plots for the topic analysis.
- * @param {{topics: Array<{words: Array<String>, weights: Array<Number>}>, coherence: String}} data the data that will be used to create the plots.
+ * @param {Object} data the data that will be used to create the plots.
  */
 function createTopicAnalysisPlot(data) {
     const coherenceText = document.createElement("div");
     coherenceText.textContent = `Topic Coherence: ${data.coherence}`;
-    document.querySelector("#topic-analysis").appendChild(coherenceText);
-    for (let i = 0; i < data.topics.length; i++)
-        createBarPlotForTopic(data.topics[i], `Topic ${i + 1}`, "topic-analysis");
+    document.getElementById("topic-analysis").appendChild(coherenceText);
+    for (let i = 0; i < data.n_topics; i++) {
+        let topicObj = {};
+        for (let j=0; j< data.n_words; j++) topicObj[data.topics[i].words[j]] = data.topics[i].weights[j];           
+        createBar(topicObj, `Topic ${i + 1}`, "Word", "Weight", "topic-analysis");
+    }
 }
 
 /**
  * This function creates the scatter plot for the topic analysis.
- * @param {{topics: Object, start_date: String, end_date: String}} data the data that will be used to create the plot.
+ * @param {Object} data the data that will be used to create the plot.
  */
 function createTopicAnalysisScatter(data) {
     const wrapper = document.createElement("div");
@@ -320,11 +377,11 @@ function createTopicAnalysisScatter(data) {
                         }
                     }
                 }
-            }
+            },
+            responsive: true,
+			maintainAspectRatio: false,
+            animation: false,
         },
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
         scales: {
             x: {
                 title: {
@@ -519,14 +576,14 @@ async function fetchTimeSeries() {
     const response = await fetch("/api/time-series");
     const data = await response.json();
     removeProcessingMessage("#time-series");
-    create2DPlot(data.applications_per_year, "Applications per year");
-    create2DPlot(data.granted_patents_per_year, "Granted patents per year");
-    create2DPlot(data.pct_protected_patents_per_year, "PCT protected patents per year");
-    create2DPlot(data.citations_made_per_year, "Citations made per year");
-    create2DPlot(data.citations_received_per_year, "Citations received per year");
-    create2DPlot(data.granted_patents_per_type_year, "Granted patents of different types per year");
-    create2DPlot(data.granted_patents_per_office_year, "Granted patents of different offices per year");
-    create2DPlot(data.granted_patents_per_cpc_year, "Granted patents of different CPC sections per year");
+    create2DPlot(data.applications_per_year, "Applications per year", ["Year", "Application Count"]);
+    create2DPlot(data.granted_patents_per_year, "Granted patents per year", ["Year", "Grant Count"]);
+    create2DPlot(data.pct_protected_patents_per_year, "PCT protected patents per year", ["Year", "PCT Grant Count"]);
+    create2DPlot(data.citations_made_per_year, "Citations made per year", ["Year", "Citation Made Count"]);
+    create2DPlot(data.citations_received_per_year, "Citations received per year", ["Year", "Citation Received Count"]);
+    create2DPlot(data.granted_patents_per_type_year, "Granted patents of different types per year", ["Type", "Year", "Grant Count"]);
+    create2DPlot(data.granted_patents_per_office_year, "Granted patents of different offices per year", ["Office", "Year", "Grant Count"]);
+    create2DPlot(data.granted_patents_per_cpc_year, "Granted patents of different CPC sections per year", ["CPC Section", "Year", "Grant Count"]);
 }
 
 
@@ -540,24 +597,24 @@ async function fetchEntityInfo() {
     removeProcessingMessage("#entity-info");
 
     // Patent
-    createPie(data.patent.pct, "PCT protection of patents", "entity-patent");
-    createPie(data.patent.type, "Types of patents", "entity-patent");
-    createPie(data.patent.office, "Offices of patents", "entity-patent");
+    createBar(data.patent.pct, "PCT protection of patents", "PCT Status", "Count", "entity-patent");
+    createBar(data.patent.type, "Types of patents", "Patent Type", "Count", "entity-patent");
+    createBar(data.patent.office, "Offices of patents", "Office", "Count", "entity-patent");
 
     // Inventor
-    createPie(data.inventor.top_10, "Inventors with the most inventions ", "entity-inventor");
+    createBar(data.inventor.top_10, "Inventors with the most inventions", "Inventor", "Invention Count", "entity-inventor");
     createHeatmap(data.inventor.locations, "Inventor Locations", "entity-inventor");
 
     // Assignee
-    createPie(data.assignee.top_10, "Most common assignees", "entity-assignee");
-    createPie(data.assignee.corporation_vs_individual, "Corporation and individual assignees", "entity-assignee");
+    createBar(data.assignee.top_10, "Most common assignees", "Assignee", "Patent Count", "entity-assignee");
+    createBar(data.assignee.corporation_vs_individual, "Corporation and individual assignees", "Assignee Type", "Count", "entity-assignee");
     createHeatmap(data.assignee.locations, "Assignee Locations", "entity-assignee");
 
     // CPC
-    createPie(data.cpc.section, "CPC sections", "entity-cpc");
-    createPie(data.cpc.top_5_classes, "Most common CPC classes", "entity-cpc");
-    createPie(data.cpc.top_5_subclasses, "Most common CPC subclasses", "entity-cpc");
-    createPie(data.cpc.top_5_groups, "Most common CPC groups", "entity-cpc");
+    createBar(data.cpc.section, "CPC sections", "CPC Section", "References from patents", "entity-cpc");
+    createBar(data.cpc.top_5_classes, "Most common CPC classes", "CPC Class", "References from patents", "entity-cpc");
+    createBar(data.cpc.top_5_subclasses, "Most common CPC subclasses", "CPC Subclass", "References from patents", "entity-cpc");
+    createBar(data.cpc.top_5_groups, "Most common CPC groups", "CPC Group", "References from patents", "entity-cpc");
 }
 
 
@@ -569,9 +626,13 @@ async function getTopicModeling() {
     let model = document.querySelector(`select[name="topic-analysis-method"]`).value;
     let start_date = document.querySelector(`input[name="topic-analysis-start-date"]`)?.value;
     let end_date = document.querySelector(`input[name="topic-analysis-end-date"]`)?.value;
+    let n_topics = document.querySelector(`input[name="topic-analysis-number-topics"]`)?.value;
+    let n_words = document.querySelector(`input[name="topic-analysis-number-words"]`)?.value;
     let arguments = { model: model };
     if (start_date) arguments.start_date = start_date;
     if (end_date) arguments.end_date = end_date;
+    if (n_topics) arguments.n_topics = n_topics;
+    if (n_words) arguments.n_words = n_words;
 
     wrapper.innerHTML = "";
     addProcessingMessage("#topic-analysis", false);
@@ -582,8 +643,9 @@ async function getTopicModeling() {
     createTopicAnalysisPlot(data);
 
     let createdMessage = document.createElement("div");
-    createdMessage.textContent = `Created topics using ${model} model/algorithm. `;
-    createdMessage.textContent += `Classified topics using range ${data.start_date} to ${data.end_date}.`
+    createdMessage.textContent += `Created ${data.n_topics} topics with ${data.n_words} words each, 
+        using the ${model} model/algorithm. Classified topics using range 
+        ${data.start_date} to ${data.end_date}.`;
     wrapper.prepend(createdMessage);
 }
 
@@ -598,8 +660,8 @@ async function getCitationData() {
     removeProcessingMessage("#network-analysis");
 
     createGraph(data.graph, "#citation-graph");
-    createPie(data.most_cited_patents_global, "Most cited patents globally", "most-cited");
-    createPie(data.most_cited_patents_local, "Most cited patents locally", "most-cited");
+    createBar(data.most_cited_patents_global, "Most cited patents globally", "Patent", "Citations", "most-cited");
+    createBar(data.most_cited_patents_local, "Most cited patents locally", "Patent", "Citations", "most-cited");
 }
 
 

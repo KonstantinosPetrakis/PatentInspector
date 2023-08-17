@@ -243,7 +243,6 @@ def patents(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     if (patents := get_patents(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    form_data = get_form_data(request)
     page = int(request.GET.get("page", 1))
     paginator = Paginator(Patent.fetch_minimal_representation(patents), 25)
 
@@ -253,19 +252,7 @@ def patents(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
             "page": page,
             "selected_record_count": paginator.count,
             "total_record_count": Patent.approximate_count(),
-            "page_range": list(paginator.get_elided_page_range(page)),
-            "inventor_circle": (
-                f"{inventor_circle['lat']},{inventor_circle['lng']},{inventor_circle['radius']}"
-                if (inventor_circle := form_data.get("inventor_location", None))
-                is not None
-                else ""
-            ),
-            "assignee_circle": (
-                f"{assignee_circle['lat']},{assignee_circle['lng']},{assignee_circle['radius']}"
-                if (assignee_circle := form_data.get("assignee_location", None))
-                is not None
-                else ""
-            ),
+            "page_range": list(paginator.get_elided_page_range(page))
         }
     )
 
@@ -516,8 +503,9 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
         results or an error response.
     """
 
-    n_topics = 10
-    n_top_words = 10
+
+    n_topics = int(request.GET.get("n_topics", 10))
+    n_top_words = int(request.GET.get("n_words", 10))
     tp_args = {"k": n_topics}
     tp_model_map = {
         "LDA": tp.LDAModel(**tp_args),
@@ -624,9 +612,11 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
             patents_in_end_year / (patents_in_start_year + 1)
         ) ** (1 / years_diff) - 1
 
-    # Echo (return as well) the start and end dates in case they were not specified
+    # Echo (return as well) the options in case the user didn't specify them
     results["start_date"] = start_date.strftime("%Y-%m-%d")
     results["end_date"] = end_date.strftime("%Y-%m-%d")
+    results["n_topics"] = n_topics
+    results["n_words"] = n_top_words
     return JsonResponse(results, safe=False)
 
 

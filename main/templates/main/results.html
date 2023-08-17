@@ -1,221 +1,428 @@
-{% extends "main/base.html" %}
-{% load static %}
+{% extends "main/base.html" %} {% load static %} {% block styles %}
+<link
+    rel="stylesheet"
+    href="{% static 'main/styles/results.css' %}"
+/>
+{% endblock %} {% block scripts %}
+<script src="{% static 'main/scripts/chartjs/chart.umd.js' %}"></script>
+<script src="{% static 'main/scripts/heatmap.min.js' %}"></script>
+<script src="{% static 'main/scripts/leaflet-heatmap.js' %}"></script>
+<script src="{% static 'main/scripts/3d-force-graph.min.js' %}"></script>
+<script src="{% static 'main/scripts/chartjs-plugin-annotation.min.js' %}"></script>
+<script src="{% static 'main/scripts/results.js' %}"></script>
+{% endblock %} {% block contentBig %}
+<h2 class="fs-3 text-center mt-2">Query Result</h2>
 
-{% block styles %}
-    <link rel="stylesheet" href="{% static 'main/styles/results.css' %}">
-{% endblock %}
+<p id="result-counts"></p>
 
-{% block scripts %}
-    <script src="{% static 'main/scripts/chartjs/chart.umd.js' %}"></script>
-    <script src="{% static 'main/scripts/heatmap.min.js' %}"></script>
-    <script src="{% static 'main/scripts/leaflet-heatmap.js' %}"></script>
-    <script src="{% static 'main/scripts/3d-force-graph.min.js' %}"></script>
-    <script src="{% static 'main/scripts/chartjs-plugin-annotation.min.js' %}"></script>
-    <script src="{% static 'main/scripts/results.js' %}"></script>
-{% endblock %}
-
-{% block contentBig %}
-    <h2 class="fs-3 text-center mt-2"> Query Result </h2>
-
-    <p id="result-counts"></p>
-
-    <div class="in-page-nav-tab">
-        <ul class="nav nav-tabs">
-            <li class="nav-item">
-                <a class="nav-link" href="#descriptive-analysis"> 
-                    Descriptive Analysis
-                    <span data-bs-toggle="tooltip" data-bs-title="How can the data be profiled?">
-                        <i class="ms-1 fa-solid fa-info"></i>
-                    </span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#thematic-analysis"> 
-                    Thematic Analysis
-                    <span data-bs-toggle="tooltip" data-bs-title="What are the primary topics of the data?">
-                        <i class="ms-1 fa-solid fa-info"></i>
-                    </span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#network-analysis"> 
-                    Network Analysis 
-                    <span data-bs-toggle="tooltip" data-bs-title="What are the primary interconnections between the data?">
-                        <i class="ms-1 fa-solid fa-info"></i>
-                    </span>
-                </a>
-            </li>
-        </ul>
-        <div class="tab-contents shadow-lg">
-            <div id="descriptive-analysis">
-                <h3> Basic statistical measures 
-                    <span data-bs-toggle="tooltip" data-bs-title="Look at a summary of different variables of the patent set.">
-                        <i class="ms-1 fa-solid fa-info"></i>
-                    </span>
-                </h3>
-                <div class="table-responsive">
-                    <table id="statistics-table" class="table table-sm"> 
-                        <thead>
-                            <th> Variable </th>
-                            <th> Average </th>
-                            <th> Median </th>
-                            <th> Standard deviation </th>
-                            <th> Minimum </th>
-                            <th> Maximum </th>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
-                <h3> 
-                    Variables over time 
-                    <span data-bs-toggle="tooltip" data-bs-title="Observe how different variables change with the course of time.">
-                        <i class="ms-1 fa-solid fa-info"></i>
-                    </span>
-                </h3>
-                <div id="time-series" class="row justify-content-center"> </div>
-                <h3> Information for each entity </h3>
-                <div id="entity-info"> 
-                    <h4> 
-                        Patent 
-                        <span data-bs-toggle="tooltip" data-bs-title="Discover how patent variables are distributed.">
-                            <i class="ms-1 fa-solid fa-info"></i>
-                        </span>
-                    </h4>
-                    <div id="entity-patent" class="row justify-content-center"> </div>
-                    <h4> 
-                        Inventor 
-                        <span data-bs-toggle="tooltip" data-bs-title="Notice the most fruitful inventors and other inventor information.">
-                            <i class="ms-1 fa-solid fa-info"></i>
-                        </span>
-                    </h4>
-                    <div id="entity-inventor" class="row justify-content-center"> </div>
-                    <h4> 
-                        Assignee 
-                        <span data-bs-toggle="tooltip" data-bs-title="Discover the most compelling assignees and other assignee information.">
-                            <i class="ms-1 fa-solid fa-info"></i>
-                        </span>
-                    </h4>
-                    <div id="entity-assignee" class="row justify-content-center"> </div>
-                    <h4> 
-                        CPC 
-                        <span data-bs-toggle="tooltip" data-bs-title="Spot the most common CPC entities among the patent set.">
-                            <i class="ms-1 fa-solid fa-info"></i>
-                        </span>
-                    </h4>
-                    <div id="entity-cpc" class="row justify-content-center"> </div>
+<div class="in-page-nav-tab">
+    <ul class="nav nav-tabs">
+        <li class="nav-item">
+            <a
+                class="nav-link"
+                href="#descriptive-analysis"
+            >
+                Descriptive Analysis
+                <span
+                    data-bs-toggle="tooltip"
+                    data-bs-title="How can the data be profiled?"
+                >
+                    <i class="ms-1 fa-solid fa-info"></i>
+                </span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a
+                class="nav-link"
+                href="#thematic-analysis"
+            >
+                Thematic Analysis
+                <span
+                    data-bs-toggle="tooltip"
+                    data-bs-title="What are the primary topics of the data?"
+                >
+                    <i class="ms-1 fa-solid fa-info"></i>
+                </span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a
+                class="nav-link"
+                href="#network-analysis"
+            >
+                Network Analysis
+                <span
+                    data-bs-toggle="tooltip"
+                    data-bs-title="What are the primary interconnections between the data?"
+                >
+                    <i class="ms-1 fa-solid fa-info"></i>
+                </span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a
+                class="nav-link"
+                href="#patent-set"
+            >
+                Patents
+                <span
+                    data-bs-toggle="tooltip"
+                    data-bs-title="View or download the filtered patents."
+                >
+                    <i class="ms-1 fa-solid fa-info"></i>
+                </span>
+            </a>
+        </li>
+    </ul>
+    <div class="tab-contents shadow-lg">
+        <div id="descriptive-analysis">
+            <div class="in-page-nav-tab">
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a
+                            class="nav-link"
+                            href="#descriptive-analysis-basic-statistical-measures"
+                        >
+                            Basic statistical measures
+                            <span
+                                data-bs-toggle="tooltip"
+                                data-bs-title="Look at a summary of different variables of the patent set."
+                            >
+                                <i class="ms-1 fa-solid fa-info"></i>
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            class="nav-link"
+                            href="#descriptive-analysis-time-series"
+                        >
+                            Variables over time
+                            <span
+                                data-bs-toggle="tooltip"
+                                data-bs-title="Observe how different variables change with the course of time."
+                            >
+                                <i class="ms-1 fa-solid fa-info"></i>
+                            </span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a
+                            class="nav-link"
+                            href="#descriptive-analysis-entity-information"
+                        >
+                            Information for each entity
+                        </a>
+                    </li>
+                </ul>
+                <div class="tab-contents">
+                    <div id="descriptive-analysis-basic-statistical-measures">
+                        <div class="table-responsive">
+                            <table
+                                id="statistics-table"
+                                class="table table-sm"
+                            >
+                                <thead>
+                                    <th>Variable</th>
+                                    <th>Average</th>
+                                    <th>Median</th>
+                                    <th>Standard deviation</th>
+                                    <th>Minimum</th>
+                                    <th>Maximum</th>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div id="descriptive-analysis-time-series">
+                        <div
+                            id="time-series"
+                            class="row justify-content-center"
+                        ></div>
+                    </div>
+                    <div id="descriptive-analysis-entity-information">
+                        <div
+                            id="entity-info"
+                            class="in-page-nav-tab"
+                        >
+                            <ul class="nav nav-tabs">
+                                <li class="nav-item">
+                                    <a
+                                        class="nav-link"
+                                        href="#descriptive-analysis-entity-information-patent"
+                                    >
+                                        Patent
+                                        <span
+                                            data-bs-toggle="tooltip"
+                                            data-bs-title="Discover how patent variables are distributed."
+                                        >
+                                            <i
+                                                class="ms-1 fa-solid fa-info"
+                                            ></i>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a
+                                        class="nav-link"
+                                        href="#descriptive-analysis-entity-information-inventor"
+                                    >
+                                        Inventor
+                                        <span
+                                            data-bs-toggle="tooltip"
+                                            data-bs-title="Notice the most fruitful inventors and other inventor information."
+                                        >
+                                            <i
+                                                class="ms-1 fa-solid fa-info"
+                                            ></i>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a
+                                        class="nav-link"
+                                        href="#descriptive-analysis-entity-information-assignee"
+                                    >
+                                        Assignee
+                                        <span
+                                            data-bs-toggle="tooltip"
+                                            data-bs-title="Discover the most compelling assignees and other assignee information."
+                                        >
+                                            <i
+                                                class="ms-1 fa-solid fa-info"
+                                            ></i>
+                                        </span>
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a
+                                        class="nav-link"
+                                        href="#descriptive-analysis-entity-information-cpc"
+                                    >
+                                        CPC
+                                        <span
+                                            data-bs-toggle="tooltip"
+                                            data-bs-title="Spot the most common CPC entities among the patent set."
+                                        >
+                                            <i
+                                                class="ms-1 fa-solid fa-info"
+                                            ></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            </ul>
+                            <div class="tab-contents">
+                                <div
+                                    id="descriptive-analysis-entity-information-patent"
+                                >
+                                    <div
+                                        id="entity-patent"
+                                        class="row justify-content-center"
+                                    ></div>
+                                </div>
+                                <div
+                                    id="descriptive-analysis-entity-information-inventor"
+                                >
+                                    <div
+                                        id="entity-inventor"
+                                        class="row justify-content-center"
+                                    ></div>
+                                </div>
+                                <div
+                                    id="descriptive-analysis-entity-information-assignee"
+                                >
+                                    <div
+                                        id="entity-assignee"
+                                        class="row justify-content-center"
+                                    ></div>
+                                </div>
+                                <div
+                                    id="descriptive-analysis-entity-information-cpc"
+                                >
+                                    <div
+                                        id="entity-cpc"
+                                        class="row justify-content-center"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div id="thematic-analysis" class="p-2">
-                <h3> Topic analysis </h3>
-                <p> 
-                    10 different topics (some methods don't accept number of topics as argument so 
-                    this number could vary) with the most important 10 words 
+        </div>
+            <div
+                id="thematic-analysis"
+                class="p-2"
+            >
+                <h3>Topic analysis</h3>
+                <p>
+                    10 different topics (some methods don't accept number of
+                    topics as argument so this number could vary) with the most
+                    important 10 words
                 </p>
                 <div class="d-flex align-items-center mt-2 mb-2">
                     <div>
                         You can choose the topic analysis method of your liking:
                     </div>
                     <div>
-                        <select class="row d-block ms-2 form-select form-select-sm" 
-                            name="topic-analysis-method" id="topic-analysis-method">
-                            <option value="LDA"> LDA (Latent Dirichlet Allocation)</option>
-                            <option value="NMF"> NMF (Non-negative matrix factorization) </option>
-                            <option value="LLDA"> LLDA (Labeled LDA) </option>
-                            <option value="SLDA"> SLDA (Supervised LDA) </option>
-                            <option value="DMR"> DMR (Dirichlet Multinomial Regression) </option>
-                            <option value="CTM"> CTM (Correlated Topic Model) </option>
-                            <option value="PTM"> PTM (Pseudo-document based Topic Model) </option>
+                        <select
+                            class="row d-block ms-2 form-select form-select-sm"
+                            name="topic-analysis-method"
+                            id="topic-analysis-method"
+                        >
+                            <option value="LDA">
+                                LDA (Latent Dirichlet Allocation)
+                            </option>
+                            <option value="NMF">
+                                NMF (Non-negative matrix factorization)
+                            </option>
+                            <option value="LLDA">LLDA (Labeled LDA)</option>
+                            <option value="SLDA">SLDA (Supervised LDA)</option>
+                            <option value="DMR">
+                                DMR (Dirichlet Multinomial Regression)
+                            </option>
+                            <option value="CTM">
+                                CTM (Correlated Topic Model)
+                            </option>
+                            <option value="PTM">
+                                PTM (Pseudo-document based Topic Model)
+                            </option>
                         </select>
                     </div>
                 </div>
                 <div class="d-flex align-items-center mt-2">
                     <div>
-                        Select a date range to classify the topics (default is newest_patent_date -1 year, newest_patent_date):
+                        Select a date range to classify the topics (default is
+                        newest_patent_date -1 year, newest_patent_date):
                     </div>
                     <div class="ms-2 d-flex flex-wrap">
                         <div class="me-2">
-                            <input class="form-control form-control-sm" type="date" name="topic-analysis-start-date">
+                            <input
+                                class="form-control form-control-sm"
+                                type="date"
+                                name="topic-analysis-start-date"
+                            />
                         </div>
                         <div>
-                            <input class="form-control form-control-sm" type="date" name="topic-analysis-end-date">
+                            <input
+                                class="form-control form-control-sm"
+                                type="date"
+                                name="topic-analysis-end-date"
+                            />
                         </div>
                     </div>
                 </div>
                 <div class="d-flex align-items-center mt-2">
-                    <label for="topic-analysis-number-topics"> 
-                        Select the number of topics to be extracted: 
+                    <label for="topic-analysis-number-topics">
+                        Select the number of topics to be extracted:
                     </label>
-                    <input type="number" class="form-control form-control-sm small-number-input ms-2"
-                    min="2" max="99" id="topic-analysis-number-topics" name="topic-analysis-number-topics">          
+                    <input
+                        type="number"
+                        class="form-control form-control-sm small-number-input ms-2"
+                        value="10"
+                        min="2"
+                        max="99"
+                        id="topic-analysis-number-topics"
+                        name="topic-analysis-number-topics"
+                    />
                 </div>
                 <div class="d-flex align-items-center mt-2">
-                    <label for="topic-analysis-number-words"> 
-                        Select the number of words to be extracted for each topic: 
+                    <label for="topic-analysis-number-words">
+                        Select the number of words to be extracted for each
+                        topic:
                     </label>
-                    <input type="number" class="form-control form-control-sm small-number-input ms-2"
-                    min="2" max="99" id="topic-analysis-number-words" name="topic-analysis-number-words">          
+                    <input
+                        type="number"
+                        class="form-control form-control-sm small-number-input ms-2"
+                        value="10"
+                        min="2"
+                        max="99"
+                        id="topic-analysis-number-words"
+                        name="topic-analysis-number-words"
+                    />
                 </div>
-                <button class="btn btn-sm btn-theme border my-2" onClick="getTopicModeling()">
+                <button
+                    class="btn btn-sm btn-theme border my-2"
+                    onClick="getTopicModeling()"
+                >
                     Execute topic analysis
                 </button>
-                <div class="row" id="topic-analysis"> </div>
+                <div
+                    class="row"
+                    id="topic-analysis"
+                ></div>
             </div>
-            <div id="network-analysis"> 
+            <div id="network-analysis">
                 <div class="p-1">
                     <p>
-                        In this section, you can observe information about how patents are connected
-                        to each other over citations.
-                        <br>
-                        When we say 'local network', we refer to the network of patents in the filtered 
-                        patent set.
-                        <br>
-                        And when we say 'global network', we refer to the network of
-                        all the patents in the filtered patent set, plus the ones they mention
-                        and the ones that mention them.
-                        <br>
-                        You'll find a 3D representation of the local network, 
-                        along with statistics for both the local and global networks.
+                        In this section, you can observe information about how
+                        patents are connected to each other over citations.
+                        <br />
+                        When we say 'local network', we refer to the network of
+                        patents in the filtered patent set.
+                        <br />
+                        And when we say 'global network', we refer to the
+                        network of all the patents in the filtered patent set,
+                        plus the ones they mention and the ones that mention
+                        them.
+                        <br />
+                        You'll find a 3D representation of the local network,
+                        along with statistics for both the local and global
+                        networks.
                     </p>
                 </div>
-                <div id="most-cited" class="row justify-content-center"> </div>
-                <div id="citation-graph"> </div>
+                <div
+                    id="most-cited"
+                    class="row justify-content-center"
+                ></div>
+                <div id="citation-graph"></div>
+            </div>
+            <div id="patent-set">
+                <div class="d-flex align-items-center mt-2 my-3">
+                    <a
+                        href="/api/download-excel"
+                        download="patents.xls"
+                        class="btn btn-outline-secondary"
+                    >
+                        Export to Excel
+                    </a>
+                    <div class="ms-2">
+                        ( More information is available in the downloadable
+                        excel )
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table
+                        id="patent-table"
+                        class="table table-sm"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Office</th>
+                                <th>Office Patent ID</th>
+                                <th>Type</th>
+                                <th>Application Filled Date</th>
+                                <th>Granted Date</th>
+                                <th>Title</th>
+                                <th>Abstract Processed</th>
+                                <th>Claims Count</th>
+                                <th>Figures Count</th>
+                                <th>Sheets Count</th>
+                                <th>CPC Groups Count</th>
+                                <th>Inventor Count</th>
+                                <th>Assignee Count</th>
+                                <th>Incoming Citation Count</th>
+                                <th>Outgoing Citation Count</th>
+                                <th>Withdrawn</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+                <nav aria-label="See more patents">
+                    <ul class="pagination"></ul>
+                </nav>
             </div>
         </div>
-    </div>    
-    <div class="d-flex align-items-center mt-2  my-3">
-        <a href="/api/download-excel" download="patents.xls" class="btn btn-outline-secondary"> 
-            Export to Excel
-        </a>
-        <div class="ms-2">
-            ( More information is available in the downloadable excel )
-        </div>
-    </div>
-    <div class="table-responsive">
-        <table id="patent-table" class="table table-sm">
-            <thead>
-                <tr>
-                    <th> Office </th>
-                    <th> Office Patent ID </th>
-                    <th> Type </th>
-                    <th> Application Filled Date </th>
-                    <th> Granted Date </th>
-                    <th> Title </th>
-                    <th> Abstract Processed </th>
-                    <th> Claims Count </th>
-                    <th> Figures Count </th>
-                    <th> Sheets Count </th>
-                    <th> CPC Groups Count </th>
-                    <th> Inventor Count </th>
-                    <th> Assignee Count </th>
-                    <th> Incoming Citation Count </th>
-                    <th> Outgoing Citation Count </th>
-                    <th> Withdrawn </th>
-                </tr>
-            </thead>
-            <tbody> </tbody>
-        </table>
-    </div>
-    <nav aria-label="See more patents">
-        <ul class="pagination"> </ul>
-    </nav>
-{% endblock %}
+    {% endblock %}
+</div>

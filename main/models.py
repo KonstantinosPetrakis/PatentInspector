@@ -529,12 +529,19 @@ class Patent(models.Model):
     @staticmethod
     def inventor_locations(patents: models.QuerySet) -> list[dict]:
         return list(
-            patents.annotate(**get_coordinates("inventors__location__point"))
+            patents.annotate(
+                **get_coordinates("inventors__location__point"),
+                location=Concat(
+                    "inventors__location__country_code",
+                    Value(" - "),
+                    "inventors__location__city",
+                ),
+            )
             .filter(lat__isnull=False, lng__isnull=False)
-            .values("lat", "lng")
+            .values("lat", "lng", "location")
             .annotate(count=Count("id"))
             .order_by("-count")
-            .values("lat", "lng", "count")
+            .values("lat", "lng", "location", "count")
         )
 
     @staticmethod
@@ -566,12 +573,19 @@ class Patent(models.Model):
     @staticmethod
     def assignee_locations(patents: models.QuerySet) -> list[dict]:
         return list(
-            patents.annotate(**get_coordinates("assignees__location__point"))
+            patents.annotate(
+                **get_coordinates("assignees__location__point"),
+                location=Concat(
+                    "assignees__location__country_code",
+                    Value(" - "),
+                    "assignees__location__city",
+                ),
+            )
             .filter(lat__isnull=False, lng__isnull=False)
-            .values("lat", "lng")
+            .values("lat", "lng", "location")
             .annotate(count=Count("id"))
             .order_by("-count")
-            .values("lat", "lng", "count")
+            .values("lat", "lng", "location", "count")
         )
 
     @staticmethod
