@@ -23,7 +23,6 @@ This is going to be especially useful when multiple offices are supported and th
 
 
 # Todo
-* Add tables pane for heatmap plot
 * Add date filtering in uspto management command so it is between 1836 and current year
 * Remove gender flag
 * Write back up and restore scripts

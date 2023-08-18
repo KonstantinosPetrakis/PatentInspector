@@ -70,23 +70,26 @@ function createTable(data, labels, wrapperId) {
 }
 
 
-/**
- * This function creates a table from a data object.
- * @param {Object} object an object containing the data (e.g {x1: {y1: z1, y2: z2}, ...}
- * @return {Array[Array]} an array of arrays containing the data (e.g [[x1, y1, z1], ...])
- */
-function objectToArray(object) {
-    if (object[""] != undefined) object = object[""]; // Empty string is used for single dataset of datasets
-
-    let array = [];
-    for (let [key, value] of Object.entries(object)) {
-        if (typeof value !== 'object') array.push([key, value]);
-        else {
-            for (let subArrayItem of objectToArray(value)) array.push([key, ...subArrayItem]);
-        }
-    }
-    return array;
+function keyValueObjectToArray(obj) {
+    return Object.entries(obj).map(([key, value]) => [key, value]);
 }
+
+
+function nestedObjectToArray(obj, splitNested = false) {
+    if (obj[""] != undefined) return keyValueObjectToArray(obj[""]);
+    
+    if (splitNested) {
+        let results = [];
+        for (let [key, value] of Object.entries(obj)) {
+            for (let [innerKey, innerValue] of Object.entries(value)) {
+                results.push([key, innerKey, innerValue]);
+            }
+        }
+        return results;
+    }
+    return Object.entries(obj).map(([key, value]) => [key, ...Object.values(value)]);
+}
+
 
 /**
  * This function creates an in-page navigation tab used to accommodate a plot and its respective table.
@@ -109,6 +112,7 @@ function createPlotAndTableNav(id, wrapperId) {
             <div id="${id}-table"> </div>
         </div>
     `;
+    navWrapper.id = id;
     navWrapper.className = "in-page-nav-tab col-12 col-md-6";
     document.querySelector(`#${wrapperId}`).appendChild(navWrapper);
     initializeInPageNavTab(navWrapper);
@@ -146,7 +150,7 @@ function create2DPlot(datasets, title, dataLabels) {
 
     const titleAsID = title.toLowerCase().replace(/ /g, "-");
     createPlotAndTableNav(titleAsID, "time-series");
-    createTable(objectToArray(datasets), dataLabels, `${titleAsID}-table`);
+    createTable(nestedObjectToArray(datasets, true), dataLabels, `${titleAsID}-table`);
 
     new Chart(document.querySelector(`#${titleAsID}-plot > canvas`), {
         type: "line",
@@ -190,7 +194,7 @@ function create2DPlot(datasets, title, dataLabels) {
 function createBar(dataset, title, keyColumnName, valueColumnName, wrapperId) {
     const titleAsID = title.toLowerCase().replace(/ /g, "-");
     createPlotAndTableNav(titleAsID, wrapperId);
-    createTable(objectToArray(dataset), [keyColumnName, valueColumnName], `${titleAsID}-table`);
+    createTable(keyValueObjectToArray(dataset), [keyColumnName, valueColumnName], `${titleAsID}-table`);
 
     new Chart(document.querySelector(`#${titleAsID}-plot > canvas`), {
         type: "bar",
@@ -229,26 +233,36 @@ function createBar(dataset, title, keyColumnName, valueColumnName, wrapperId) {
  * @param {String} wrapperID the id of the element that will contain the plot 
  */
 function createHeatmap(points, title, wrapperID) {
-    console.log(points);
-    var mapWithLegendElement = document.createElement("div");
-    mapWithLegendElement.textContent = title;
-    mapWithLegendElement.classList.add("col-12", "d-flex", "flex-column", "align-items-center");
-    var mapElement = document.createElement("div");
-    mapElement.classList.add("map", "global-map");
-    mapElement.id = `map-${(Math.round(Math.random() * 100))}`;
-    mapWithLegendElement.appendChild(mapElement);
-    document.querySelector(`#${wrapperID}`).appendChild(mapWithLegendElement);
+    const titleAsID = title.toLowerCase().replace(/ /g, "-");
+    createPlotAndTableNav(titleAsID, wrapperID);
+    createTable(nestedObjectToArray(points), ["#", "Lat", "Lng", "Name", "Count"], `${titleAsID}-table`);
+    document.getElementById(titleAsID).classList.remove("col-md-6");
 
-    var map = L.map(mapElement.id).setView([44, -50], 3);
+    let mapPlotElement = document.getElementById(`${titleAsID}-plot`);
+    mapPlotElement.innerHTML = `
+        <div class="col-12 d-flex flex-column align-items-center"> 
+            ${title}
+            <div id="map-${titleAsID}" class="map global-map">
+
+            </div>
+        </div>
+    `;
+
+    var map = L.map(`map-${titleAsID}`).setView([44, -50], 3);
 
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
     // Fix mess of hidden elements with leaflet map
-    const observer = new MutationObserver(() => map.invalidateSize());
-    const mapWrapper = mapElement.closest(".accordion-collapse, .tab-contents > div");
-    if (mapWrapper) observer.observe(mapWrapper, { attributes: true, attributeFilter: ["style", "class"] });
+
+    const observer = new IntersectionObserver((entries) => {
+        if(entries[0].isIntersecting){
+            map.invalidateSize()
+        }
+    });
+
+    observer.observe(mapPlotElement);
 
     var heatmapLayer = new HeatmapOverlay({
         "radius": 2,
