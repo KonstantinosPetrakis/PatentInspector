@@ -39,7 +39,6 @@ import numpy as np
 from main.models import *
 from main.management.helpers import *
 
-
 # Constant definitions and initial setup
 CHUNK_SIZE = 1000000  # Lower it if you have memory issues
 DATA_DIRECTORY = f"{settings.BASE_DIR}/main/data"
