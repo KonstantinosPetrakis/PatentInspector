@@ -13,19 +13,40 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-jg%+#pwauqiqcgm*#gt^s%lgd9^u6#d0vekoyxz*t64flw84-r'
+SECRET_KEY = env("DJANGO_SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = True if env("DJANGO_DEBUG") == "True" else False
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
 else:
-    ALLOWED_HOSTS = []
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+    CSRF_TRUSTED_ORIGINS = ["https://*.127.0.0.1", "https://*.localhost"]
+    if DOMAIN := env("DOMAIN", default=None):
+        ALLOWED_HOSTS.append(DOMAIN)
+        CSRF_TRUSTED_ORIGINS.append(f"https://{DOMAIN}")
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
 
 INTERNAL_IPS = [
     "127.0.0.1",
 ]
+
+# Logging
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+}
 
 # Application definition
 
@@ -83,11 +104,11 @@ WSGI_APPLICATION = 'PatentAnalyzer.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': env("DB_NAME"),
-        "USER": env("DB_USER"),
-        "PASSWORD": env("DB_PASSWORD"),
-        "HOST": env("DB_HOST"),
-        "PORT": env("DB_PORT"),
+        'NAME': env("POSTGRES_DB"),
+        "USER": env("POSTGRES_USER"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
+        "HOST": env("POSTGRES_HOST") if DEBUG else "postgres",
+        "PORT": env("POSTGRES_PORT"),
     }
 }
 

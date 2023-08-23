@@ -29,7 +29,6 @@ class MainForm(forms.Form):
     inventor_location = RadiusField(help_text="The location of the inventor. If there are multiple inventors, at least one of them must be in this location.")
     inventor_first_name = ChoiceKeywordsField(model="Inventor", wanted_fields=["first_name"], help_text="The first name of the inventor. If there are multiple inventors, at least one of them will have this first name.")
     inventor_last_name = ChoiceKeywordsField(model="Inventor", wanted_fields=["last_name"], help_text="The last name of the inventor. If there are multiple inventors, at least one of them must have this last name.")
-    inventor_male = TriStateField(help_text="Whether the inventor is male or not. Currently there are no inventor records with gender declared.")
     
     assignee_location = RadiusField(help_text="The location of the assignee. If there are multiple assignees, at least one of them must be in this location.")
     assignee_first_name = ChoiceKeywordsField(model="Assignee", wanted_fields=["first_name"], help_text="The first name name of the assignee if it is an individual. If there are multiple assignees, at least one of them will have this first name.")

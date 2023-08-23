@@ -37,7 +37,7 @@ import pandas as pd
 import numpy as np
 
 from main.models import *
-from main.management.commands.helpers import *
+from main.management.helpers import *
 
 
 # Constant definitions and initial setup
@@ -448,14 +448,12 @@ class Command(BaseCommand):
                 "location_id",
                 "disambig_inventor_name_first",
                 "disambig_inventor_name_last",
-                "gender_code",
             ],
             dtype={
                 "patent_id": str,
                 "location_id": str,
                 "disambig_inventor_name_first": str,
                 "disambig_inventor_name_last": str,
-                "gender_code": object,
             },
             chunksize=CHUNK_SIZE,
         )
@@ -466,7 +464,6 @@ class Command(BaseCommand):
                 columns={
                     "disambig_inventor_name_first": "first_name",
                     "disambig_inventor_name_last": "last_name",
-                    "gender_code": "male",
                 }
             )
 
@@ -481,9 +478,6 @@ class Command(BaseCommand):
             inventors_chunk = inventors_chunk[inventors_chunk["location_id"].notna()]
             inventors_chunk["location_id"] = inventors_chunk["location_id"].astype(
                 "Int64"
-            )
-            inventors_chunk["male"] = inventors_chunk["male"].map(
-                {"F": False, "M": True}
             )
 
             inventors_chunk.to_csv(

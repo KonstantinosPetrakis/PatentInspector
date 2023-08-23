@@ -1,0 +1,55 @@
+version: "3.7"
+services:
+    postgres:
+        build:
+            context: .
+            dockerfile: database.dockerfile
+        container_name: postgres
+        restart: always
+        shm_size: 2gb
+        environment:
+            - POSTGRES_USER
+            - POSTGRES_PASSWORD
+            - POSTGRES_DB
+            - DOWNLOAD_BACKUP_URL1
+            - DOWNLOAD_BACKUP_URL2
+        volumes:
+            - ./deploy/pg-init.sh:/docker-entrypoint-initdb.d/pg-init.sh
+            - ./main/management/backup_helper.py:/backup_helper.py
+            - ./postgres-data:/var/lib/postgresql/data
+        command: "postgres -c max_connections=200 -c shared_buffers=3000MB 
+            -c work_mem=500MB -c maintenance_work_mem=2500MB -c max_wal_size=1000MB
+            -c max_wal_senders=0 -c wal_level=minimal -c fsync=false"
+
+    backend:
+        container_name: backend
+        build: 
+            context: .
+            dockerfile: backend.dockerfile
+        restart: always
+        environment:
+            - POSTGRES_USER
+            - POSTGRES_PASSWORD
+            - POSTGRES_DB
+
+        depends_on:
+            - postgres
+        links:
+            - postgres
+
+    nginx:
+        image: nginx
+        container_name: nginx
+        restart: always
+        ports:
+            - "443:443"
+            - "80:80"
+        volumes:
+            - ./main/static/main:/static/main
+            - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./server.crt:/certs/server.crt:ro
+            - ./server.key:/certs/server.key:ro
+        depends_on:
+            - backend
+        links:
+            - backend

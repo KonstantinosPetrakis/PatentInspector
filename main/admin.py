@@ -110,7 +110,6 @@ class LocationAdmin(LeafletGeoAdmin):
 
 
 class InventorAdmin(FastCountAdmin):
-    list_filter = ("male", )
     search_fields = ("last_name", "first_name", )
     ordering = ("last_name", "first_name")
     autocomplete_fields = ("patent", "location")

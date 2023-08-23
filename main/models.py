@@ -293,8 +293,7 @@ class Patent(models.Model):
             )
         if data["inventor_last_name"]:
             inventor_query &= Q(inventors__last_name__in=data["inventor_last_name"])
-        if data["inventor_male"] is not None:
-            inventor_query &= Q(inventors__male=data["inventor_male"])
+
         if location := data["inventor_location"]:
             inventor_query &= Q(
                 inventors__location__point__distance_lte=(
@@ -711,10 +710,6 @@ class Inventor(models.Model):
         blank=True,
         max_length=100,
         help_text="The last name of the inventor.",
-    )
-    male = models.BooleanField(
-        null=True,
-        help_text="Whether the inventor is male, if false is female, if null then no gender attributed.",
     )
     objects = CopyManager()
 

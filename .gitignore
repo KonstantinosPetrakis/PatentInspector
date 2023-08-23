@@ -8,3 +8,9 @@ test.ipynb
 main/migrations/*
 !main/migrations/__init__.py
 temp/
+server.crt
+server.csr
+server.key
+dump
+service-secrets.json
+postgres-data

@@ -20,8 +20,8 @@ class Command(BaseCommand):
 
         shutil.rmtree(f"{settings.BASE_DIR}/main/migrations", ignore_errors=True)
         os.makedirs(f"{settings.BASE_DIR}/main/migrations")
-        os.system(f"dropdb {env('DB_NAME')}")
-        os.system(f"createdb {env('DB_NAME')}")
+        os.system(f"dropdb {env('POSTGRES_DB')}")
+        os.system(f"createdb {env('POSTGRES_DB')}")
         open(f"{settings.BASE_DIR}/main/migrations/__init__.py", "w").close()
         os.system("python manage.py makemigrations > /dev/null 2>&1")
         os.system("python manage.py migrate > /dev/null 2>&1")
