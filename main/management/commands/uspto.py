@@ -25,6 +25,7 @@ Moreover, one can download the tables manually from the following URL:
 https://patentsview.org/download/data-download-tables
 """
 
+from datetime import datetime
 import zipfile
 import os
 
@@ -43,6 +44,8 @@ from main.management.helpers import *
 CHUNK_SIZE = 1000000  # Lower it if you have memory issues
 DATA_DIRECTORY = f"{settings.BASE_DIR}/main/data"
 ENDPOINT = "https://s3.amazonaws.com/data.patentsview.org/download/"
+CURRENT_YEAR = datetime.now().year
+USPTO_CREATION_YEAR = 1836
 os.makedirs(DATA_DIRECTORY, exist_ok=True)
 
 location_id_map = {}  # Will be used to map USPTO ids,
@@ -202,7 +205,7 @@ class Command(BaseCommand):
                 "withdrawn": bool,
             },
             # Patents are big, so we will split them into small chunks
-            chunksize=CHUNK_SIZE / 50, 
+            chunksize=CHUNK_SIZE / 50,
         )
 
         application = pd.read_csv(
@@ -273,6 +276,16 @@ class Command(BaseCommand):
             patent_chunk["application_year"] = (
                 patent_chunk["application_filed_date"].str[:4].astype("Int64")
             )
+
+            # Remove patents with invalid years
+            patent_chunk.drop(
+                patent_chunk[
+                    (~patent_chunk["granted_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR)) |
+                    (~patent_chunk["application_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR))
+                ].index,
+                inplace=True
+            )
+
             patent_chunk["years_to_get_granted"] = (
                 np.array(
                     multiprocessing_apply(
@@ -599,6 +612,14 @@ class Command(BaseCommand):
                 citations_chunk["citation_date"].str[:4].astype("Int64")
             )
 
+            # Remove rows with invalid citation years
+            citations_chunk.drop(
+                citations_chunk[
+                    ~citations_chunk["citation_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR)
+                ].index,
+                inplace=True
+            )
+
             citations_chunk.to_csv(
                 f"{DATA_DIRECTORY}/g_us_patent_citation_preprocessed.csv",
                 index=False,
@@ -655,6 +676,14 @@ class Command(BaseCommand):
             # Precalculate fields
             citation_chunk["citation_year"] = (
                 citation_chunk["citation_date"].str[:4].astype("Int64")
+            )
+
+            # Remove rows with invalid citation years
+            citation_chunk.drop(
+                citation_chunk[
+                    ~citation_chunk["citation_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR)
+                ].index,
+                inplace=True
             )
 
             citation_chunk.to_csv(
