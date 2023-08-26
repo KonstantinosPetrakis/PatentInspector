@@ -14,8 +14,7 @@ def index(request):
             # Store the ids of the patents that match the query in the session
             request.session.flush()
 
-            patent_count = Patent.filter(form.cleaned_data).distinct("id").count()
-            if len(patent_count) < 30000 and settings.DEPLOYED:
+            if settings.DEPLOYED and Patent.filter(form.cleaned_data).distinct("id").count() < 30000:
                 patent_ids = list(
                     Patent.filter(form.cleaned_data)
                     .distinct("id")
