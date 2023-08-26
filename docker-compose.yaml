@@ -31,7 +31,10 @@ services:
             - POSTGRES_USER
             - POSTGRES_PASSWORD
             - POSTGRES_DB
-
+            - POSTGRES_PORT
+            - DJANGO_SECRET_KEY
+            - DJANGO_DEBUG
+            - DOMAIN
         depends_on:
             - postgres
         links:
