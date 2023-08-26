@@ -13,12 +13,14 @@ def index(request):
         if form.is_valid():
             # Store the ids of the patents that match the query in the session
             request.session.flush()
-            patent_ids = list(
-                Patent.filter(form.cleaned_data)
-                .distinct("id")
-                .values_list("id", flat=True)
-            )
-            if len(patent_ids) < 30000 and settings.DEPLOYED:
+
+            patent_count = Patent.filter(form.cleaned_data).distinct("id").count()
+            if len(patent_count) < 30000 and settings.DEPLOYED:
+                patent_ids = list(
+                    Patent.filter(form.cleaned_data)
+                    .distinct("id")
+                    .values_list("id", flat=True)
+                )
                 request.session["form_data"] = json.dumps(
                     form.cleaned_data, cls=DjangoJSONEncoder
                 )
