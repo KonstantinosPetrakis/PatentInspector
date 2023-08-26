@@ -14,7 +14,7 @@ def index(request):
             # Store the ids of the patents that match the query in the session
             request.session.flush()
 
-            if settings.DEPLOYED and Patent.filter(form.cleaned_data).distinct("id").count() < 30000:
+            if settings.DEPLOYED and patent_count := Patent.filter(form.cleaned_data).distinct("id").count() < 30000:
                 patent_ids = list(
                     Patent.filter(form.cleaned_data)
                     .distinct("id")
@@ -29,7 +29,7 @@ def index(request):
                 form.add_error(
                     None,
                     f"We are sorry but we do not have the capacity to process your query " \
-                    f"of {len(patent_ids)} patents. Please try a more specific query."
+                    f"of {patent_count} patents. Please try a more specific query."
                 )
     else:
         form = MainForm()
