@@ -2,6 +2,8 @@
 
 PatentAnalyzer is a tool for analyzing patent data. It's written in Python and uses the Django framework. Its priority is to be easy to use and provide a good user interface. It's also designed to be easily extensible. 
 
+You can use PatentAnalyzer in the following URL, please note that our resources are limited: https://patentanalyzer.csd.auth.gr/
+
 ## Run for development (postgis has dependencies varying by OS)
 ```bash
 python -m venv venv
