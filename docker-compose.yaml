@@ -17,10 +17,16 @@ services:
             - ./deploy/pg-init.sh:/docker-entrypoint-initdb.d/pg-init.sh
             - ./main/management/backup_helper.py:/backup_helper.py
             - ./postgres-data:/var/lib/postgresql/data
-        command: "postgres -c max_connections=200 -c shared_buffers=3000MB 
-            -c work_mem=500MB -c maintenance_work_mem=2500MB -c max_wal_size=1000MB
-            -c max_wal_senders=0 -c wal_level=minimal -c fsync=false"
-
+        command: "postgres -c max_connections=40 -c shared_buffers=2GB 
+            -c effective_cache_size=6GB -c maintenance_work_mem=1GB
+            -c checkpoint_completion_target=0.9 -c wal_buffers=16MB
+            -c default_statistics_target=500 -c random_page_cost=1.1
+            -c effective_io_concurrency=200 -c work_mem=13107kB
+            -c huge_pages=off -c min_wal_size=4GB -c max_wal_size=16GB
+            -c max_worker_processes=4 -c max_parallel_workers_per_gather=2
+            -c max_parallel_workers=4 -c max_parallel_maintenance_workers=2
+            -c wal_level=minimal -c max_wal_senders=0 -c fsync=false"
+            
     backend:
         container_name: backend
         build: 
@@ -35,6 +41,8 @@ services:
             - DJANGO_SECRET_KEY
             - DJANGO_DEBUG
             - DOMAIN
+        volumes:
+            - ./:/patentanalyzer
         depends_on:
             - postgres
         links:

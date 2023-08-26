@@ -831,11 +831,6 @@ class PatentCitation(models.Model):
 
     @staticmethod
     def most_cited_patents_global(patent_ids: list) -> list:
-        """
-        That's a really heavy operation. For example there are 150k citations within 5k patents.
-        You can imagine how this escalates with more patents.
-        """
-
         return list(
             PatentCitation.objects.filter(
                 Q(citing_patent_id__in=patent_ids) | Q(cited_patent_id__in=patent_ids)

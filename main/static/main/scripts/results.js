@@ -674,7 +674,8 @@ async function getCitationData() {
     removeProcessingMessage("#network-analysis");
 
     createGraph(data.graph, "#citation-graph");
-    createBar(data.most_cited_patents_global, "Most cited patents globally", "Patent", "Citations", "most-cited");
+    if (data.most_cited_patents_global)
+        createBar(data.most_cited_patents_global, "Most cited patents globally", "Patent", "Citations", "most-cited");
     createBar(data.most_cited_patents_local, "Most cited patents locally", "Patent", "Citations", "most-cited");
 }
 

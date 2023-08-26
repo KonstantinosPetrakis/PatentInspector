@@ -109,6 +109,7 @@ DATABASES = {
         "PASSWORD": env("POSTGRES_PASSWORD"),
         "HOST": env("POSTGRES_HOST") if DEBUG else "postgres",
         "PORT": env("POSTGRES_PORT"),
+        "CONN_MAX_AGE": 600, # 10 minutes
     }
 }
 
@@ -158,6 +159,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Custom apps configuration
 RANDOM_SEED = 42
+
+# Restrict heavy operations based on if the app runs locally or on the server (has a domain)
+DEPLOYED = bool(env("DOMAIN", default=None))
 
 # Leaflet
 LEAFLET_CONFIG = {

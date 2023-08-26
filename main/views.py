@@ -2,7 +2,7 @@ import json
 
 from django.shortcuts import render
 from django.core.serializers.json import DjangoJSONEncoder
-
+from django.conf import settings
 from main.forms import *
 from main.models import *
 
@@ -18,11 +18,18 @@ def index(request):
                 .distinct("id")
                 .values_list("id", flat=True)
             )
-            request.session["form_data"] = json.dumps(
-                form.cleaned_data, cls=DjangoJSONEncoder
-            )
-            request.session["patent_ids"] = json.dumps(patent_ids)
-            return render(request, "main/results.html")
+            if len(patent_ids) < 30000 and settings.DEPLOYED:
+                request.session["form_data"] = json.dumps(
+                    form.cleaned_data, cls=DjangoJSONEncoder
+                )
+                request.session["patent_ids"] = json.dumps(patent_ids)
+                return render(request, "main/results.html")
+            else:
+                form.add_error(
+                    None,
+                    f"We are sorry but we do not have the capacity to process your query " \
+                    f"of {len(patent_ids)} patents. Please try a more specific query."
+                )
     else:
         form = MainForm()
     return render(request, "main/index.html", {"form": form})

@@ -9,7 +9,7 @@ import json
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponse, HttpRequest
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.fields import TextField
-from django.core.serializers.json import DjangoJSONEncoder
+from django.conf import settings
 from django.apps import apps
 from django.db.models.aggregates import Count
 from django.core.paginator import Paginator
@@ -252,7 +252,7 @@ def patents(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
             "page": page,
             "selected_record_count": paginator.count,
             "total_record_count": Patent.approximate_count(),
-            "page_range": list(paginator.get_elided_page_range(page))
+            "page_range": list(paginator.get_elided_page_range(page)),
         }
     )
 
@@ -340,58 +340,43 @@ def time_series(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
 
     patent_ids = get_patent_ids(request)
 
-    def thread_worker(i):
-        method_name = [
-            "applications_per_year",
-            "granted_patents_per_year",
-            "granted_patents_per_type_year",
-            "granted_patents_per_office_year",
-            "pct_protected_patents_per_year",
-            "granted_patents_per_cpc_year",
-            "citations_made_per_year",
-            "citations_received_per_year",
-        ][i]
-
-        method = getattr(Patent, method_name)
-        return method(patents) if i < 6 else method(patent_ids)
-
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        (
-            applications_per_year,
-            granted_patents_per_year,
-            granted_patents_per_type_year,
-            granted_patents_per_office_year,
-            pct_protected_patents_per_year,
-            granted_patents_per_cpc_year,
-            citations_made_per_year,
-            citations_received_per_year,
-        ) = executor.map(thread_worker, range(8))
-
     return JsonResponse(
         {
             "applications_per_year": {
-                "": group_fields(applications_per_year, ["application_year"])
+                "": group_fields(
+                    Patent.applications_per_year(patents), ["application_year"]
+                )
             },
             "granted_patents_per_year": {
-                "": group_fields(granted_patents_per_year, ["granted_year"])
+                "": group_fields(
+                    Patent.granted_patents_per_year(patents), ["granted_year"]
+                )
             },
             "granted_patents_per_type_year": group_fields(
-                granted_patents_per_type_year, ["type", "granted_year"]
+                Patent.granted_patents_per_type_year(patents), ["type", "granted_year"]
             ),
             "granted_patents_per_office_year": group_fields(
-                granted_patents_per_office_year, ["office", "granted_year"]
+                Patent.granted_patents_per_office_year(patents),
+                ["office", "granted_year"],
             ),
             "pct_protected_patents_per_year": {
-                "": group_fields(pct_protected_patents_per_year, ["granted_year"])
+                "": group_fields(
+                    Patent.pct_protected_patents_per_year(patents), ["granted_year"]
+                )
             },
             "granted_patents_per_cpc_year": group_fields(
-                granted_patents_per_cpc_year, ["cpc_section", "granted_year"]
+                Patent.granted_patents_per_cpc_year(patents),
+                ["cpc_section", "granted_year"],
             ),
             "citations_made_per_year": {
-                "": group_fields(citations_made_per_year, ["citation_year"])
+                "": group_fields(
+                    Patent.citations_made_per_year(patent_ids), ["citation_year"]
+                )
             },
             "citations_received_per_year": {
-                "": group_fields(citations_received_per_year, ["citation_year"])
+                "": group_fields(
+                    Patent.citations_received_per_year(patent_ids), ["citation_year"]
+                )
             },
         }
     )
@@ -405,86 +390,39 @@ def entity_info(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest:
     if (patents := get_patents(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    def thread_worker(i):
-        method_name = [
-            "pct_not_applied",
-            "pct_not_granted",
-            "pct_granted",
-            "types",
-            "offices",
-            "top_10_inventors",
-            "inventor_locations",
-            "top_10_assignees",
-            "corporation_assignees_count",
-            "individual_assignees_count",
-            "assignee_locations",
-            "cpc_sections",
-            "top_5_cpc_classes",
-            "top_5_cpc_subclasses",
-            "top_5_cpc_groups",
-        ][i]
-
-        method = getattr(Patent, method_name)
-        return method(patents)
-
-    with ThreadPoolExecutor(max_workers=15) as executor:
-        (
-            pct_not_applied,
-            pct_not_granted,
-            pct_granted,
-            types,
-            offices,
-            top_10_inventors,
-            inventor_locations,
-            top_10_assignees,
-            corporation_assignees_count,
-            individual_assignees_count,
-            assignee_locations,
-            cpc_sections,
-            top_5_cpc_classes,
-            top_5_cpc_subclasses,
-            top_5_cpc_groups,
-        ) = executor.map(thread_worker, range(15))
-
     return JsonResponse(
         {
             "patent": {
                 "pct": {
-                    "Did not apply": pct_not_applied,
-                    "Applied but not granted yet": pct_not_granted,
-                    "Granted": pct_granted,
+                    "Did not apply": Patent.pct_not_applied(patents),
+                    "Applied but not granted yet": Patent.pct_not_granted(patents),
+                    "Granted": Patent.pct_granted(patents),
                 },
-                "type": group_fields(types, ["type"]),
-                "office": group_fields(offices, ["office"]),
+                "type": group_fields(Patent.types(patents), ["type"]),
+                "office": group_fields(Patent.offices(patents), ["office"]),
             },
             "inventor": {
-                "top_10": group_fields(top_10_inventors, ["inventor"]),
-                "locations": inventor_locations,
+                "top_10": group_fields(Patent.top_10_inventors(patents), ["inventor"]),
+                "locations": Patent.inventor_locations(patents),
             },
             "assignee": {
-                "top_10": group_fields(top_10_assignees, ["assignee"]),
+                "top_10": group_fields(Patent.top_10_assignees(patents), ["assignee"]),
                 "corporation_vs_individual": {
-                    "Corporation": corporation_assignees_count,
-                    "Individual": individual_assignees_count,
+                    "Corporation": Patent.corporation_assignees_count(patents),
+                    "Individual": Patent.individual_assignees_count(patents),
                 },
-                "locations": assignee_locations,
+                "locations": Patent.assignee_locations(patents),
             },
             "cpc": {
-                "section": group_fields(
-                    cpc_sections,
-                    ["cpc_section"],
-                ),
+                "section": group_fields(Patent.cpc_sections(patents), ["cpc_section"]),
                 "top_5_classes": group_fields(
-                    top_5_cpc_classes,
-                    ["cpc_class"],
+                    Patent.top_5_cpc_classes(patents), ["cpc_class"]
                 ),
                 "top_5_subclasses": group_fields(
-                    top_5_cpc_subclasses,
-                    ["cpc_subclass"],
+                    Patent.top_5_cpc_subclasses(patents), ["cpc_subclass"]
                 ),
                 "top_5_groups": group_fields(
-                    top_5_cpc_groups,
-                    ["cpc_groups__cpc_group"],
+                    Patent.top_5_cpc_groups(patents), ["cpc_groups__cpc_group"]
                 ),
             },
         }
@@ -502,7 +440,6 @@ def topic_modeling(request: HttpRequest) -> JsonResponse | HttpResponseBadReques
         JsonResponse | HttpResponseBadRequest: An object containing the topic modeling
         results or an error response.
     """
-
 
     n_topics = int(request.GET.get("n_topics", 10))
     n_top_words = int(request.GET.get("n_words", 10))
@@ -636,33 +573,22 @@ def citation_data(request: HttpRequest) -> JsonResponse | HttpResponseBadRequest
     if (patent_ids := get_patent_ids(request)) is None:
         return HttpResponseBadRequest("No patent query in the current session.")
 
-    def thread_worker(i):
-        if i == 0:
-            return PatentCitation.local_network_graph(local_network_ids)
-        elif i == 1:
-            return PatentCitation.most_cited_patents_local(local_network_ids)
-        else:
-            return PatentCitation.most_cited_patents_global(patent_ids)
-
     local_network_ids = list(
         PatentCitation.objects.filter(
             citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids
         ).values_list("id", flat=True)
     )
 
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        graph, most_cited_patents_local, most_cited_patents_global = executor.map(
-            thread_worker, range(3)
+    result = {
+        "graph": PatentCitation.local_network_graph(local_network_ids),
+        "most_cited_patents_local": group_fields(
+            PatentCitation.most_cited_patents_local(local_network_ids), ["patent"]
+        ),
+    }
+
+    if not settings.DEPLOYED:
+        result["most_cited_patents_global"] = group_fields(
+            PatentCitation.most_cited_patents_global(patent_ids), ["patent"]
         )
 
-    return JsonResponse(
-        {
-            "graph": graph,
-            "most_cited_patents_global": group_fields(
-                most_cited_patents_global, ["patent"]
-            ),
-            "most_cited_patents_local": group_fields(
-                most_cited_patents_local, ["patent"]
-            ),
-        }
-    )
+    return JsonResponse(result)
