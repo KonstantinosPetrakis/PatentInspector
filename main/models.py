@@ -201,11 +201,11 @@ class Patent(models.Model):
             int: The approximate count of the patents in the database.
         """
 
-        cursor = connection.cursor()
-        cursor.execute(
-            "SELECT reltuples FROM pg_class WHERE relname = %s", [Patent._meta.db_table]
-        )
-        return int(cursor.fetchone()[0])
+        with connection.cursor() as curs:
+            curs.execute(
+                "SELECT reltuples FROM pg_class WHERE relname = %s", [Patent._meta.db_table]
+            )
+            return int(curs.fetchone()[0])
 
     @staticmethod
     def filter(data: dict) -> models.QuerySet:

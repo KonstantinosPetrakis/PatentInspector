@@ -12,4 +12,6 @@ class Command(BaseCommand):
     help = "This command will load the entire database from a dump file."
 
     def handle(self, *args, **options):
-        backup(env("DOWNLOAD_BACKUP_URL"), env("POSTGRES_DB"))
+        backup(
+            env("POSTGRES_DB"), env("DOWNLOAD_BACKUP_URL1"), env("DOWNLOAD_BACKUP_URL2")
+        )
