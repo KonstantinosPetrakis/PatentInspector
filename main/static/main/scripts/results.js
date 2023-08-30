@@ -449,6 +449,11 @@ function createGraph(data, wrapperSelector) {
             .warmupTicks(30)
             .cooldownTicks(0)
             .enableNodeDrag(false);
+        
+        new IntersectionObserver((entries) => {
+            if (!entries[0].isIntersecting) {graph.pauseAnimation(); console.log("paused")}
+            else {graph.resumeAnimation(); console.log("resumed")}
+        }).observe(wrapper);
     }
 
     const wrapper = document.querySelector(wrapperSelector);

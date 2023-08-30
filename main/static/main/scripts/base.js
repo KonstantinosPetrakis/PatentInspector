@@ -24,7 +24,7 @@ function debounce(func, timeout = 500){
   }
 
   
-document.querySelector("html").setAttribute("data-bs-theme", localStorage.getItem("theme") || "dark");
+document.querySelector("html").setAttribute("data-bs-theme", localStorage.getItem("theme") || "light");
 addEventListener("DOMContentLoaded", () => {
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl, {html: true}))
