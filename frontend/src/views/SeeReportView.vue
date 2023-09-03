@@ -1,0 +1,3 @@
+<template>
+    See report
+</template>

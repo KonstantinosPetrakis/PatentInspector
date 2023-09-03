@@ -4,21 +4,6 @@ PatentAnalyzer is a tool for analyzing patent data. It's written in Python and u
 
 You can use PatentAnalyzer in the following URL, please note that our resources are limited: https://patentanalyzer.csd.auth.gr/
 
-## Run for development (postgis has dependencies varying by OS)
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env # fill in the values (use DJANGO_DEBUG=False)
-# Create the postgres database and user and install postgis and pg_trgm extensions.
-# In case the back up file is not available you can use the resetdb, uspto and index commands manually
-# in this particular order to create the database from scratch.
-python manage.py load_database
-python manage.py runserver
-```
-
-## Run using docker (suitable for production)
-```bash
-cp .env.example .env
-docker-compose up
-```
+The master branch is used for development, currently it's totally unusable (has no features at all).
+If you want to inspect PatentAnalyzer please use the 'paper' branch.
+https://github.com/KonstantinosPetrakis/PatentAnalyzer/tree/paper

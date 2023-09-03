@@ -1,0 +1,67 @@
+html,
+body,
+#app {
+    margin: 0;
+    padding: 0;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.no-effect-button {
+    box-shadow: none !important;
+    outline: 0 !important;
+    border: 0 !important;
+}
+
+.small-box {
+    margin: 2rem auto;
+    max-width: 500px;
+    border: 1px solid;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    padding: 1rem;
+}
+
+@media (max-width: 500px) {
+    .small-box {
+        margin: 0;
+        border: 0;
+    }
+}
+
+/* Vue multiselect customization */
+.multiselect__tags {
+    border-color: var(--bs-secondary-bg) !important;
+}
+
+.multiselect *,
+.multiselect__option--highlight::after {
+    color: var(--bs-body-color) !important;
+    background: var(--bs-body-bg) !important;
+}
+
+.multiselect__option--highlight,
+.multiselect__option--highlight *,
+.multiselect__option--highlight.is-selected,
+.multiselect__option--highlight.is-selected::after,
+.multiselect__option--highlight::after,
+.multiselect__tag,
+.multiselect__tag * {
+    background: var(--bs-secondary-bg) !important;
+}
+
+.multiselect__tag-icon::after {
+    color: var(--bs-secondary-color) !important;
+}
+
+/* Customize double slider */
+:root {
+    --slider-bg: var(--bs-secondary-bg) !important;
+    --slider-connect-bg: var(--bs-secondary-color) !important;
+    --slider-tooltip-bg: var(--bs-secondary-bg) !important;
+    --slider-tooltip-color: var(--bs-body-color) !important;
+    --slider-handle-ring-color: var(--bs-secondary-color) !important;
+}
