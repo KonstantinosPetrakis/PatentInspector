@@ -3,11 +3,16 @@ from rest_framework import serializers
 from main.models import *
 
 
+class PrimitiveSerializer(serializers.BaseSerializer):
+    def to_representation(self, obj):
+        return obj
+
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("email", "password")
-        extra_kwargs = {"password": {"write_only": True}}
+        write_only_fields = ("password", )
 
     def validate_password(self, value):
         if len(value) < 8:
@@ -28,4 +33,25 @@ class ReportSerializer(serializers.ModelSerializer):
         )
 
 
-# class CPC
+class CPCSectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CPCSection
+        fields = "__all__"
+
+
+class CPCClassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CPCClass
+        fields = "__all__"
+
+
+class CPCSubclassSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CPCSubclass
+        fields = "__all__"
+
+
+class CPCGroupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CPCGroup
+        fields = "__all__"

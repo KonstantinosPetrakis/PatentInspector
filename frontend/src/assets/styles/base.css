@@ -54,7 +54,12 @@ body,
 }
 
 .multiselect__tag-icon::after {
-    color: var(--bs-secondary-color) !important;
+    color: var(--bs-body-color) !important;
+}
+
+.multiselect__spinner::before,
+.multiselect__spinner::after{
+    border-color: var(--bs-body-color) transparent transparent !important;
 }
 
 /* Customize double slider */
@@ -64,4 +69,13 @@ body,
     --slider-tooltip-bg: var(--bs-secondary-bg) !important;
     --slider-tooltip-color: var(--bs-body-color) !important;
     --slider-handle-ring-color: var(--bs-secondary-color) !important;
+}
+
+/* Customize leafet maps */
+html[data-bs-theme="dark"] .leaflet-container {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+.leaflet-container {
+    height: 400px;
 }

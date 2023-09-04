@@ -1,10 +1,22 @@
+from rest_framework import permissions
+from rest_framework import generics
+from rest_framework import viewsets
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework import permissions
 from rest_framework.authtoken.models import Token
-from rest_framework import viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+from django_filters import rest_framework as filters
+from rest_framework import serializers as rest_serializers
+
 from main import serializers
-from main.models import User
+from main.models import *
+
+
+class BasicPagination(PageNumberPagination):
+    page_size = 100
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -38,7 +50,9 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({"error": "Invalid email"}, status=400)
         if not user.check_password(data["password"]):
             return Response({"error": "Invalid password"}, status=400)
-        return Response({"token": Token.objects.get(user=user).key, "email": user.email})
+        return Response(
+            {"token": Token.objects.get(user=user).key, "email": user.email}
+        )
 
 
 class ReportViewSet(viewsets.ModelViewSet):
@@ -64,6 +78,142 @@ class ReportViewSet(viewsets.ModelViewSet):
         """
 
         serializer.save(user=self.request.user)
-    
+
     # Dynamic report operations can be appended as actions.
-    
+
+
+class CPCSectionListView(generics.ListAPIView):
+    """
+    API endpoint that allows CPC sections to be viewed.
+    """
+
+    queryset = CPCSection.objects.all()
+    serializer_class = serializers.CPCSectionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class CPCClassListView(generics.ListAPIView):
+    """
+    API endpoint that allows CPC classes to be viewed.
+    """
+
+    queryset = CPCClass.objects.all()
+    serializer_class = serializers.CPCClassSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+
+class CPCSubclassListView(generics.ListAPIView):
+    """
+    API endpoint that allows CPC subclasses to be viewed.
+    Pagination and query filtering are supported.
+    Pagination is limited to 100 items per page.
+    """
+
+    class filterset_class(filters.FilterSet):
+        q = filters.CharFilter(
+            field_name="subclass",
+            lookup_expr="istartswith",
+            label="The beginning of the subclass code",
+        )
+
+    queryset = CPCSubclass.objects.all()
+    serializer_class = serializers.CPCSubclassSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+
+class CPCGroupListView(generics.ListAPIView):
+    """
+    API endpoint that allows CPC groups to be viewed.
+    Pagination and query filtering are supported.
+    Pagination is limited to 100 items per page.
+    """
+
+    class filterset_class(filters.FilterSet):
+        q = filters.CharFilter(
+            field_name="group",
+            lookup_expr="istartswith",
+            label="The beginning of the group code",
+        )
+
+    queryset = CPCGroup.objects.all()
+    serializer_class = serializers.CPCGroupSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+
+class InventorFieldView(generics.ListAPIView):
+    """
+    API endpoint that allows inventor first names or last names to be viewed
+    based on a query parameter.
+    Pagination is limited to 100 items per page.
+    You can filter by first name or last name, but not both and not neither.
+    """
+
+    class filterset_class(filters.FilterSet):
+        first_name = filters.CharFilter(
+            field_name="first_name",
+            lookup_expr="istartswith",
+            label="The beginning of the inventor's first name",
+        )
+        last_name = filters.CharFilter(
+            field_name="last_name",
+            lookup_expr="istartswith",
+            label="The beginning of the inventor's last name",
+        )
+
+    serializer_class = serializers.PrimitiveSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self):
+        filter = list(self.request.query_params.keys())[0]
+        return Inventor.objects.values_list(filter, flat=True).distinct()
+
+    def list(self, request, *args, **kwargs):
+        if len(self.request.query_params) != 1:
+            return Response({"error": "You must provide exactly one query parameter"}, status=400)
+        return super().list(request, *args, **kwargs)
+
+
+class AssigneeFieldView(generics.ListAPIView):
+    """
+    API endpoint that allows assignee first names or last names or organization 
+    names to be viewed based on a query parameter.
+    Pagination is limited to 100 items per page.
+    You can filter by first name, last name and organization, you can use only one filter at a time.
+    """
+
+    class filterset_class(filters.FilterSet):
+        first_name = filters.CharFilter(
+            field_name="first_name",
+            lookup_expr="istartswith",
+            label="The beginning of the assignee's first name",
+        )
+        last_name = filters.CharFilter(
+            field_name="last_name",
+            lookup_expr="istartswith",
+            label="The beginning of the assignee's last name",
+        )
+        organization = filters.CharFilter(
+            field_name="organization",
+            lookup_expr="istartswith",
+            label="The beginning of the assignee's organization name",
+        )
+
+    serializer_class = serializers.PrimitiveSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+    def get_queryset(self):
+        filter = list(self.request.query_params.keys())[0]
+        return Assignee.objects.values_list(filter, flat=True).distinct()
+
+    def list(self, request, *args, **kwargs):
+        if len(self.request.query_params) != 1:
+            return Response({"error": "You must provide exactly one query parameter"}, status=400)
+        return super().list(request, *args, **kwargs)

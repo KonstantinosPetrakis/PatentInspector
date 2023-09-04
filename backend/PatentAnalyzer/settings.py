@@ -65,6 +65,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.gis",
     "corsheaders",
+    "django_filters",
     "rest_framework",
     "rest_framework.authtoken",
     "drf_yasg",
@@ -89,15 +90,17 @@ REST_FRAMEWORK = {
     # 'DEFAULT_RENDERER_CLASSES': (
     #     'rest_framework.renderers.JSONRenderer',
     # )
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework.authentication.TokenAuthentication',
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.TokenAuthentication",
     ),
+    "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
 SWAGGER_SETTINGS = {
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
         "DRF Token": {"type": "apiKey", "name": "Authorization", "in": "header"},
     },
+    'PERSIST_AUTH': True
 }
 
 AUTH_USER_MODEL = "main.User"

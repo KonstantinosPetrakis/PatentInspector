@@ -1,4 +1,6 @@
 <script setup>
+import "vue-multiselect/dist/vue-multiselect.css";
+import "@vueform/slider/themes/default.css";
 import { ref } from "vue";
 import Accordion from "../components/Accordion.vue";
 import AccordionItem from "../components/AccordionItem.vue";
@@ -6,10 +8,17 @@ import MinMaxDateInput from "../components/form-widgets/MinMaxDateInput.vue";
 import SingleChoiceInput from "../components/form-widgets/SingleChoiceInput.vue";
 import TagInput from "../components/form-widgets/TagInput.vue";
 import MinMaxIntInput from "../components/form-widgets/MinMaxIntInput.vue";
+import TaggingAsyncInput from "../components/form-widgets/TaggingAsyncInput.vue";
+import PointRadiusInput from "../components/form-widgets/PointRadiusInput.vue";
 
 const addTagToKeywordOptions = (tag) => {
     patentKeywordOptions.value.push(tag);
     patentKeywords.value.push(tag);
+};
+
+const processCpcData = (obj) => {
+    const key = Object.keys(obj)[0];
+    return `${obj[key]} - ${obj.title}`;
 };
 
 const patentOffice = ref(null);
@@ -28,10 +37,10 @@ const patentClaimsCountMax = ref(null);
 const patentSheetsCountMin = ref(null);
 const patentSheetsCountMax = ref(null);
 const patentWithdrawn = ref(null);
-const cpcSection = ref(null);
-const cpcClass = ref(null);
-const cpcSubclass = ref(null);
-const cpcMainGroup = ref(null);
+const cpcSection = ref([]);
+const cpcClass = ref([]);
+const cpcSubclass = ref([]);
+const cpcGroup = ref([]);
 const pctApplicationFiledDateMin = ref(null);
 const pctApplicationFiledDateMax = ref(null);
 const pctGranted = ref(null);
@@ -60,6 +69,20 @@ const createReport = () => {
         patentSheetsCountMin: patentSheetsCountMin.value,
         patentSheetsCountMax: patentSheetsCountMax.value,
         patentWithdrawn: patentWithdrawn.value,
+        cpcSection: cpcSection.value,
+        cpcClass: cpcClass.value,
+        cpcSubclass: cpcSubclass.value,
+        cpcGroup: cpcGroup.value,
+        pctApplicationFiledDateMin: pctApplicationFiledDateMin.value,
+        pctApplicationFiledDateMax: pctApplicationFiledDateMax.value,
+        pctGranted: pctGranted.value,
+        inventorFirstName: inventorFirstName.value,
+        inventorLastName: inventorLastName.value,
+        inventorLocation: inventorLocation.value,
+        assigneeFirstName: assigneeFirstName.value,
+        assigneeLastName: assigneeLastName.value,
+        assigneeOrganization: assigneeOrganization.value,
+        assigneeLocation: assigneeLocation.value,
     });
 };
 </script>
@@ -135,16 +158,94 @@ const createReport = () => {
                     />
                 </AccordionItem>
                 <AccordionItem title="CPC fields">
-                    Cpc fields...
+                    <TaggingAsyncInput
+                        field-label="CPC Sections"
+                        v-model="cpcSection"
+                        :fetch-before="true"
+                        url="/cpc/sections"
+                        :customLabel="processCpcData"
+                        track-by="section"
+                        label="title"
+                    />
+                    <TaggingAsyncInput
+                        field-label="CPC Classes"
+                        v-model="cpcClass"
+                        :fetch-before="true"
+                        url="/cpc/classes"
+                        :customLabel="processCpcData"
+                        track-by="_class"
+                        label="title"
+                    />
+                    <TaggingAsyncInput
+                        field-label="CPC Subclasses"
+                        v-model="cpcSubclass"
+                        url="/cpc/subclasses"
+                        :customLabel="processCpcData"
+                        track-by="subclass"
+                        label="title"
+                    />
+                    <TaggingAsyncInput
+                        field-label="CPC Groups"
+                        v-model="cpcGroup"
+                        url="/cpc/groups"
+                        :customLabel="processCpcData"
+                        track-by="group"
+                        label="title"
+                    />
                 </AccordionItem>
                 <AccordionItem title="PCT fields">
-                    PCT fields...
+                    <MinMaxDateInput
+                        field-label="Application Filed Date"
+                        v-model:min="pctApplicationFiledDateMin"
+                        v-model:max="pctApplicationFiledDateMax"
+                    />
+                    <SingleChoiceInput
+                        field-label="Granted"
+                        v-model="pctGranted"
+                        :options="['yes', 'no']"
+                    />
                 </AccordionItem>
                 <AccordionItem title="Inventor fields">
-                    Inventor fields...
+                    <TaggingAsyncInput
+                        field-label="First Name"
+                        v-model="inventorFirstName"
+                        url="/inventors"
+                        query-param="first_name"
+                    />
+                    <TaggingAsyncInput
+                        field-label="Last Name"
+                        v-model="inventorLastName"
+                        url="/inventors"
+                        query-param="last_name"
+                    />
+                    <PointRadiusInput
+                        field-label="Inventor Location"
+                        v-model="inventorLocation"
+                    />
                 </AccordionItem>
                 <AccordionItem title="Assignee fields">
-                    Assignee fields...
+                    <TaggingAsyncInput
+                        field-label="First Name"
+                        v-model="assigneeFirstName"
+                        url="/assignees"
+                        query-param="first_name"
+                    />
+                    <TaggingAsyncInput
+                        field-label="Last Name"
+                        v-model="assigneeLastName"
+                        url="/assignees"
+                        query-param="last_name"
+                    />
+                    <TaggingAsyncInput
+                        field-label="Organization"
+                        v-model="assigneeOrganization"
+                        url="/assignees"
+                        query-param="organization"
+                    />
+                    <PointRadiusInput
+                        field-label="Assignee Location"
+                        v-model="assigneeLocation"
+                    />
                 </AccordionItem>
             </Accordion>
             <button
