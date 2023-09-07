@@ -29,11 +29,23 @@ const router = createRouter({
             path: "/report/:id",
             name: "report",
             component: () => import("../views/SeeReportView.vue"),
+            props: true,
         },
         {
-            path: "/list-reports",
+            path: "/list-reports/:page?",
             name: "listReports",
             component: () => import("../views/ListReportsView.vue"),
+            props: true,
+        },
+        {
+            path: "/not-found",
+            name: "notFound",
+            component: () => import("../views/NotFoundView.vue"),
+        },
+        {
+            path: "/:pathMatch(.*)*",
+            name: "notFound",
+            component: () => import("../views/NotFoundView.vue"),
         },
     ],
 });

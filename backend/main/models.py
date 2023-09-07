@@ -3,6 +3,7 @@ from django.contrib.postgres.aggregates import StringAgg
 from django.contrib.postgres.fields import ArrayField, IntegerRangeField, DateRangeField
 from django.contrib.auth.models import AbstractBaseUser
 from django.db.models.functions import Concat, Cast, Substr
+from django.core.exceptions import ValidationError
 from django.db.models.functions import Substr
 from django.db.models.aggregates import Count
 from django.contrib.gis.geos import Point
@@ -830,7 +831,31 @@ class PatentCitation(models.Model):
 
 # ----- Analysis Related Models End -----
 
-# ----- Application Related Models Begin -----
+# ----- Application Related Models And Validators Begin -----
+
+
+def validate_cpc_sections(values):
+    for value in values:
+        if not CPCSection.objects.filter(section=value).exists():
+            raise ValidationError(f"{value} is not a valid CPC section.")
+
+
+def validate_cpc_classes(values):
+    for value in values:
+        if not CPCClass.objects.filter(_class=value).exists():
+            raise ValidationError(f"{value} is not a valid CPC class.")
+
+
+def validate_cpc_subclasses(values):
+    for value in values:
+        if not CPCSubclass.objects.filter(subclass=value).exists():
+            raise ValidationError(f"{value} is not a valid CPC subclass.")
+
+
+def validate_cpc_groups(values):
+    for value in values:
+        if not CPCGroup.objects.filter(group=value).exists():
+            raise ValidationError(f"{value} is not a valid CPC group.")
 
 
 class User(AbstractBaseUser):
@@ -872,7 +897,7 @@ class Report(models.Model):
         max_length=1,
         null=True,
         blank=True,
-        default="&"
+        default="&",
     )
     patent_application_filed_date = DateRangeField(null=True, blank=True)
     patent_granted_date = DateRangeField(null=True, blank=True)
@@ -885,11 +910,13 @@ class Report(models.Model):
         models.CharField(max_length=100),
         null=True,
         blank=True,
+        validators=[validate_cpc_sections],
     )
     cpc_class = ArrayField(
         models.CharField(max_length=100),
         null=True,
         blank=True,
+        validators=[validate_cpc_classes],
     )
     cpc_subclass = ArrayField(
         models.CharField(max_length=100),
@@ -900,6 +927,7 @@ class Report(models.Model):
         models.CharField(max_length=100),
         null=True,
         blank=True,
+        validators=[validate_cpc_groups],
     )
 
     pct_application_date = DateRangeField(null=True, blank=True)
@@ -937,4 +965,4 @@ class Report(models.Model):
     results = models.JSONField(null=True, blank=True)
 
 
-# ----- Application Related Models End -----
+# ----- Application Related Models And Validators -----

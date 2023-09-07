@@ -27,8 +27,7 @@ const login = async () => {
     if (result.status == 400) {
         errors.push(data.error);
         if (data.error.includes("password")) password.value = "";
-    }
-    else logIn(data.token, data.email);
+    } else logIn(data.token, data.email);
 };
 </script>
 

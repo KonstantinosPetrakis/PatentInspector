@@ -1,31 +1,24 @@
 <script setup>
 import { ref, watch } from "vue";
+import Slider from "@vueform/slider";
 import FieldWrapper from "./FieldWrapper.vue";
-import Slider from '@vueform/slider';
 
-const props = defineProps(["minValue", "maxValue"]);
-const emits = defineEmits(["update:minValue", "update:maxValue"]);
+const props = defineProps(["modelValue"]);
+const emit = defineEmits(["update:modelValue"]);
 
-const value = ref([props.minValue, props.maxValue]);
+// Defaults
+const rangeValue = ref([0, 100]);
+emit("update:modelValue", { lower: 0, upper: 100 });
 
-watch(value, (newValue) => {
-    emits("update:minValue", newValue[0]);
-    emits("update:maxValue", newValue[1]);
+watch(rangeValue, (value) => {
+    emit("update:modelValue", { lower: value[0], upper: value[1] });
 });
-
-// Set default values
-value.value = [value.value[0] || 0, value.value[1] || 100];
-
 </script>
 
 <template>
     <FieldWrapper v-bind="$attrs">
         <div class="mt-4 px-2">
-            <Slider
-            showTooltip="drag"
-            v-model="value"
-            v-bind="$attrs"
-        />
+            <Slider showTooltip="drag" v-model="rangeValue" v-bind="$attrs" />
         </div>
     </FieldWrapper>
 </template>

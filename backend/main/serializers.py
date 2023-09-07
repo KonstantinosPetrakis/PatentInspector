@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from main.models import *
+from main.fields import *
 
 
 class PrimitiveSerializer(serializers.BaseSerializer):
@@ -12,7 +13,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("email", "password")
-        write_only_fields = ("password", )
+        write_only_fields = ("password",)
 
     def validate_password(self, value):
         if len(value) < 8:
@@ -30,8 +31,16 @@ class ReportSerializer(serializers.ModelSerializer):
             "datetime_analysis_started",
             "datetime_analysis_ended",
             "user",
+            "results"
         )
 
+    patent_application_filed_date = DateRangeField(required=False)
+    patent_granted_date = DateRangeField(required=False)
+    patent_figures_count = IntegerRangeField(required=False)
+    patent_claims_count = IntegerRangeField(required=False)
+    patent_sheets_count = IntegerRangeField(required=False)
+    pct_application_date = DateRangeField(required=False)
+    
 
 class CPCSectionSerializer(serializers.ModelSerializer):
     class Meta:

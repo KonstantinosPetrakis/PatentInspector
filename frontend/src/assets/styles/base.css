@@ -58,7 +58,7 @@ body,
 }
 
 .multiselect__spinner::before,
-.multiselect__spinner::after{
+.multiselect__spinner::after {
     border-color: var(--bs-body-color) transparent transparent !important;
 }
 
@@ -78,4 +78,5 @@ html[data-bs-theme="dark"] .leaflet-container {
 
 .leaflet-container {
     height: 400px;
+    z-index: 0;
 }

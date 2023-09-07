@@ -1,7 +1,7 @@
 <script setup>
 import "vue-multiselect/dist/vue-multiselect.css";
 import "@vueform/slider/themes/default.css";
-import { ref } from "vue";
+import { ref, reactive, toRaw } from "vue";
 import Accordion from "../components/Accordion.vue";
 import AccordionItem from "../components/AccordionItem.vue";
 import MinMaxDateInput from "../components/form-widgets/MinMaxDateInput.vue";
@@ -10,10 +10,47 @@ import TagInput from "../components/form-widgets/TagInput.vue";
 import MinMaxIntInput from "../components/form-widgets/MinMaxIntInput.vue";
 import TaggingAsyncInput from "../components/form-widgets/TaggingAsyncInput.vue";
 import PointRadiusInput from "../components/form-widgets/PointRadiusInput.vue";
+import { authFetch } from "../utils";
 
-const addTagToKeywordOptions = (tag) => {
-    patentKeywordOptions.value.push(tag);
-    patentKeywords.value.push(tag);
+const messages = ref([]);
+const patentKeywordOptions = ref([]);
+
+const data = reactive({
+    patentOffice: null,
+    patentType: null,
+    patentKeywords: [],
+    patentKeywordsLogic: { id: "&", label: "All keywords" },
+    patentApplicationFiledDate: null,
+    patentGrantedDate: null,
+    patentFiguresCount: null,
+    patentClaimsCount: null,
+    patentSheetsCount: null,
+    patentWithdrawn: null,
+    cpcSection: [],
+    cpcClass: [],
+    cpcSubclass: [],
+    cpcGroup: [],
+    pctApplicationDate: null,
+    pctGranted: null,
+    inventorFirstName: null,
+    inventorLastName: null,
+    inventorLocation: null,
+    assigneeFirstName: null,
+    assigneeLastName: null,
+    assigneeOrganization: null,
+    assigneeLocation: null,
+});
+
+const optionObjectToArray = (obj) => {
+    if (!obj || obj.length === 0) return obj;
+
+    if (Array.isArray(obj)) {
+        const key = Object.keys(obj[0])[0];
+        return obj.map((obj) => obj[key]);
+    }
+
+    const key = Object.keys(obj)[0];
+    return obj[key];
 };
 
 const processCpcData = (obj) => {
@@ -21,69 +58,37 @@ const processCpcData = (obj) => {
     return `${obj[key]} - ${obj.title}`;
 };
 
-const patentOffice = ref(null);
-const patentType = ref(null);
-const patentKeywords = ref([]);
-const patentKeywordOptions = ref([]);
-const patentKeywordsLogic = ref({ id: "&", label: "All keywords" });
-const patentApplicationFiledDateMin = ref(null);
-const patentApplicationFiledDateMax = ref(null);
-const patentGrantedDateMin = ref(null);
-const patentGrantedDateMax = ref(null);
-const patentFigureCountMin = ref(null);
-const patentFigureCountMax = ref(null);
-const patentClaimsCountMin = ref(null);
-const patentClaimsCountMax = ref(null);
-const patentSheetsCountMin = ref(null);
-const patentSheetsCountMax = ref(null);
-const patentWithdrawn = ref(null);
-const cpcSection = ref([]);
-const cpcClass = ref([]);
-const cpcSubclass = ref([]);
-const cpcGroup = ref([]);
-const pctApplicationFiledDateMin = ref(null);
-const pctApplicationFiledDateMax = ref(null);
-const pctGranted = ref(null);
-const inventorFirstName = ref(null);
-const inventorLastName = ref(null);
-const inventorLocation = ref(null);
-const assigneeFirstName = ref(null);
-const assigneeLastName = ref(null);
-const assigneeOrganization = ref(null);
-const assigneeLocation = ref(null);
+const addTagToKeywordOptions = (tag) => {
+    patentKeywordOptions.value.push(tag);
+    data.patentKeywords.push(tag);
+};
 
-const createReport = () => {
-    console.log({
-        patentOffice: patentOffice.value,
-        patentType: patentType.value,
-        patentKeywords: patentKeywords.value,
-        patentKeywordsLogic: patentKeywordsLogic.value,
-        patentApplicationFiledDateMin: patentApplicationFiledDateMin.value,
-        patentApplicationFiledDateMax: patentApplicationFiledDateMax.value,
-        patentGrantedDateMin: patentGrantedDateMin.value,
-        patentGrantedDateMax: patentGrantedDateMax.value,
-        patentFigureCountMin: patentFigureCountMin.value,
-        patentFigureCountMax: patentFigureCountMax.value,
-        patentClaimsCountMin: patentClaimsCountMin.value,
-        patentClaimsCountMax: patentClaimsCountMax.value,
-        patentSheetsCountMin: patentSheetsCountMin.value,
-        patentSheetsCountMax: patentSheetsCountMax.value,
-        patentWithdrawn: patentWithdrawn.value,
-        cpcSection: cpcSection.value,
-        cpcClass: cpcClass.value,
-        cpcSubclass: cpcSubclass.value,
-        cpcGroup: cpcGroup.value,
-        pctApplicationFiledDateMin: pctApplicationFiledDateMin.value,
-        pctApplicationFiledDateMax: pctApplicationFiledDateMax.value,
-        pctGranted: pctGranted.value,
-        inventorFirstName: inventorFirstName.value,
-        inventorLastName: inventorLastName.value,
-        inventorLocation: inventorLocation.value,
-        assigneeFirstName: assigneeFirstName.value,
-        assigneeLastName: assigneeLastName.value,
-        assigneeOrganization: assigneeOrganization.value,
-        assigneeLocation: assigneeLocation.value,
+const createReport = async () => {
+    const reportData = toRaw(data);
+    for (let key of [
+        "patentKeywordsLogic",
+        "cpcSection",
+        "cpcClass",
+        "cpcSubclass",
+        "cpcGroup",
+    ])
+        reportData[key] = optionObjectToArray(reportData[key]);
+
+    const response = await authFetch("/report", {
+        method: "POST",
+        body: JSON.stringify(reportData),
     });
+    
+    if (response.ok)
+        messages.value = [
+            { type: "success", message: "Report created successfully." },
+        ];
+    else {
+        messages.value = [
+            { type: "danger", message: "Failed to create report." },
+        ];
+        console.error(await response.json());
+    }
 };
 </script>
 
@@ -91,17 +96,30 @@ const createReport = () => {
     <div class="container">
         <h1 class="h1 text-center">PatentAnalyzer</h1>
         <h4 class="h4 text-center">Create Report</h4>
+        <p>
+            Try to keep your your search specific. Broad sets will take longer
+            to analyze and the analysis might be denied from the server if the
+            resulted set exceeds a certain size (online version).
+        </p>
         <form class="border shadow">
+            <div class="messages">
+                <div
+                    v-for="message of messages"
+                    :class="`alert m-2 p-3 alert-${message.type}`"
+                >
+                    {{ message.message }}
+                </div>
+            </div>
             <Accordion id="form-accordion">
                 <AccordionItem title="Main fields" active>
                     <SingleChoiceInput
                         field-label="Patent Office"
-                        v-model="patentOffice"
-                        :options="['USPTO']"
+                        v-model="data.patentOffice"
+                        :options="['US']"
                     />
                     <SingleChoiceInput
                         field-label="Patent Type"
-                        v-model="patentType"
+                        v-model="data.patentType"
                         :options="[
                             'utility',
                             'design',
@@ -112,13 +130,13 @@ const createReport = () => {
                     />
                     <TagInput
                         field-label="Patent Keywords"
-                        v-model="patentKeywords"
+                        v-model="data.patentKeywords"
                         :options="patentKeywordOptions"
                         @tag="addTagToKeywordOptions"
                     />
                     <SingleChoiceInput
                         field-label="Patent Keywords Combination Logic"
-                        v-model="patentKeywordsLogic"
+                        v-model="data.patentKeywordsLogic"
                         :options="[
                             { id: '&', label: 'All keywords' },
                             { id: '|', label: 'At least 1 keyword' },
@@ -128,39 +146,34 @@ const createReport = () => {
                     />
                     <MinMaxDateInput
                         field-label="Application Filed Date"
-                        v-model:min="patentApplicationFiledDateMin"
-                        v-model:max="patentApplicationFiledDateMax"
+                        v-model="data.patentApplicationFiledDate"
                     />
                     <MinMaxDateInput
                         field-label="Patent Granted Date"
-                        v-model:min="patentGrantedDateMin"
-                        v-model:max="patentGrantedDateMax"
+                        v-model="data.patentGrantedDate"
                     />
                     <MinMaxIntInput
                         field-label="Figure Count"
-                        v-model:minValue="patentFigureCountMin"
-                        v-model:maxValue="patentFigureCountMax"
+                        v-model="data.patentFiguresCount"
                     />
                     <MinMaxIntInput
                         field-label="Claims Count"
-                        v-model:minValue="patentClaimsCountMin"
-                        v-model:maxValue="patentClaimsCountMax"
+                        v-model="data.patentClaimsCount"
                     />
                     <MinMaxIntInput
                         field-label="Sheets Count"
-                        v-model:minValue="patentSheetsCountMin"
-                        v-model:maxValue="patentSheetsCountMax"
+                        v-model="data.patentSheetsCount"
                     />
                     <SingleChoiceInput
                         field-label="Withdrawn"
-                        v-model="patentWithdrawn"
+                        v-model="data.patentWithdrawn"
                         :options="['yes', 'no']"
                     />
                 </AccordionItem>
                 <AccordionItem title="CPC fields">
                     <TaggingAsyncInput
                         field-label="CPC Sections"
-                        v-model="cpcSection"
+                        v-model="data.cpcSection"
                         :fetch-before="true"
                         url="/cpc/sections"
                         :customLabel="processCpcData"
@@ -169,16 +182,16 @@ const createReport = () => {
                     />
                     <TaggingAsyncInput
                         field-label="CPC Classes"
-                        v-model="cpcClass"
+                        v-model="data.cpcClass"
                         :fetch-before="true"
                         url="/cpc/classes"
                         :customLabel="processCpcData"
-                        track-by="_class"
+                        track-by="Class"
                         label="title"
                     />
                     <TaggingAsyncInput
                         field-label="CPC Subclasses"
-                        v-model="cpcSubclass"
+                        v-model="data.cpcSubclass"
                         url="/cpc/subclasses"
                         :customLabel="processCpcData"
                         track-by="subclass"
@@ -186,7 +199,7 @@ const createReport = () => {
                     />
                     <TaggingAsyncInput
                         field-label="CPC Groups"
-                        v-model="cpcGroup"
+                        v-model="data.cpcGroup"
                         url="/cpc/groups"
                         :customLabel="processCpcData"
                         track-by="group"
@@ -196,55 +209,54 @@ const createReport = () => {
                 <AccordionItem title="PCT fields">
                     <MinMaxDateInput
                         field-label="Application Filed Date"
-                        v-model:min="pctApplicationFiledDateMin"
-                        v-model:max="pctApplicationFiledDateMax"
+                        v-model="data.pctApplicationDate"
                     />
                     <SingleChoiceInput
                         field-label="Granted"
-                        v-model="pctGranted"
+                        v-model="data.pctGranted"
                         :options="['yes', 'no']"
                     />
                 </AccordionItem>
                 <AccordionItem title="Inventor fields">
                     <TaggingAsyncInput
                         field-label="First Name"
-                        v-model="inventorFirstName"
+                        v-model="data.inventorFirstName"
                         url="/inventors"
                         query-param="first_name"
                     />
                     <TaggingAsyncInput
                         field-label="Last Name"
-                        v-model="inventorLastName"
+                        v-model="data.inventorLastName"
                         url="/inventors"
                         query-param="last_name"
                     />
                     <PointRadiusInput
                         field-label="Inventor Location"
-                        v-model="inventorLocation"
+                        v-model="data.inventorLocation"
                     />
                 </AccordionItem>
                 <AccordionItem title="Assignee fields">
                     <TaggingAsyncInput
                         field-label="First Name"
-                        v-model="assigneeFirstName"
+                        v-model="data.assigneeFirstName"
                         url="/assignees"
                         query-param="first_name"
                     />
                     <TaggingAsyncInput
                         field-label="Last Name"
-                        v-model="assigneeLastName"
+                        v-model="data.assigneeLastName"
                         url="/assignees"
                         query-param="last_name"
                     />
                     <TaggingAsyncInput
                         field-label="Organization"
-                        v-model="assigneeOrganization"
+                        v-model="data.assigneeOrganization"
                         url="/assignees"
                         query-param="organization"
                     />
                     <PointRadiusInput
                         field-label="Assignee Location"
-                        v-model="assigneeLocation"
+                        v-model="data.assigneeLocation"
                     />
                 </AccordionItem>
             </Accordion>

@@ -23,13 +23,13 @@ html[data-bs-theme="dark"] img{
                     class="me-2"
                     href="https://github.com/KonstantinosPetrakis/PatentAnalyzer"
                 >
-                    <img src="src/assets/images/github.png" alt="github" />
+                    <img src="/src/assets/images/github.png" alt="github" />
                 </a>
                 <a
                     class="ms-2"
                     href="https://patentanalyzer.csd.auth.gr/"
                 >
-                    <img src="src/assets/images/csd.png" alt="csd auth hosted application" />
+                    <img src="/src/assets/images/csd.png" alt="csd auth hosted application" />
                 </a>
             </div>
         </div>

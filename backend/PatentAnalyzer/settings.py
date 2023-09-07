@@ -87,9 +87,15 @@ STATIC_URL = "static/"
 ROOT_URLCONF = "PatentAnalyzer.urls"
 
 REST_FRAMEWORK = {
-    # 'DEFAULT_RENDERER_CLASSES': (
-    #     'rest_framework.renderers.JSONRenderer',
-    # )
+    "DEFAULT_RENDERER_CLASSES": (
+        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+    ),
+    "DEFAULT_PARSER_CLASSES": (
+        "djangorestframework_camel_case.parser.CamelCaseFormParser",
+        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
+        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
+    ),
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.TokenAuthentication",
     ),
@@ -100,7 +106,7 @@ SWAGGER_SETTINGS = {
     "SECURITY_DEFINITIONS": {
         "DRF Token": {"type": "apiKey", "name": "Authorization", "in": "header"},
     },
-    'PERSIST_AUTH': True
+    "PERSIST_AUTH": True,
 }
 
 AUTH_USER_MODEL = "main.User"

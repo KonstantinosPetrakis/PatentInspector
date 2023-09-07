@@ -1,8 +1,16 @@
 <script setup>
+import { computed } from "vue";
 import FieldWrapper from "./FieldWrapper.vue";
 
-const props = defineProps(["min", "max"]);
-const emit = defineEmits(["update:min"], ["update:max"]);
+const props = defineProps(["modelValue"]);
+const emit = defineEmits(["update:modelValue"]);
+
+const value = computed({
+    get: () => props.modelValue,
+    set: (val) => emit("update:modelValue", val),
+});
+
+if (value.value == null) value.value = { lower: null, upper: null };
 </script>
 
 <template>
@@ -12,8 +20,8 @@ const emit = defineEmits(["update:min"], ["update:max"]);
                 <input
                     type="date"
                     class="form-control"
-                    :value="min"
-                    @input="$emit('update:min', $event.target.value)"
+                    :value="value?.lower"
+                    @input="value = { ...value, lower: $event.target.value }"
                 />
             </div>
             <div class="mx-2">-</div>
@@ -21,8 +29,8 @@ const emit = defineEmits(["update:min"], ["update:max"]);
                 <input
                     type="date"
                     class="form-control"
-                    :value="max"
-                    @input="$emit('update:max', $event.target.value)"
+                    :value="value?.upper"
+                    @input="value = { ...value, upper: $event.target.value }"
                 />
             </div>
         </div>

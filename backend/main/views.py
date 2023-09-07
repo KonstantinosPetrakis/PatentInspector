@@ -5,12 +5,26 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from django.db.models import QuerySet
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
-from rest_framework import serializers as rest_serializers
 
 from main import serializers
 from main.models import *
+
+
+def django_filter_warning(get_queryset_func):
+    """
+    This decorator is used to fix a warning in django-filter.
+    See: https://github.com/carltongibson/django-filter/issues/966
+    """
+
+    def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return QuerySet()
+        return get_queryset_func(self)
+
+    return get_queryset
 
 
 class BasicPagination(PageNumberPagination):
@@ -62,15 +76,17 @@ class ReportViewSet(viewsets.ModelViewSet):
     """
 
     serializer_class = serializers.ReportSerializer
+    pagination_class = BasicPagination
     permission_classes = [permissions.IsAuthenticated]
-    http_method_names = ["get", "post"]
+    http_method_names = ["get", "post", "delete"]
 
+    @django_filter_warning
     def get_queryset(self):
         """
         Returns reports that belong to the current user.
         """
 
-        return self.request.user.reports.all()
+        return self.request.user.reports.all().order_by("-id")
 
     def perform_create(self, serializer):
         """
@@ -169,19 +185,22 @@ class InventorFieldView(generics.ListAPIView):
     pagination_class = BasicPagination
     filter_backends = [DjangoFilterBackend]
 
+    @django_filter_warning
     def get_queryset(self):
         filter = list(self.request.query_params.keys())[0]
         return Inventor.objects.values_list(filter, flat=True).distinct()
 
     def list(self, request, *args, **kwargs):
         if len(self.request.query_params) != 1:
-            return Response({"error": "You must provide exactly one query parameter"}, status=400)
+            return Response(
+                {"error": "You must provide exactly one query parameter"}, status=400
+            )
         return super().list(request, *args, **kwargs)
 
 
 class AssigneeFieldView(generics.ListAPIView):
     """
-    API endpoint that allows assignee first names or last names or organization 
+    API endpoint that allows assignee first names or last names or organization
     names to be viewed based on a query parameter.
     Pagination is limited to 100 items per page.
     You can filter by first name, last name and organization, you can use only one filter at a time.
@@ -209,11 +228,14 @@ class AssigneeFieldView(generics.ListAPIView):
     pagination_class = BasicPagination
     filter_backends = [DjangoFilterBackend]
 
+    @django_filter_warning
     def get_queryset(self):
         filter = list(self.request.query_params.keys())[0]
         return Assignee.objects.values_list(filter, flat=True).distinct()
 
     def list(self, request, *args, **kwargs):
         if len(self.request.query_params) != 1:
-            return Response({"error": "You must provide exactly one query parameter"}, status=400)
+            return Response(
+                {"error": "You must provide exactly one query parameter"}, status=400
+            )
         return super().list(request, *args, **kwargs)
