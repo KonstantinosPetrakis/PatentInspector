@@ -12,6 +12,7 @@ export const logIn = (token, email) => {
 };
 
 export const logOut = () => {
+    if (!confirm("Are you sure you want to log out?")) return;
     localStorage.removeItem("token");
     localStorage.removeItem("email");
     window.dispatchEvent(new Event("logOut"));
@@ -34,7 +35,6 @@ export const dateTimeToString = (
     nullMessage = "In the foreseeable future"
 ) => (dateTime ? new Date(dateTime).toLocaleString() : nullMessage);
 
-
 // Not so proud of this one but gets the job done.
 export const reportToSubmittedFilters = (report) => {
     if (!report) return report;
@@ -56,19 +56,15 @@ export const reportToSubmittedFilters = (report) => {
         // Remove null, empty array and default range values
         let data = report[attr];
 
-        if (data === null || Object.keys(data).length === 0) 
+        if (data === null || Object.keys(data).length === 0)
             delete report[attr];
-        
-        else if (Array.isArray(data) && data.length == 0) 
-            delete report[attr];
-        
+        else if (Array.isArray(data) && data.length == 0) delete report[attr];
         else if (
             typeof data == "object" &&
             ((data.lower == 0 && data.upper == 100) ||
                 (data.lower === null && data.upper === null))
         )
             delete report[attr];
-        
         // Cast date and count ranges to a user friendly string
         else if (
             (attr.endsWith("Date") || attr.endsWith("Count")) &&
@@ -79,10 +75,8 @@ export const reportToSubmittedFilters = (report) => {
         }
 
         // Cast lists to a user friendly string
-        else if (Array.isArray(data) && data.length > 0) 
+        else if (Array.isArray(data) && data.length > 0)
             report[attr] = data.join(", ");
-        
-
         //  Cast object to a user friendly string
         else if (typeof data == "object" && data != null) {
             let strRepresentation = "";
@@ -101,6 +95,29 @@ export const reportToSubmittedFilters = (report) => {
         report[startCase(attr)] = report[attr];
         delete report[attr];
     }
-    
+
     return report;
 };
+
+export const createAlert = (type, message) => {
+    const body = document.querySelector("body");
+    const alert = document.createElement("div");
+    alert.className = `alert alert-${type} position-fixed top-0 mt-5 start-50 translate-middle-x`;
+    alert.textContent = message;
+    body.appendChild(alert);
+    setTimeout(() => alert.remove(), 1000);
+};
+
+// Colors used for the charts
+export const colors = [
+    "#1f77b4",
+    "#ff7f0e",
+    "#2ca02c",
+    "#d62728",
+    "#9467bd",
+    "#8c564b",
+    "#e377c2",
+    "#7f7f7f",
+    "#bcbd22",
+    "#17becf",
+];

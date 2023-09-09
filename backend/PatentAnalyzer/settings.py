@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "drf_yasg",
+    "django_q",
     "main",
 ]
 
@@ -162,3 +163,14 @@ USE_THOUSAND_SEPARATOR = True
 # https://docs.djangoproject.com/en/4.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Django Q
+Q_CLUSTER = {
+    "name": "PatentAnalyzer",
+    "orm": "default",
+    "timeout": 60 * 60, # 1 hour
+    "retry": 60 * 60 * 24, # 1 day
+    "max_attempts": 1,
+    "save_limit": 100,
+}

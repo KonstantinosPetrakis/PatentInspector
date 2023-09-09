@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from "vue";
+import { onMounted } from 'vue';
+import InfoPopover from '../InfoPopover.vue';
 
 const props = defineProps({
     fieldLabel: {
@@ -11,6 +12,7 @@ const props = defineProps({
         default: "",
     },
 });
+
 </script>
 
 <template>
@@ -19,7 +21,7 @@ const props = defineProps({
             {{ fieldLabel }}
         </label>
         <div class="ms-auto" v-if="fieldInfo">
-            <i class="bi bi-info-circle-fill"></i>
+            <InfoPopover :message="fieldInfo" />
         </div>
     </div>
 

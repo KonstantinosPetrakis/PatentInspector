@@ -78,7 +78,7 @@ const createReport = async () => {
         method: "POST",
         body: JSON.stringify(reportData),
     });
-    
+
     if (response.ok)
         messages.value = [
             { type: "success", message: "Report created successfully." },
@@ -114,11 +114,13 @@ const createReport = async () => {
                 <AccordionItem title="Main fields" active>
                     <SingleChoiceInput
                         field-label="Patent Office"
+                        field-info="The patent office that granted the patent."
                         v-model="data.patentOffice"
                         :options="['US']"
                     />
                     <SingleChoiceInput
                         field-label="Patent Type"
+                        field-info="The type of the patent, utility is the most common."
                         v-model="data.patentType"
                         :options="[
                             'utility',
@@ -130,12 +132,14 @@ const createReport = async () => {
                     />
                     <TagInput
                         field-label="Patent Keywords"
+                        field-info="Keywords that appear in the patent's title or abstract."
                         v-model="data.patentKeywords"
                         :options="patentKeywordOptions"
                         @tag="addTagToKeywordOptions"
                     />
                     <SingleChoiceInput
                         field-label="Patent Keywords Combination Logic"
+                        field-info="Should all keywords appear in the patent or at least one of them?"
                         v-model="data.patentKeywordsLogic"
                         :options="[
                             { id: '&', label: 'All keywords' },
@@ -146,10 +150,12 @@ const createReport = async () => {
                     />
                     <MinMaxDateInput
                         field-label="Application Filed Date"
+                        field-info="The range of dates the patent application was filed."
                         v-model="data.patentApplicationFiledDate"
                     />
                     <MinMaxDateInput
                         field-label="Patent Granted Date"
+                        field-info="The range of dates the patent was granted."
                         v-model="data.patentGrantedDate"
                     />
                     <MinMaxIntInput
@@ -232,6 +238,9 @@ const createReport = async () => {
                     />
                     <PointRadiusInput
                         field-label="Inventor Location"
+                        field-info="The location of the inventor.
+                        Select the circle from the menu on the left click on the
+                        map to set the center and drag to set the radius."
                         v-model="data.inventorLocation"
                     />
                 </AccordionItem>
@@ -256,6 +265,9 @@ const createReport = async () => {
                     />
                     <PointRadiusInput
                         field-label="Assignee Location"
+                        field-info="The location of the assignee.
+                        Select the circle from the menu on the left click on the
+                        map to set the center and drag to set the radius."
                         v-model="data.assigneeLocation"
                     />
                 </AccordionItem>

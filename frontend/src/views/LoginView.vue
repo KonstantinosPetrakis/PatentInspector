@@ -1,8 +1,8 @@
 <script setup>
-import { ref, reactive, onMounted, inject } from "vue";
-import { logIn } from "../utils";
+import { ref, reactive, onMounted } from "vue";
+import { logIn, getCompleteUrl } from "../utils";
 
-const apiUrl = inject("apiUrl");
+
 const email = ref("");
 const password = ref("");
 const emailElement = ref(null);
@@ -17,7 +17,7 @@ const login = async () => {
     if (password.value === "") errors.push("Password is required");
     if (errors.length > 0) return;
 
-    const result = await fetch(`${apiUrl}/user/login`, {
+    const result = await fetch(getCompleteUrl("/user/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.value, password: password.value }),

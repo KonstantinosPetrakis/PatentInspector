@@ -1,8 +1,7 @@
 <script setup>
-import { ref, reactive, onMounted, inject } from "vue";
+import { ref, reactive, onMounted } from "vue";
 import router from "../router";
-
-const apiUrl = inject("apiUrl");
+import { getCompleteUrl } from "../utils";
 
 const email = ref("");
 const password = ref("");
@@ -21,7 +20,7 @@ const register = async () => {
         errors.push("Passwords do not match");
     if (errors.length > 0) return;
 
-    const result = await fetch(`${apiUrl}/user`, {
+    const result = await fetch(getCompleteUrl("/user"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.value, password: password.value }),
@@ -34,8 +33,7 @@ const register = async () => {
                 errors.push(error);
             }
         }
-    }
-    else router.push({ name: "login" });
+    } else router.push({ name: "login" });
 };
 </script>
 

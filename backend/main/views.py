@@ -6,9 +6,13 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
 from django.db.models import QuerySet
+from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
+from django_q.tasks import async_task
 
+from main.helpers import remove_redundant_cpc_entities
+from main.tasks import process_report, execution_hook
 from main import serializers
 from main.models import *
 
@@ -75,7 +79,6 @@ class ReportViewSet(viewsets.ModelViewSet):
     Users can only view and edit their own reports.
     """
 
-    serializer_class = serializers.ReportSerializer
     pagination_class = BasicPagination
     permission_classes = [permissions.IsAuthenticated]
     http_method_names = ["get", "post", "delete"]
@@ -88,14 +91,39 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         return self.request.user.reports.all().order_by("-id")
 
+    def get_serializer_class(self):
+        if self.action == "list":
+            return serializers.ListReportSerializer
+        
+        return serializers.ReportSerializer
+
     def perform_create(self, serializer):
         """
         Sets the current user as the owner of the report.
         """
 
-        serializer.save(user=self.request.user)
+        remove_redundant_cpc_entities(serializer.validated_data)
+        report = serializer.save(user=self.request.user)
+        async_task(process_report, report, hook=execution_hook)
 
-    # Dynamic report operations can be appended as actions.
+    @action(detail=True, methods=["post"])
+    def new_topic_modeling(self, request, pk):
+        pass
+
+    @action(detail=True, methods=["get"])
+    def download_patents_excel(self, request, pk):
+        """
+        Downloads the excel file containing the patents of the report.
+        """
+        
+        with open(self.get_object().patents_excel, "rb") as f:
+            return HttpResponse(
+                f.read(),
+                headers={
+                    "Content-Type": "application/vnd.ms-excel",
+                    "Content-Disposition": "attachment; filename=Patents.xlsx",
+                },
+            )
 
 
 class CPCSectionListView(generics.ListAPIView):
@@ -188,7 +216,9 @@ class InventorFieldView(generics.ListAPIView):
     @django_filter_warning
     def get_queryset(self):
         filter = list(self.request.query_params.keys())[0]
-        return Inventor.objects.values_list(filter, flat=True).distinct()
+        return (
+            Inventor.objects.order_by(filter).values_list(filter, flat=True).distinct()
+        )
 
     def list(self, request, *args, **kwargs):
         if len(self.request.query_params) != 1:
@@ -231,7 +261,9 @@ class AssigneeFieldView(generics.ListAPIView):
     @django_filter_warning
     def get_queryset(self):
         filter = list(self.request.query_params.keys())[0]
-        return Assignee.objects.values_list(filter, flat=True).distinct()
+        return (
+            Assignee.objects.order_by(filter).values_list(filter, flat=True).distinct()
+        )
 
     def list(self, request, *args, **kwargs):
         if len(self.request.query_params) != 1:

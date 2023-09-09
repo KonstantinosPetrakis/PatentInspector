@@ -10,3 +10,4 @@ main/migrations/*
 temp/
 dump
 service-secrets.json
+excels/ 

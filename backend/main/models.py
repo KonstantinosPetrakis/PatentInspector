@@ -1,16 +1,21 @@
+from typing import List, Tuple
+import os
+
 from django.db.models import Value, F, Q, Func, Q, OuterRef, Exists, TextField, fields
+from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.postgres.aggregates import StringAgg
 from django.contrib.postgres.fields import ArrayField, IntegerRangeField, DateRangeField
 from django.contrib.auth.models import AbstractBaseUser
-from django.db.models.functions import Concat, Cast, Substr
+from django.db.models.functions import Concat, Substr
 from django.core.exceptions import ValidationError
 from django.db.models.functions import Substr
 from django.db.models.aggregates import Count
-from django.contrib.gis.geos import Point
-from django.contrib.gis.measure import D
 from django.contrib.gis.db import models
 from django.db import connection
+from django.conf import settings
 from postgres_copy import CopyManager
+
+from main.helpers import *
 
 
 # ----- Analysis Related Models Begin -----
@@ -25,6 +30,49 @@ def get_coordinates(field):
         "lng": Func(field, function="ST_X", output_field=fields.FloatField()),
         "lat": Func(field, function="ST_Y", output_field=fields.FloatField()),
     }
+
+
+def append_title_to_cpc_entity(results: List[Tuple]) -> List[List]:
+    """
+    This function appends the title to the cpc entity.
+
+    Args:
+        results (List[Tuple]): The tabular data that includes a cpc entity.
+
+    Returns:
+        List[Tuple]: The updated tabular data.
+    """
+
+    cpc_entities = {
+        "CPC Section": CPCSection,
+        "CPC Class": CPCClass,
+        "CPC Subclass": CPCSubclass,
+        "CPC Group": CPCGroup,
+    }
+
+    fields = results[0]
+    cpc_entity = next(cpc for cpc in cpc_entities if cpc in fields)
+    cpc_entity_model = cpc_entities[cpc_entity]
+    cpc_entity_index = fields.index(cpc_entity)
+
+    distinct_cpc_entity_values = set(
+        [result[cpc_entity_index] for result in results[1:]]
+    )
+
+    cpc_entity_titles = {
+        row["pk"]: row["title"]
+        for row in cpc_entity_model.objects.filter(
+            pk__in=distinct_cpc_entity_values
+        ).values("pk", "title")
+    }
+
+    return [fields] + [
+        [
+            cell if i != cpc_entity_index else f"{cell} - {cpc_entity_titles[cell]}"
+            for i, cell in enumerate(row)
+        ]
+        for row in results[1:]
+    ]
 
 
 class CPCSection(models.Model):
@@ -199,124 +247,6 @@ class Patent(models.Model):
             return int(curs.fetchone()[0])
 
     @staticmethod
-    def filter(data: dict) -> models.QuerySet:
-        """
-        This function will filter the patents based on the given data from the main form.
-
-        Args:
-            data (dict): The data from the main form.
-
-        Returns:
-            models.QuerySet: The filtered patents.
-        """
-
-        def exact_query(field, value):
-            return Q(**{field: value}) if value else Q()
-
-        def range_query(field, value):
-            query = Q()
-            if value:
-                if value["min"]:
-                    query &= Q(**{f"{field}__gte": value["min"]})
-                if value["max"]:
-                    query &= Q(**{f"{field}__lte": value["max"]})
-            return query
-
-        keywords = data["patent_keywords_logic"].join(data["patent_keywords"])
-
-        patent_query = exact_query("office", data["patent_office"])
-        patent_query &= exact_query("type", data["patent_type"])
-        patent_query &= range_query(
-            "application_filed_date", data["patent_application_filed_date"]
-        )
-        patent_query &= range_query("granted_date", data["patent_granted_date"])
-        patent_query &= range_query("figures_count", data["patent_figures_count"])
-        patent_query &= range_query("claims_count", data["patent_claims_count"])
-        patent_query &= range_query("sheets_count", data["patent_sheets_count"])
-
-        if data["patent_withdrawn"] is not None:
-            patent_query &= Q(withdrawn=data["patent_withdrawn"])
-
-        if data["patent_keywords"]:
-            patent_query &= Q(title_processed__iregex=f"({keywords})") | Q(
-                abstract_processed__iregex=f"({keywords})"
-            )
-
-        cpc_query = Q()
-        # Remove redundant keywords from the lower levels of the hierarchy for each level.
-        # For example if the user selected A01 we don't need to include A01B, A01C, etc.
-        hierarchies = ["cpc_section", "cpc_class", "cpc_subclass", "cpc_group"]
-        for level_index, level in enumerate(hierarchies):
-            for hierarchy_below in hierarchies[level_index + 1 :]:
-                for key in data[level]:
-                    data[hierarchy_below] = [
-                        keyword
-                        for keyword in data[hierarchy_below]
-                        if not keyword.startswith(key)
-                    ]
-
-        # Then create the query using like queries in the groups.
-        if sections := data["cpc_section"]:
-            cpc_query &= Q(
-                cpc_groups__cpc_group__group__iregex=f"^({'|'.join(sections)})"
-            )
-        if classes := data["cpc_class"]:
-            cpc_query &= Q(
-                cpc_groups__cpc_group__group__iregex=f"^({'|'.join(classes)})"
-            )
-        if subclasses := data["cpc_subclass"]:
-            cpc_query &= Q(
-                cpc_groups__cpc_group__group__iregex=f"^({'|'.join(subclasses)})"
-            )
-        if groups := data["cpc_group"]:
-            cpc_query &= Q(cpc_groups__cpc_group__in=groups)
-
-        pct_query = range_query(
-            "pct_data__published_or_filed_date", data["pct_application_date"]
-        )
-        if data["pct_granted"] is not None:
-            pct_query &= Q(pct_data__granted=data["pct_granted"])
-
-        inventor_query = Q()
-        if data["inventor_first_name"]:
-            inventor_query &= Q(
-                inventors__first_name__iregex=f"^({'|'.join(data['inventor_first_name'])})"
-            )
-        if data["inventor_last_name"]:
-            inventor_query &= Q(inventors__last_name__in=data["inventor_last_name"])
-
-        if location := data["inventor_location"]:
-            inventor_query &= Q(
-                inventors__location__point__distance_lte=(
-                    Point(location["lng"], location["lat"]),
-                    D(m=location["radius"]),
-                )
-            )
-
-        assignee_query = Q()
-        if data["assignee_first_name"]:
-            assignee_query &= Q(
-                assignees__first_name__iregex=f"^({'|'.join(data['assignee_first_name'])})"
-            )
-        if data["assignee_last_name"]:
-            assignee_query &= Q(assignees__last_name__in=data["assignee_last_name"])
-        if data["assignee_organization"]:
-            assignee_query &= Q(
-                assignees__organization__in=data["assignee_organization"]
-            )
-        if location := data["assignee_location"]:
-            assignee_query &= Q(
-                assignees__location__point__distance_lte=(
-                    Point(location["lng"], location["lat"]),
-                    D(m=location["radius"]),
-                )
-            )
-
-        query = patent_query & cpc_query & pct_query & inventor_query & assignee_query
-
-        return Patent.objects.filter(query)
-
-    @staticmethod
     def fetch_representation(patents: models.QuerySet) -> models.QuerySet:
         """
         This function will fetch the representation of the given patents.
@@ -399,80 +329,106 @@ class Patent(models.Model):
         )
 
     @staticmethod
-    def applications_per_year(patents: models.QuerySet) -> list:
-        return list(
+    def applications_per_year(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.values("application_year")
             .annotate(count=Count("id"))
             .order_by("application_year")
-            .values("application_year", "count")
+            .values_list("application_year", "count")
         )
+        data.insert(0, ["Year", "Count"])
+        return data
 
     @staticmethod
-    def granted_patents_per_year(patents: models.QuerySet) -> list:
-        return list(
+    def granted_patents_per_year(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.values("granted_year")
             .annotate(count=Count("id"))
             .order_by("granted_year")
-            .values("granted_year", "count")
+            .values_list("granted_year", "count")
         )
+        data.insert(0, ["Year", "Count"])
+        return data
 
     @staticmethod
-    def granted_patents_per_type_year(patents: models.QuerySet) -> list:
-        return list(
+    def granted_patents_per_type_year(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.values("granted_year", "type")
             .annotate(count=Count("id"))
             .order_by("granted_year", "type")
-            .values("granted_year", "type", "count")
+            .values_list("granted_year", "type", "count")
         )
+        data.insert(0, ["Year", "Type", "Count"])
+        return data
 
     @staticmethod
-    def granted_patents_per_office_year(patents: models.QuerySet) -> list:
-        return list(
+    def granted_patents_per_office_year(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.values("granted_year", "office")
             .annotate(count=Count("id"))
             .order_by("granted_year", "office")
-            .values("granted_year", "office", "count")
+            .values_list("granted_year", "office", "count")
         )
+        data.insert(0, ["Year", "Office", "Count"])
+        return data
 
     @staticmethod
-    def pct_protected_patents_per_year(patents: models.QuerySet) -> list:
-        return list(
+    def pct_protected_patents_per_year(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.filter(pct_data__granted=True)
             .values("granted_year")
             .annotate(count=Count("id"))
             .order_by("granted_year")
-            .values("granted_year", "count")
+            .values_list("granted_year", "count")
         )
+        data.insert(0, ["Year", "Count"])
+        return data
 
     @staticmethod
-    def granted_patents_per_cpc_year(patents: models.QuerySet) -> list:
-        return list(
+    def granted_patents_per_cpc_year(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(cpc_section=Substr("cpc_groups__cpc_group", 1, 1))
+            .filter(~Q(cpc_section=""))
             .values("granted_year", "cpc_section")
             .annotate(count=Count("id"))
             .order_by("granted_year", "cpc_section")
-            .values("granted_year", "cpc_section", "count")
+            .values_list("granted_year", "cpc_section", "count")
         )
+        data.insert(0, ["Year", "CPC Section", "Count"])
+        return append_title_to_cpc_entity(data)
 
     @staticmethod
-    def citations_made_per_year(patent_ids: list) -> list:
-        return list(
+    def citations_made_per_year(patent_ids: list) -> List[Tuple]:
+        data = list(
             PatentCitation.objects.filter(citing_patent_id__in=patent_ids)
             .values("citation_year")
             .annotate(count=Count("citing_patent_id"))
             .order_by("citation_year")
-            .values("citation_year", "count")
+            .values_list("citation_year", "count")
         )
+        data.insert(0, ["Year", "Count"])
+        return data
 
     @staticmethod
-    def citations_received_per_year(patent_ids: list) -> list:
-        return list(
+    def citations_received_per_year(patent_ids: list) -> List[Tuple]:
+        data = list(
             PatentCitation.objects.filter(cited_patent_id__in=patent_ids)
             .values("citation_year")
             .annotate(count=Count("cited_patent_id"))
             .order_by("citation_year")
-            .values("citation_year", "count")
+            .values_list("citation_year", "count")
         )
+        data.insert(0, ["Year", "Count"])
+        return data
+
+    @staticmethod
+    def pct_distribution(patents: models.QuerySet) -> List[Tuple]:
+        return [
+            ["PCT Status", "Count"],
+            ["Not Applied", Patent.pct_not_applied(patents)],
+            ["Not Granted", Patent.pct_not_granted(patents)],
+            ["Granted", Patent.pct_granted(patents)],
+        ]
 
     @staticmethod
     def pct_not_applied(patents: models.QuerySet) -> int:
@@ -495,16 +451,30 @@ class Patent(models.Model):
         return patents.filter(pct_data__granted=True).count()
 
     @staticmethod
-    def types(patents: models.QuerySet) -> list:
-        return list(patents.values("type").annotate(count=Count("id")).order_by())
+    def types(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.values("type")
+            .annotate(count=Count("id"))
+            .order_by("count")
+            .values_list("type", "count")
+        )
+        data.insert(0, ["Type", "Count"])
+        return data
 
     @staticmethod
-    def offices(patents: models.QuerySet) -> list:
-        return list(patents.values("office").annotate(count=Count("id")).order_by())
+    def offices(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.values("office")
+            .annotate(count=Count("id"))
+            .order_by("count")
+            .values_list("office", "count")
+        )
+        data.insert(0, ["Office", "Count"])
+        return data
 
     @staticmethod
-    def top_10_inventors(patents: models.QuerySet) -> list:
-        return list(
+    def top_10_inventors(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(
                 inventor=Concat(
                     "inventors__first_name", Value(" "), "inventors__last_name"
@@ -514,11 +484,14 @@ class Patent(models.Model):
             .values("inventor")
             .annotate(count=Count("id"))
             .order_by("-count")[:10]
+            .values_list("inventor", "count")
         )
+        data.insert(0, ["Inventor", "Count"])
+        return data
 
     @staticmethod
-    def inventor_locations(patents: models.QuerySet) -> list[dict]:
-        return list(
+    def inventor_locations(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(
                 **get_coordinates("inventors__location__point"),
                 location=Concat(
@@ -531,12 +504,14 @@ class Patent(models.Model):
             .values("lat", "lng", "location")
             .annotate(count=Count("id"))
             .order_by("-count")
-            .values("lat", "lng", "location", "count")
+            .values_list("lat", "lng", "location", "count")
         )
+        data.insert(0, ["Lat", "Lng", "Location", "Count"])
+        return data
 
     @staticmethod
-    def top_10_assignees(patents: models.QuerySet) -> list:
-        return list(
+    def top_10_assignees(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(
                 assignee=Concat(
                     "assignees__first_name",
@@ -550,7 +525,10 @@ class Patent(models.Model):
             .values("assignee")
             .annotate(count=Count("id"))
             .order_by("-count")[:10]
+            .values_list("assignee", "count")
         )
+        data.insert(0, ["Assignee", "Count"])
+        return data
 
     @staticmethod
     def corporation_assignees_count(patents: models.QuerySet) -> int:
@@ -561,8 +539,16 @@ class Patent(models.Model):
         return patents.filter(assignees__is_organization=False).count()
 
     @staticmethod
-    def assignee_locations(patents: models.QuerySet) -> list[dict]:
-        return list(
+    def assignee_type(patents: models.QuerySet) -> List[Tuple]:
+        return [
+            ["Assignee Type", "Count"],
+            ["Corporation", Patent.corporation_assignees_count(patents)],
+            ["Individual", Patent.individual_assignees_count(patents)],
+        ]
+
+    @staticmethod
+    def assignee_locations(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(
                 **get_coordinates("assignees__location__point"),
                 location=Concat(
@@ -575,46 +561,61 @@ class Patent(models.Model):
             .values("lat", "lng", "location")
             .annotate(count=Count("id"))
             .order_by("-count")
-            .values("lat", "lng", "location", "count")
+            .values_list("lat", "lng", "location", "count")
         )
+        data.insert(0, ["Lat", "Lng", "Location", "Count"])
+        return data
 
     @staticmethod
-    def cpc_sections(patents: models.QuerySet) -> list:
-        return list(
+    def cpc_sections(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(cpc_section=Substr("cpc_groups__cpc_group", 1, 1))
+            .filter(~Q(cpc_section=""))
             .values("cpc_section")
             .annotate(count=Count("id"))
-            .order_by("-count"),
+            .order_by("-count")
+            .values_list("cpc_section", "count")
         )
+        data.insert(0, ["CPC Section", "Count"])
+        return append_title_to_cpc_entity(data)
 
     @staticmethod
-    def top_5_cpc_classes(patents: models.QuerySet) -> list:
-        return list(
+    def top_5_cpc_classes(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(cpc_class=Substr("cpc_groups__cpc_group", 1, 3))
             .filter(~Q(cpc_class=""))
             .values("cpc_class")
             .annotate(count=Count("id"))
-            .order_by("-count")[:5],
+            .order_by("-count")[:5]
+            .values_list("cpc_class", "count")
         )
+        data.insert(0, ["CPC Class", "Count"])
+        return append_title_to_cpc_entity(data)
 
     @staticmethod
-    def top_5_cpc_subclasses(patents: models.QuerySet) -> list:
-        return list(
+    def top_5_cpc_subclasses(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.annotate(cpc_subclass=Substr("cpc_groups__cpc_group", 1, 4))
             .filter(~Q(cpc_subclass=""))
             .values("cpc_subclass")
             .annotate(count=Count("id"))
-            .order_by("-count")[:5],
+            .order_by("-count")[:5]
+            .values_list("cpc_subclass", "count")
         )
+        data.insert(0, ["CPC Subclass", "Count"])
+        return append_title_to_cpc_entity(data)
 
     @staticmethod
-    def top_5_cpc_groups(patents: models.QuerySet) -> list:
-        return list(
+    def top_5_cpc_groups(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
             patents.filter(cpc_groups__cpc_group__isnull=False)
             .values("cpc_groups__cpc_group")
             .annotate(count=Count("id"))
-            .order_by("-count")[:5],
+            .order_by("-count")[:5]
+            .values_list("cpc_groups__cpc_group", "count")
         )
+        data.insert(0, ["CPC Group", "Count"])
+        return append_title_to_cpc_entity(data)
 
 
 class PatentCPCGroup(models.Model):
@@ -803,20 +804,22 @@ class PatentCitation(models.Model):
         )
 
     @staticmethod
-    def most_cited_patents_local(local_network_ids: list) -> list:
-        return list(
+    def most_cited_patents_local(local_network_ids: list) -> List[Tuple]:
+        data = list(
             PatentCitation.objects.filter(id__in=local_network_ids)
             .values("cited_patent_id")
             .annotate(
                 **PatentCitation.patent_annotation, count=Count("cited_patent_id")
             )
             .order_by("-count")[:10]
-            .values("patent", "count")
+            .values_list("patent", "count")
         )
+        data.insert(0, ["Patent", "Count"])
+        return data
 
     @staticmethod
-    def most_cited_patents_global(patent_ids: list) -> list:
-        return list(
+    def most_cited_patents_global(patent_ids: list) -> List[Tuple]:
+        data = list(
             PatentCitation.objects.filter(
                 Q(citing_patent_id__in=patent_ids) | Q(cited_patent_id__in=patent_ids)
             )
@@ -825,8 +828,10 @@ class PatentCitation(models.Model):
                 **PatentCitation.patent_annotation, count=Count("cited_patent_id")
             )
             .order_by("-count")[:10]
-            .values("patent", "count")
+            .values_list("patent", "count")
         )
+        data.insert(0, ["Patent", "Count"])
+        return data
 
 
 # ----- Analysis Related Models End -----
@@ -873,6 +878,7 @@ class Report(models.Model):
     datetime_created = models.DateTimeField(auto_now_add=True)
     datetime_analysis_started = models.DateTimeField(null=True, blank=True)
     datetime_analysis_ended = models.DateTimeField(null=True, blank=True)
+    executed_successfully = models.BooleanField(null=True, blank=True)
 
     # Filters
     patent_office = models.CharField(
@@ -962,7 +968,72 @@ class Report(models.Model):
     )
     assignee_location = models.JSONField(null=True, blank=True)
 
-    results = models.JSONField(null=True, blank=True)
+    patents_excel = models.FilePathField(
+        path=os.path.join(settings.BASE_DIR, "main/images"), null=True, blank=True
+    )
+    results = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
+
+    def get_patents(self):
+        patent_query = exact_query("office", self.patent_office)
+        patent_query &= exact_query("type", self.patent_type)
+        patent_query &= exact_query("withdrawn", self.patent_withdrawn)
+        patent_query &= range_query(
+            "application_filed_date", self.patent_application_filed_date
+        )
+        patent_query &= exact_query("patent_withdrawn", self.patent_withdrawn)
+        patent_query &= range_query("granted_date", self.patent_granted_date)
+        patent_query &= range_query("figures_count", self.patent_figures_count)
+        patent_query &= range_query("claims_count", self.patent_claims_count)
+        patent_query &= range_query("sheets_count", self.patent_sheets_count)
+        if self.patent_keywords:
+            keywords = self.patent_keywords_logic.join(self.patent_keywords)
+            patent_query &= Q(title_processed__iregex=keywords) | Q(
+                abstract_processed__iregex=keywords
+            )
+
+        cpc_query = list_iregex_query("cpc_groups__cpc_group__group", self.cpc_section)
+        cpc_query &= list_iregex_query("cpc_groups__cpc_group__group", self.cpc_class)
+        cpc_query &= list_iregex_query(
+            "cpc_groups__cpc_group__group", self.cpc_subclass
+        )
+        cpc_query &= list_iregex_query("cpc_groups__cpc_group__group", self.cpc_group)
+
+        pct_query = range_query(
+            "pct_data__published_or_filed_date", self.pct_application_date
+        )
+        pct_query &= exact_query("pct_data__granted", self.pct_granted)
+
+        inventor_query = list_iregex_query(
+            "inventors__first_name", self.inventor_first_name
+        )
+        inventor_query &= list_iregex_query(
+            "inventors__last_name", self.inventor_last_name
+        )
+        inventor_query &= location_query(
+            "inventors__location__point", self.inventor_location
+        )
+
+        assignee_query = list_iregex_query(
+            "assignees__first_name", self.assignee_first_name
+        )
+        assignee_query &= list_iregex_query(
+            "assignees__last_name", self.assignee_last_name
+        )
+        assignee_query &= list_iregex_query(
+            "assignees__organization", self.assignee_organization
+        )
+        assignee_query &= location_query(
+            "assignees__location__point", self.assignee_location
+        )
+
+        return Patent.objects.filter(
+            patent_query, cpc_query, pct_query, inventor_query, assignee_query
+        ).distinct("id")
+
+    def delete(self, *args, **kwargs):
+        if self.patents_excel:
+            os.remove(self.patents_excel)
+        super().delete(*args, **kwargs)
 
 
 # ----- Application Related Models And Validators -----

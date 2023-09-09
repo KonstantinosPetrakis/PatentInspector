@@ -1,22 +1,27 @@
 <script setup>
 import { ref } from "vue";
+import { createAlert } from "../utils";
 
 const props = defineProps(["data"]);
 const table = ref(null);
 
+const formatCell = (c) =>
+    typeof c === "number" && parseInt(c) !== c ? c.toFixed(2) : c;
+
 const copyTable = () => {
     let text = "";
-    for (const row of table.value.rows) {
-        for (const cell of row.cells) text += cell.innerText + "\t";
+    for (const row of props.data) {
+        for (const cell of row) text += cell + "\t";
         text += "\n";
     }
     navigator.clipboard.writeText(text);
+    createAlert("success", "Table copied to clipboard");
 };
 </script>
 
 <template>
     <div>
-        <div>
+        <div class="border p-1">
             <button class="btn btn-secondary my-1" @click="copyTable">
                 <i class="bi bi-clipboard"></i>
             </button>
@@ -31,7 +36,7 @@ const copyTable = () => {
                 <tbody>
                     <tr v-for="index in data.length" :key="index">
                         <td v-for="cell of data[index]">
-                            {{ cell }}
+                            {{ formatCell(cell) }}
                         </td>
                     </tr>
                 </tbody>
