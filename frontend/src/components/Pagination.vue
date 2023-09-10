@@ -2,7 +2,13 @@
 import { computed } from "vue";
 import { RouterLink } from "vue-router";
 
-const props = defineProps(["page", "totalItems", "itemsPerPage", "urlName"]);
+const props = defineProps([
+    "page",
+    "totalItems",
+    "itemsPerPage",
+    "urlName",
+    "useQuery",
+]);
 
 const page = computed(() => +props.page || 1);
 
@@ -35,24 +41,23 @@ const pagesAfter = computed(() => {
 
     return pages;
 });
+
+const getRouteForPage = (page) =>
+    props.useQuery
+        ? { name: props.urlName, query: { page } }
+        : { name: props.urlName, params: { page } };
 </script>
 
 <template>
     <nav class="d-flex align-items-center my-2">
         <ul class="pagination m-0">
             <li :class="`page-item ${hasPrevious ? '' : 'disabled'}`">
-                <RouterLink
-                    class="page-link"
-                    :to="{ name: urlName, params: { page: page - 1 } }"
-                >
+                <RouterLink class="page-link" :to="getRouteForPage(page - 1)">
                     Previous
                 </RouterLink>
             </li>
             <li class="page-item" v-for="pageBefore of pagesBefore">
-                <RouterLink
-                    class="page-link"
-                    :to="{ name: urlName, params: { page: pageBefore } }"
-                >
+                <RouterLink class="page-link" :to="getRouteForPage(pageBefore)">
                     {{ pageBefore }}
                 </RouterLink>
             </li>
@@ -62,18 +67,12 @@ const pagesAfter = computed(() => {
                 </RouterLink>
             </li>
             <li class="page-item" v-for="pageAfter of pagesAfter">
-                <RouterLink
-                    class="page-link"
-                    :to="{ name: urlName, params: { page: pageAfter } }"
-                >
+                <RouterLink class="page-link" :to="getRouteForPage(pageAfter)">
                     {{ pageAfter }}
                 </RouterLink>
             </li>
             <li :class="`page-item ${hasNext ? '' : 'disabled'}`">
-                <RouterLink
-                    class="page-link"
-                    :to="{ name: urlName, params: { page: page + 1 } }"
-                >
+                <RouterLink class="page-link" :to="getRouteForPage(page + 1)">
                     Next
                 </RouterLink>
             </li>

@@ -27,7 +27,7 @@ window.addEventListener("logIn", () => (loggedIn.value = true));
 window.addEventListener("logOut", () => (loggedIn.value = false));
 </script>
 
-<style scoped>
+<style>
 .color-switch::before {
     content: "";
     margin-right: var(--margin-right);

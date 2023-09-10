@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
 import {
     authFetch,
@@ -12,11 +12,42 @@ import TabItem from "../components/TabItem.vue";
 import TableLine from "../components/charts/TableLine.vue";
 import TableBar from "../components/charts/TableBar.vue";
 import TableHeatmap from "../components/charts/TableHeatmap.vue";
+import Pagination from "../components/Pagination.vue";
 
 const router = useRouter();
-const props = defineProps(["id"]);
+const props = defineProps(["id", "page"]);
+const patentsPerPage = 10;
 const data = ref();
+const patents = ref();
 const loading = ref(true);
+
+const getData = async () => {
+    const response = await authFetch(`/report/${props.id}`);
+    if (!response.ok) router.replace({ name: "notFound" });
+
+    const responseData = await response.json();
+    const dataCopy = JSON.parse(JSON.stringify(responseData));
+    responseData.filters = reportToSubmittedFilters(dataCopy);
+    data.value = responseData;
+};
+
+const getPatents = async () => {
+    const response = await authFetch(
+        `/report/${props.id}/get_patents?page=${props.page}&page_size=${patentsPerPage}`
+    );
+    if (!response.ok) router.replace({ name: "notFound" });
+    const responseData = await response.json();
+    patents.value = responseData;
+};
+
+const downloadExcel = async () => {
+    const response = await authFetch(
+        `/report/${props.id}/download_patents_excel`
+    );
+    const data = await response.blob();
+    const file = window.URL.createObjectURL(data);
+    window.location.assign(file);
+};
 
 const filtersAsTable = computed(() => {
     if (!data.value) return [null, null];
@@ -30,54 +61,51 @@ const filtersAsTable = computed(() => {
 
 const patentCount = computed(() => {
     if (!data.value || !data.value.results) return "N/A";
-    return data.value.results.patentsCount;
+    return data.value.results.patents_count;
 });
 
-const getData = async () => {
-    const response = await authFetch(`/report/${props.id}`);
-    if (!response.ok) router.replace({ name: "notFound" });
-
-    const responseData = await response.json();
-    const dataCopy = JSON.parse(JSON.stringify(responseData));
-    responseData.filters = reportToSubmittedFilters(dataCopy);
-    data.value = responseData;
-    loading.value = false;
-};
+const gotResults = computed(() => {
+    return (
+        !data.value ||
+        !data.value.results ||
+        Object.keys(data.value.results).length !== 0
+    );
+});
 
 const timeSeries = computed(() => {
     if (!data.value || !data.value.results) return [];
     return [
         {
             title: "Applications per year",
-            data: data.value.results.timeseries.applicationsPerYear,
+            data: data.value.results.timeseries.applications_per_year,
         },
         {
             title: "Granted patents per year",
-            data: data.value.results.timeseries.grantedPerYear,
+            data: data.value.results.timeseries.granted_per_year,
         },
         {
             title: "Granted patents per type",
-            data: data.value.results.timeseries.grantedPerTypeYear,
+            data: data.value.results.timeseries.granted_per_type_year,
         },
         {
             title: "Granted patents per office",
-            data: data.value.results.timeseries.grantedPerOfficePerYear,
+            data: data.value.results.timeseries.granted_per_office_per_year,
         },
         {
             title: "PCT protected patents per year",
-            data: data.value.results.timeseries.pctProtectedPerYear,
+            data: data.value.results.timeseries.pct_protected_per_year,
         },
         {
             title: "Granted patents per CPC",
-            data: data.value.results.timeseries.grantedPerCPCYear,
+            data: data.value.results.timeseries.granted_per_cpc_year,
         },
         {
             title: "Citations made per year",
-            data: data.value.results.timeseries.citationsMadePerYear,
+            data: data.value.results.timeseries.citations_made_per_year,
         },
         {
             title: "Citations received per year",
-            data: data.value.results.timeseries.citationsReceivedPerYear,
+            data: data.value.results.timeseries.citations_received_per_year,
         },
     ];
 });
@@ -106,21 +134,26 @@ const entity = computed(() => {
             },
             {
                 title: "Top 5 CPC Classes",
-                data: data.value.results.entity.cpc.top5Classes,
+                data: data.value.results.entity.cpc.top5_classes,
             },
             {
                 title: "Top 5 CPC Subclasses",
-                data: data.value.results.entity.cpc.top5Subclasses,
+                data: data.value.results.entity.cpc.top5_subclasses,
             },
             {
                 title: "Top 5 CPC groups",
-                data: data.value.results.entity.cpc.top5Groups,
+                data: data.value.results.entity.cpc.top5_groups,
             },
         ],
     };
 });
 
-onMounted(getData);
+onMounted(async () => {
+    await Promise.all([getData(), getPatents()]);
+    loading.value = false;
+});
+
+watch(() => props.page, getPatents);
 </script>
 
 <template>
@@ -132,11 +165,10 @@ onMounted(getData);
                 <div class="spinner-border"></div>
             </div>
         </div>
-        <div v-else-if="!data || !data?.results">
+        <div v-else-if="!gotResults">
             <h1 class="h1 text-center">PatentAnalyzer</h1>
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="text-center">
-                {{ data }}
                 The report hasn't been generated yet. Please check back later.
             </div>
         </div>
@@ -157,15 +189,15 @@ onMounted(getData);
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="text-center">
                 <span class="badge text-bg-secondary fs-6 m-2">
-                    Created: {{ dateTimeToString(data?.datetimeCreated) }}
+                    Created: {{ dateTimeToString(data?.datetime_created) }}
                 </span>
                 <span class="badge text-bg-secondary fs-6 m-2">
                     Analysis Started:
-                    {{ dateTimeToString(data?.datetimeAnalysisStarted) }}
+                    {{ dateTimeToString(data?.datetime_analysis_started) }}
                 </span>
                 <span class="badge text-bg-secondary fs-6 m-2">
                     Analysis Ended:
-                    {{ dateTimeToString(data?.datetimeAnalysisEnded) }}
+                    {{ dateTimeToString(data?.datetime_analysis_ended) }}
                 </span>
                 <span class="badge text-bg-secondary fs-6 m-2">
                     Patents Analyzed:
@@ -300,8 +332,42 @@ onMounted(getData);
                         </Tabs>
                     </TabItem>
                     <TabItem> Thematic Analysis </TabItem>
-                    <TabItem> Network Analysis </TabItem>
-                    <TabItem> Patents </TabItem>
+                    <TabItem>
+                        <div class="row">
+                            <TableBar
+                                title="Most cited patents locally"
+                                :data="data.results.citations.most_cited_local"
+                                class="col-lg-6 col-12"
+                            />
+                            <TableBar
+                                title="Most cited patents globally"
+                                :data="data.results.citations.most_cited_global"
+                                class="col-lg-6 col-12"
+                            />
+                        </div>
+                    </TabItem>
+                    <TabItem>
+                        <div class="d-flex align-items-center">
+                            <button
+                                class="btn btn-secondary m-1"
+                                @click="downloadExcel"
+                            >
+                                Download Excel
+                            </button>
+                            <p class="ms-1 mb-0">
+                                The excel file contains more information that
+                                table below.
+                            </p>
+                        </div>
+                        <CopyTable :data="patents.results" />
+                        <Pagination
+                            :page="page"
+                            :total-items="patents.count"
+                            :items-per-page="patentsPerPage"
+                            urlName="report"
+                            :use-query="true"
+                        />
+                    </TabItem>
                     <TabItem>
                         <CopyTable :data="filtersAsTable" />
                     </TabItem>

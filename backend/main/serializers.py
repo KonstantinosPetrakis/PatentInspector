@@ -26,12 +26,12 @@ class UserSerializer(serializers.ModelSerializer):
 class ReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        exclude = ("patents_excel",)
+        fields = "__all__"
         read_only_fields = (
             "datetime_analysis_started",
             "datetime_analysis_ended",
             "user",
-            "results"
+            "results",
         )
 
     patent_application_filed_date = DateRangeField(required=False)
@@ -40,12 +40,14 @@ class ReportSerializer(serializers.ModelSerializer):
     patent_claims_count = IntegerRangeField(required=False)
     patent_sheets_count = IntegerRangeField(required=False)
     pct_application_date = DateRangeField(required=False)
+    results = serializers.JSONField(required=False)
 
 
-class ListReportSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Report
-        fields = ["id", "datetime_created", "datetime_analysis_started", "datetime_analysis_ended"]
+class ListReportSerializer(serializers.Serializer):
+    id = serializers.IntegerField(read_only=True)
+    datetime_created = serializers.DateTimeField(read_only=True)
+    datetime_analysis_started = serializers.DateTimeField(read_only=True)
+    datetime_analysis_ended = serializers.DateTimeField(read_only=True)
 
 
 class CPCSectionSerializer(serializers.ModelSerializer):

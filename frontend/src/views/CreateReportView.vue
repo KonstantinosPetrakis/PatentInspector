@@ -16,29 +16,30 @@ const messages = ref([]);
 const patentKeywordOptions = ref([]);
 
 const data = reactive({
-    patentOffice: null,
-    patentType: null,
-    patentKeywords: [],
-    patentKeywordsLogic: { id: "&", label: "All keywords" },
-    patentApplicationFiledDate: null,
-    patentGrantedDate: null,
-    patentFiguresCount: null,
-    patentClaimsCount: null,
-    patentSheetsCount: null,
-    patentWithdrawn: null,
-    cpcSection: [],
-    cpcClass: [],
-    cpcSubclass: [],
-    cpcGroup: [],
-    pctApplicationDate: null,
-    pctGranted: null,
-    inventorFirstName: null,
-    inventorLastName: null,
-    inventorLocation: null,
-    assigneeFirstName: null,
-    assigneeLastName: null,
-    assigneeOrganization: null,
-    assigneeLocation: null,
+    patent_office: null,
+    patent_type: null,
+    patent_keywords: [],
+    patent_keywords_logic: { id: "&", label: "All keywords" },
+    patent_application_filed_date: null,
+    patent_granted_date: null,
+    patent_figures_count: null,
+    patent_claims_count: null,
+    patent_sheets_count: null,
+    patent_withdrawn: null,
+    cpc_section: [],
+    cpc_class: [],
+    cpc_subclass: [],
+    cpc_group: [],
+    pct_application_date: null,
+    pct_granted: null,
+    inventor_first_name: null,
+    inventor_last_name: null,
+    inventor_location: null,
+    assignee_first_name: null,
+    assignee_last_name: null,
+    assignee_organization: null,
+    assignee_location: null,
+
 });
 
 const optionObjectToArray = (obj) => {
@@ -60,17 +61,17 @@ const processCpcData = (obj) => {
 
 const addTagToKeywordOptions = (tag) => {
     patentKeywordOptions.value.push(tag);
-    data.patentKeywords.push(tag);
+    data.patent_keywords.push(tag);
 };
 
 const createReport = async () => {
     const reportData = toRaw(data);
     for (let key of [
-        "patentKeywordsLogic",
-        "cpcSection",
-        "cpcClass",
-        "cpcSubclass",
-        "cpcGroup",
+        "patent_keywords_logic",
+        "cpc_section",
+        "cpc_class",
+        "cpc_subclass",
+        "cpc_group",
     ])
         reportData[key] = optionObjectToArray(reportData[key]);
 
@@ -115,13 +116,13 @@ const createReport = async () => {
                     <SingleChoiceInput
                         field-label="Patent Office"
                         field-info="The patent office that granted the patent."
-                        v-model="data.patentOffice"
+                        v-model="data.patent_ffice"
                         :options="['US']"
                     />
                     <SingleChoiceInput
                         field-label="Patent Type"
                         field-info="The type of the patent, utility is the most common."
-                        v-model="data.patentType"
+                        v-model="data.patent_type"
                         :options="[
                             'utility',
                             'design',
@@ -133,14 +134,14 @@ const createReport = async () => {
                     <TagInput
                         field-label="Patent Keywords"
                         field-info="Keywords that appear in the patent's title or abstract."
-                        v-model="data.patentKeywords"
+                        v-model="data.patent_keywords"
                         :options="patentKeywordOptions"
                         @tag="addTagToKeywordOptions"
                     />
                     <SingleChoiceInput
                         field-label="Patent Keywords Combination Logic"
                         field-info="Should all keywords appear in the patent or at least one of them?"
-                        v-model="data.patentKeywordsLogic"
+                        v-model="data.patent_keywords_logic"
                         :options="[
                             { id: '&', label: 'All keywords' },
                             { id: '|', label: 'At least 1 keyword' },
@@ -151,35 +152,35 @@ const createReport = async () => {
                     <MinMaxDateInput
                         field-label="Application Filed Date"
                         field-info="The range of dates the patent application was filed."
-                        v-model="data.patentApplicationFiledDate"
+                        v-model="data.patent_application_filed_date"
                     />
                     <MinMaxDateInput
                         field-label="Patent Granted Date"
                         field-info="The range of dates the patent was granted."
-                        v-model="data.patentGrantedDate"
+                        v-model="data.patent_granted_date"
                     />
                     <MinMaxIntInput
                         field-label="Figure Count"
-                        v-model="data.patentFiguresCount"
+                        v-model="data.patent_figures_count"
                     />
                     <MinMaxIntInput
                         field-label="Claims Count"
-                        v-model="data.patentClaimsCount"
+                        v-model="data.patent_claims_count"
                     />
                     <MinMaxIntInput
                         field-label="Sheets Count"
-                        v-model="data.patentSheetsCount"
+                        v-model="data.patent_sheets_count"
                     />
                     <SingleChoiceInput
                         field-label="Withdrawn"
-                        v-model="data.patentWithdrawn"
+                        v-model="data.patent_withdrawn"
                         :options="['yes', 'no']"
                     />
                 </AccordionItem>
                 <AccordionItem title="CPC fields">
                     <TaggingAsyncInput
                         field-label="CPC Sections"
-                        v-model="data.cpcSection"
+                        v-model="data.cpc_section"
                         :fetch-before="true"
                         url="/cpc/sections"
                         :customLabel="processCpcData"
@@ -188,7 +189,7 @@ const createReport = async () => {
                     />
                     <TaggingAsyncInput
                         field-label="CPC Classes"
-                        v-model="data.cpcClass"
+                        v-model="data.cpc_class"
                         :fetch-before="true"
                         url="/cpc/classes"
                         :customLabel="processCpcData"
@@ -197,7 +198,7 @@ const createReport = async () => {
                     />
                     <TaggingAsyncInput
                         field-label="CPC Subclasses"
-                        v-model="data.cpcSubclass"
+                        v-model="data.cpc_subclass"
                         url="/cpc/subclasses"
                         :customLabel="processCpcData"
                         track-by="subclass"
@@ -205,7 +206,7 @@ const createReport = async () => {
                     />
                     <TaggingAsyncInput
                         field-label="CPC Groups"
-                        v-model="data.cpcGroup"
+                        v-model="data.cpc_group"
                         url="/cpc/groups"
                         :customLabel="processCpcData"
                         track-by="group"
@@ -215,24 +216,24 @@ const createReport = async () => {
                 <AccordionItem title="PCT fields">
                     <MinMaxDateInput
                         field-label="Application Filed Date"
-                        v-model="data.pctApplicationDate"
+                        v-model="data.pct_application_date"
                     />
                     <SingleChoiceInput
                         field-label="Granted"
-                        v-model="data.pctGranted"
+                        v-model="data.pct_granted"
                         :options="['yes', 'no']"
                     />
                 </AccordionItem>
                 <AccordionItem title="Inventor fields">
                     <TaggingAsyncInput
                         field-label="First Name"
-                        v-model="data.inventorFirstName"
+                        v-model="data.inventor_first_name"
                         url="/inventors"
                         query-param="first_name"
                     />
                     <TaggingAsyncInput
                         field-label="Last Name"
-                        v-model="data.inventorLastName"
+                        v-model="data.inventor_last_name"
                         url="/inventors"
                         query-param="last_name"
                     />
@@ -241,25 +242,25 @@ const createReport = async () => {
                         field-info="The location of the inventor.
                         Select the circle from the menu on the left click on the
                         map to set the center and drag to set the radius."
-                        v-model="data.inventorLocation"
+                        v-model="data.inventor_location"
                     />
                 </AccordionItem>
                 <AccordionItem title="Assignee fields">
                     <TaggingAsyncInput
                         field-label="First Name"
-                        v-model="data.assigneeFirstName"
+                        v-model="data.assignee_first_name"
                         url="/assignees"
                         query-param="first_name"
                     />
                     <TaggingAsyncInput
                         field-label="Last Name"
-                        v-model="data.assigneeLastName"
+                        v-model="data.assignee_last_name"
                         url="/assignees"
                         query-param="last_name"
                     />
                     <TaggingAsyncInput
                         field-label="Organization"
-                        v-model="data.assigneeOrganization"
+                        v-model="data.assignee_organization"
                         url="/assignees"
                         query-param="organization"
                     />
@@ -268,7 +269,7 @@ const createReport = async () => {
                         field-info="The location of the assignee.
                         Select the circle from the menu on the left click on the
                         map to set the center and drag to set the radius."
-                        v-model="data.assigneeLocation"
+                        v-model="data.assignee_location"
                     />
                 </AccordionItem>
             </Accordion>

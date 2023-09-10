@@ -21,11 +21,9 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = True if env("DJANGO_DEBUG") == "True" else False
 ADMIN_ENABLED = False
 
-CORS_ALLOWED_ORIGINS = ["http://localhost:5173"]  # vue
-
-
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
+    CORS_ALLOW_ALL_ORIGINS = True # for vue
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     CSRF_TRUSTED_ORIGINS = ["https://*.127.0.0.1", "https://*.localhost"]
@@ -88,15 +86,15 @@ STATIC_URL = "static/"
 ROOT_URLCONF = "PatentAnalyzer.urls"
 
 REST_FRAMEWORK = {
-    "DEFAULT_RENDERER_CLASSES": (
-        "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
-        "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
-    ),
-    "DEFAULT_PARSER_CLASSES": (
-        "djangorestframework_camel_case.parser.CamelCaseFormParser",
-        "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
-        "djangorestframework_camel_case.parser.CamelCaseJSONParser",
-    ),
+    # "DEFAULT_RENDERER_CLASSES": (
+    #     "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
+    #     "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
+    # ),
+    # "DEFAULT_PARSER_CLASSES": (
+    #     "djangorestframework_camel_case.parser.CamelCaseFormParser",
+    #     "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
+    #     "djangorestframework_camel_case.parser.CamelCaseJSONParser",
+    # ),
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.TokenAuthentication",
     ),

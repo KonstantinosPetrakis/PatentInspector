@@ -27,31 +27,37 @@ def process_report(report: Report):
     patents = report.get_patents()
 
     if not settings.DEBUG and (count := patents.count()) > 40000:
-        report.results = json.dumps(
-            {
-                "error": f"Too many patents ({count}) to process, please narrow down your search."
-            }
-        )
-        report.save()
+        report.results = {
+            "error": f"Too many patents ({count}) to process, please narrow down your search."
+        }
+
         raise ValueError("Too many patents to process, please narrow down your search.")
 
     # Need to filter again because distinct + annotate is not supported by Django.
-    patents = Patent.objects.filter(id__in=patents.values_list("id", flat=True))
+    patent_ids = list(patents.values_list("id", flat=True))
+    patents = Patent.objects.filter(id__in=patent_ids)
+
+    print("got patents")
+    local_network_ids = list(PatentCitation.objects.filter(
+        citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids
+    ).values_list("id", flat=True))
 
     _create_excel(report, patents)
 
     report.results = {
-        "patentsCount": len(patents),
+        "patents_count": len(patents),
         "statistics": _calculate_statistics(patents),
         "timeseries": {
-            "applicationsPerYear": Patent.applications_per_year(patents),
-            "grantedPerYear": Patent.granted_patents_per_year(patents),
-            "grantedPerTypeYear": Patent.granted_patents_per_type_year(patents),
-            "grantedPerOfficePerYear": Patent.granted_patents_per_office_year(patents),
-            "pctProtectedPerYear": Patent.pct_protected_patents_per_year(patents),
-            "grantedPerCPCYear": Patent.granted_patents_per_cpc_year(patents),
-            "citationsMadePerYear": Patent.citations_made_per_year(patents),
-            "citationsReceivedPerYear": Patent.citations_received_per_year(patents),
+            "applications_per_year": Patent.applications_per_year(patents),
+            "granted_per_year": Patent.granted_patents_per_year(patents),
+            "granted_per_type_year": Patent.granted_patents_per_type_year(patents),
+            "granted_per_office_per_year": Patent.granted_patents_per_office_year(
+                patents
+            ),
+            "pct_protected_per_year": Patent.pct_protected_patents_per_year(patents),
+            "granted_per_cpc_year": Patent.granted_patents_per_cpc_year(patents),
+            "citations_made_per_year": Patent.citations_made_per_year(patents),
+            "citations_received_per_year": Patent.citations_received_per_year(patents),
         },
         "entity": {
             "patent": {
@@ -70,20 +76,20 @@ def process_report(report: Report):
             },
             "cpc": {
                 "section": Patent.cpc_sections(patents),
-                "top5Classes": Patent.top_5_cpc_classes(patents),
-                "top5Subclasses": Patent.top_5_cpc_subclasses(patents),
-                "top5Groups": Patent.top_5_cpc_groups(patents),
+                "top5_classes": Patent.top_5_cpc_classes(patents),
+                "top5_subclasses": Patent.top_5_cpc_subclasses(patents),
+                "top5_groups": Patent.top_5_cpc_groups(patents),
             },
         },
-        "topicModeling": None,
+        "topic_modeling": None,
         "citations": {
-            "graph": PatentCitation.local_network_graph(patents),
-            "mostCitedLocal": PatentCitation.most_cited_patents_local(patents),
-            "mostCitedGlobal": PatentCitation.most_cited_patents_global(patents),
+            "graph": PatentCitation.local_network_graph(local_network_ids),
+            "most_cited_local": PatentCitation.most_cited_patents_local(
+                local_network_ids
+            ),
+            "most_cited_global": PatentCitation.most_cited_patents_global(patent_ids),
         },
     }
-
-    report.save()
 
 
 def execute_topic_modeling(
@@ -139,7 +145,9 @@ def execution_hook(task: Task):
     if not report.executed_successfully and (
         report.results is None or report.results.get("error", None) is None
     ):
-        report.results = {"error": "An unexpected error occurred while processing the report."}
+        report.results = {
+            "error": "An unexpected error occurred while processing the report."
+        }
 
     report.datetime_analysis_ended = timezone.now()
     report.save()
@@ -157,9 +165,7 @@ def _create_excel(report: Report, patents: QuerySet = None):
     patents = patents if patents is not None else report.get_patents()
 
     df = pd.DataFrame(Patent.fetch_representation(patents).values())
-    file_name = f"main/excels/{report.id}.xlsx"
-    df.to_excel(file_name, index=False)
-    report.patents_excel = file_name
+    df.to_excel(report.excel_file, index=False)
     report.save()
 
 

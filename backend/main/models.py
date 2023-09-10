@@ -1,8 +1,8 @@
 from typing import List, Tuple
+import contextlib
 import os
 
 from django.db.models import Value, F, Q, Func, Q, OuterRef, Exists, TextField, fields
-from django.core.serializers.json import DjangoJSONEncoder
 from django.contrib.postgres.aggregates import StringAgg
 from django.contrib.postgres.fields import ArrayField, IntegerRangeField, DateRangeField
 from django.contrib.auth.models import AbstractBaseUser
@@ -968,11 +968,6 @@ class Report(models.Model):
     )
     assignee_location = models.JSONField(null=True, blank=True)
 
-    patents_excel = models.FilePathField(
-        path=os.path.join(settings.BASE_DIR, "main/images"), null=True, blank=True
-    )
-    results = models.JSONField(null=True, blank=True, encoder=DjangoJSONEncoder)
-
     def get_patents(self):
         patent_query = exact_query("office", self.patent_office)
         patent_query &= exact_query("type", self.patent_type)
@@ -1030,9 +1025,32 @@ class Report(models.Model):
             patent_query, cpc_query, pct_query, inventor_query, assignee_query
         ).distinct("id")
 
+    @property
+    def excel_file(self) -> str:
+        return os.path.join(settings.BASE_DIR, f"main/excels/{self.id}.xlsx")
+
+    @property
+    def results_file(self) -> str:
+        return os.path.join(settings.BASE_DIR, f"main/results/{self.id}.json")
+
+    @property
+    def results(self) -> Dict:
+        try:
+            with open(self.results_file, "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            return {}
+
+    @results.setter
+    def results(self, results):
+        with open(self.results_file, "w") as f:
+            json.dump(results, f, default=str)
+
     def delete(self, *args, **kwargs):
-        if self.patents_excel:
-            os.remove(self.patents_excel)
+        with contextlib.suppress(FileNotFoundError):
+            os.remove(self.excel_file)
+            os.remove(self.results_file)
+
         super().delete(*args, **kwargs)
 
 

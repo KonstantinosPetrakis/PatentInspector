@@ -19,6 +19,14 @@ const copyTable = () => {
 };
 </script>
 
+<style>
+table .cell {
+    max-height: 10rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+</style>
+
 <template>
     <div>
         <div class="border p-1">
@@ -27,7 +35,7 @@ const copyTable = () => {
             </button>
         </div>
         <div class="table-responsive">
-            <table class="border border-1 table table-striped" ref="table">
+            <table class="border border-1 table table-striped align-middle" ref="table">
                 <thead>
                     <th v-for="head of data[0]">
                         {{ head }}
@@ -36,7 +44,9 @@ const copyTable = () => {
                 <tbody>
                     <tr v-for="index in data.length" :key="index">
                         <td v-for="cell of data[index]">
-                            {{ formatCell(cell) }}
+                            <div class="cell">
+                                {{ formatCell(cell) }}
+                            </div>
                         </td>
                     </tr>
                 </tbody>

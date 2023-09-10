@@ -1,6 +1,6 @@
 <script setup></script>
 
-<style scoped>
+<style>
 .tab-item {
     display: none;
 }

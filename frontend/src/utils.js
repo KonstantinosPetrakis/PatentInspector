@@ -42,9 +42,9 @@ export const reportToSubmittedFilters = (report) => {
     // Remove unnecessary attributes
     const notNeededAttrs = [
         "id",
-        "datetimeCreated",
-        "datetimeAnalysisStarted",
-        "datetimeAnalysisEnded",
+        "datetime_created",
+        "datetime_analysis_started",
+        "datetime_analysis_ended",
         "user",
         "results",
     ];
@@ -67,7 +67,7 @@ export const reportToSubmittedFilters = (report) => {
             delete report[attr];
         // Cast date and count ranges to a user friendly string
         else if (
-            (attr.endsWith("Date") || attr.endsWith("Count")) &&
+            (attr.endsWith("date") || attr.endsWith("count")) &&
             typeof data == "object" &&
             data != null
         ) {
@@ -87,8 +87,8 @@ export const reportToSubmittedFilters = (report) => {
     }
 
     // Remove default keywords logic and transform it to a user friendly string
-    if (report.patentKeywordsLogic == "|") report.patentKeywordsLogic = "OR";
-    else delete report.patentKeywordsLogic;
+    if (report.patent_keywords_logic == "|") report.patent_keywords_logic = "OR";
+    else delete report.patent_keywords_logic;
 
     // Make attrs more user friendly
     for (let attr of Object.keys(report)) {

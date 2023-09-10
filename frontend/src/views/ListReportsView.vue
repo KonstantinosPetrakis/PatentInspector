@@ -12,7 +12,7 @@ const messages = ref([]);
 
 const updateData = async () => {
     const response = await authFetch(
-        `/report?page_size=${reportsPerPage}&page=${props.page || 1}`
+        `/report?page_size=${reportsPerPage}&page=${props.page}`
     );
 
     reports.value = await response.json();
@@ -89,15 +89,15 @@ watch(() => props.page, updateData);
                             </router-link>
                         </td>
                         <td class="text-center">
-                            {{ dateTimeToString(report.datetimeCreated) }}
+                            {{ dateTimeToString(report.datetime_created) }}
                         </td>
                         <td class="text-center">
                             {{
-                                dateTimeToString(report.datetimeAnalysisStarted)
+                                dateTimeToString(report.datetime_analysis_started)
                             }}
                         </td>
                         <td class="text-center">
-                            {{ dateTimeToString(report.datetimeAnalysisEnded) }}
+                            {{ dateTimeToString(report.datetime_analysis_ended) }}
                         </td>
                         <td class="text-center">
                             <button

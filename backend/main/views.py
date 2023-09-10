@@ -32,9 +32,9 @@ def django_filter_warning(get_queryset_func):
 
 
 class BasicPagination(PageNumberPagination):
-    page_size = 100
+    page_size = 10
     page_size_query_param = "page_size"
-    max_page_size = 100
+    max_page_size = 25
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -92,10 +92,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         return self.request.user.reports.all().order_by("-id")
 
     def get_serializer_class(self):
-        if self.action == "list":
-            return serializers.ListReportSerializer
-        
-        return serializers.ReportSerializer
+        return (
+            serializers.ListReportSerializer
+            if self.action == "list"
+            else serializers.ReportSerializer
+        )
 
     def perform_create(self, serializer):
         """
@@ -115,8 +116,8 @@ class ReportViewSet(viewsets.ModelViewSet):
         """
         Downloads the excel file containing the patents of the report.
         """
-        
-        with open(self.get_object().patents_excel, "rb") as f:
+
+        with open(self.get_object().excel_file, "rb") as f:
             return HttpResponse(
                 f.read(),
                 headers={
@@ -124,6 +125,26 @@ class ReportViewSet(viewsets.ModelViewSet):
                     "Content-Disposition": "attachment; filename=Patents.xlsx",
                 },
             )
+
+    @action(detail=True, methods=["get"])
+    def get_patents(self, request, pk):
+        """
+        Returns the patents of the report in a tabular format.
+        """
+
+        paginator = BasicPagination()
+        patents = self.get_object().get_patents().order_by("id")
+        field_names = [
+            [
+                field.name.replace("_", " ").title()
+                for field in patents.first()._meta.local_fields
+            ]
+        ]
+
+        tabular_data = paginator.paginate_queryset(patents.values_list(), request)
+        tabular_data = serializers.PrimitiveSerializer(tabular_data, many=True).data
+        tabular_data = field_names + tabular_data
+        return paginator.get_paginated_response(tabular_data)
 
 
 class CPCSectionListView(generics.ListAPIView):

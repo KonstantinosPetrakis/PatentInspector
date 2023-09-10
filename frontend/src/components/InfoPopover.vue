@@ -10,9 +10,8 @@ onMounted(
 );
 </script>
 
-<style scoped>
-
-i:hover {
+<style>
+.bi-info-circle-fill:hover {
     cursor: pointer;
 }
 </style>

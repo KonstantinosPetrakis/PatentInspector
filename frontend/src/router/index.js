@@ -29,13 +29,14 @@ const router = createRouter({
             path: "/report/:id",
             name: "report",
             component: () => import("../views/SeeReportView.vue"),
-            props: true,
+            props: route => ({id: route.params.id, page: route.query.page || 1})
         },
         {
             path: "/list-reports/:page?",
             name: "listReports",
             component: () => import("../views/ListReportsView.vue"),
-            props: true,
+            props: route => ({page: route.params.page || 1})
+
         },
         {
             path: "/not-found",

@@ -1,12 +1,11 @@
-<style scoped>
-img {
+<style>
+footer img {
     width: 3rem;
 }
 
-html[data-bs-theme="dark"] img{
+html[data-bs-theme="dark"] footer img {
     filter: invert(1) hue-rotate(180deg);
 }
-
 </style>
 
 <template>
@@ -25,11 +24,11 @@ html[data-bs-theme="dark"] img{
                 >
                     <img src="/src/assets/images/github.png" alt="github" />
                 </a>
-                <a
-                    class="ms-2"
-                    href="https://patentanalyzer.csd.auth.gr/"
-                >
-                    <img src="/src/assets/images/csd.png" alt="csd auth hosted application" />
+                <a class="ms-2" href="https://patentanalyzer.csd.auth.gr/">
+                    <img
+                        src="/src/assets/images/csd.png"
+                        alt="csd auth hosted application"
+                    />
                 </a>
             </div>
         </div>
