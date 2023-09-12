@@ -1,9 +1,13 @@
 <script setup>
-
+const props = defineProps({
+    id: {
+        required: true,
+    },
+});
 </script>
 
 <template>
-    <div class="accordion">
+    <div :id="id" class="accordion">
         <slot></slot>
     </div>
 </template>

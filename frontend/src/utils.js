@@ -30,10 +30,16 @@ export const authFetch = (url, options) => {
     return fetch(url, { headers, ...options });
 };
 
+export const getColorMode = () =>
+    document.querySelector("html").getAttribute("data-bs-theme");
+
 export const dateTimeToString = (
     dateTime,
     nullMessage = "In the foreseeable future"
 ) => (dateTime ? new Date(dateTime).toLocaleString() : nullMessage);
+
+export const dateToString = (date, nullMessage) =>
+    date ? new Date(date).toLocaleDateString() : nullMessage;
 
 // Not so proud of this one but gets the job done.
 export const reportToSubmittedFilters = (report) => {
@@ -47,6 +53,7 @@ export const reportToSubmittedFilters = (report) => {
         "datetime_analysis_ended",
         "user",
         "results",
+        "status",
     ];
     for (let attr of notNeededAttrs) delete report[attr];
 
@@ -87,7 +94,8 @@ export const reportToSubmittedFilters = (report) => {
     }
 
     // Remove default keywords logic and transform it to a user friendly string
-    if (report.patent_keywords_logic == "|") report.patent_keywords_logic = "OR";
+    if (report.patent_keywords_logic == "|")
+        report.patent_keywords_logic = "OR";
     else delete report.patent_keywords_logic;
 
     // Make attrs more user friendly
@@ -97,6 +105,24 @@ export const reportToSubmittedFilters = (report) => {
     }
 
     return report;
+};
+
+export const dateTimeDiff = (date1, date2) => {
+    const padNumber = (number) => (number < 10 ? `0${number}` : number);
+    let diff = Math.abs(new Date(date1) - new Date(date2)) / 1000;
+
+    const days = Math.floor(diff / 86400);
+    diff -= days * 86400;
+
+    const hours = Math.floor(diff / 3600) % 24;
+    diff -= hours * 3600;
+
+    const minutes = Math.floor(diff / 60) % 60;
+    diff -= minutes * 60;
+
+    const seconds = Math.floor(diff % 60);
+
+    return `${padNumber(hours)}:${padNumber(minutes)}:${padNumber(seconds)}`;
 };
 
 export const createAlert = (type, message) => {

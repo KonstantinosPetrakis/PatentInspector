@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import { RouterLink } from "vue-router";
-import { authFetch, dateTimeToString } from "../utils";
+import { authFetch, dateTimeToString, dateTimeDiff } from "../utils";
 import Pagination from "../components/Pagination.vue";
 
 const props = defineProps(["page"]);
@@ -43,8 +43,6 @@ const deleteReport = async (id) => {
 
 onMounted(updateData);
 watch(() => props.page, updateData);
-
-
 </script>
 
 <template>
@@ -72,6 +70,7 @@ watch(() => props.page, updateData);
                     <th class="text-center">Created</th>
                     <th class="text-center">Analysis started</th>
                     <th class="text-center">Analysis finished</th>
+                    <th class="text-center">Analysis duration</th>
                     <th class="text-center">Delete</th>
                 </thead>
                 <tbody class="align-middle">
@@ -93,11 +92,23 @@ watch(() => props.page, updateData);
                         </td>
                         <td class="text-center">
                             {{
-                                dateTimeToString(report.datetime_analysis_started)
+                                dateTimeToString(
+                                    report.datetime_analysis_started
+                                )
                             }}
                         </td>
                         <td class="text-center">
-                            {{ dateTimeToString(report.datetime_analysis_ended) }}
+                            {{
+                                dateTimeToString(report.datetime_analysis_ended)
+                            }}
+                        </td>
+                        <td class="text-center">
+                            {{
+                                dateTimeDiff(
+                                    report.datetime_analysis_started,
+                                    report.datetime_analysis_ended
+                                )
+                            }}
                         </td>
                         <td class="text-center">
                             <button

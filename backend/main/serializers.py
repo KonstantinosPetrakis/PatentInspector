@@ -32,6 +32,7 @@ class ReportSerializer(serializers.ModelSerializer):
             "datetime_analysis_ended",
             "user",
             "results",
+            "status"
         )
 
     patent_application_filed_date = DateRangeField(required=False)
@@ -72,3 +73,11 @@ class CPCGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = CPCGroup
         fields = "__all__"
+
+
+class TopicAnalysisSerializer(serializers.Serializer):
+    method = serializers.ChoiceField(default="LDA", choices=["LDA", "NMF"])
+    n_topics = serializers.IntegerField(default=10)
+    n_words = serializers.IntegerField(default=10)
+    start_date = serializers.DateField(default=None)
+    end_date = serializers.DateField(default=None)

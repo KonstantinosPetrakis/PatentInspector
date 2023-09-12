@@ -16,7 +16,7 @@ const props = defineProps({
 </script>
 
 <template>
-    <div class="w-100 d-flex mt-3">
+    <div v-if="fieldLabel" class="w-100 d-flex mt-3">
         <label>
             {{ fieldLabel }}
         </label>

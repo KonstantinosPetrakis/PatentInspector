@@ -1,4 +1,5 @@
 <script setup>
+import "vue-multiselect/dist/vue-multiselect.css";
 import MultiSelect from "vue-multiselect";
 import FieldWrapper from "./FieldWrapper.vue";
 </script>

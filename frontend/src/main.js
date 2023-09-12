@@ -7,9 +7,10 @@ import "heatmap.js";
 import HeatmapOverlay from "leaflet-heatmap/leaflet-heatmap.js";
 import "leaflet-draw/dist/leaflet.draw.css";
 import "leaflet-draw/dist/leaflet.draw.js";
-
+import annotationPlugin from 'chartjs-plugin-annotation';
 import { Chart, registerables } from 'chart.js'
 Chart.register(...registerables);
+Chart.register(annotationPlugin);
 
 import { createApp } from "vue";
 import App from "./App.vue";

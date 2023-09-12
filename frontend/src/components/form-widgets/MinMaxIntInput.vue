@@ -1,4 +1,5 @@
 <script setup>
+import "@vueform/slider/themes/default.css";
 import { ref, watch } from "vue";
 import Slider from "@vueform/slider";
 import FieldWrapper from "./FieldWrapper.vue";

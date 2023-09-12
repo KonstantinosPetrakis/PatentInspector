@@ -1,6 +1,4 @@
 <script setup>
-import "vue-multiselect/dist/vue-multiselect.css";
-import "@vueform/slider/themes/default.css";
 import { ref, reactive, toRaw } from "vue";
 import Accordion from "../components/Accordion.vue";
 import AccordionItem from "../components/AccordionItem.vue";
@@ -11,6 +9,7 @@ import MinMaxIntInput from "../components/form-widgets/MinMaxIntInput.vue";
 import TaggingAsyncInput from "../components/form-widgets/TaggingAsyncInput.vue";
 import PointRadiusInput from "../components/form-widgets/PointRadiusInput.vue";
 import { authFetch } from "../utils";
+import router from "../router";
 
 const messages = ref([]);
 const patentKeywordOptions = ref([]);
@@ -39,7 +38,6 @@ const data = reactive({
     assignee_last_name: null,
     assignee_organization: null,
     assignee_location: null,
-
 });
 
 const optionObjectToArray = (obj) => {
@@ -80,15 +78,13 @@ const createReport = async () => {
         body: JSON.stringify(reportData),
     });
 
-    if (response.ok)
-        messages.value = [
-            { type: "success", message: "Report created successfully." },
-        ];
+    if (response.ok) router.push({ name: "listReports" });
     else {
         messages.value = [
             { type: "danger", message: "Failed to create report." },
         ];
         console.error(await response.json());
+        window.scrollTo({ top: 0, behavior: "smooth" });
     }
 };
 </script>
@@ -116,7 +112,7 @@ const createReport = async () => {
                     <SingleChoiceInput
                         field-label="Patent Office"
                         field-info="The patent office that granted the patent."
-                        v-model="data.patent_ffice"
+                        v-model="data.patent_office"
                         :options="['US']"
                     />
                     <SingleChoiceInput

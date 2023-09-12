@@ -9,6 +9,7 @@ const icon = computed(() =>
 const setColor = (value) => {
     localStorage.setItem("color", value);
     document.querySelector("html").setAttribute("data-bs-theme", value);
+    window.dispatchEvent(new Event("themeChanged"));
 };
 
 const toggleColor = () =>

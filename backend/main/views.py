@@ -1,3 +1,4 @@
+from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions
 from rest_framework import generics
 from rest_framework import viewsets
@@ -10,9 +11,10 @@ from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from django_q.tasks import async_task
+import drf_yasg.openapi as openapi
 
 from main.helpers import remove_redundant_cpc_entities
-from main.tasks import process_report, execution_hook
+from main.tasks import process_report, topic_analysis, execution_hook
 from main import serializers
 from main.models import *
 
@@ -92,11 +94,11 @@ class ReportViewSet(viewsets.ModelViewSet):
         return self.request.user.reports.all().order_by("-id")
 
     def get_serializer_class(self):
-        return (
-            serializers.ListReportSerializer
-            if self.action == "list"
-            else serializers.ReportSerializer
-        )
+        if self.action == "list":
+            return serializers.ListReportSerializer
+        if self.action == "topic_analysis":
+            return serializers.TopicAnalysisSerializer
+        return serializers.ReportSerializer
 
     def perform_create(self, serializer):
         """
@@ -107,9 +109,38 @@ class ReportViewSet(viewsets.ModelViewSet):
         report = serializer.save(user=self.request.user)
         async_task(process_report, report, hook=execution_hook)
 
+    @swagger_auto_schema(
+        responses={
+            201: openapi.Response(
+                description="The topic analysis task was successfully created",
+            ),
+            400: openapi.Response(
+                description="The request body was invalid",
+            ),
+        }
+    )
     @action(detail=True, methods=["post"])
-    def new_topic_modeling(self, request, pk):
-        pass
+    def topic_analysis(self, request, pk):
+        report = self.get_object()
+
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        data = serializer.data
+        report.status = "waiting_for_topic_analysis"
+        report.save()
+        async_task(
+            topic_analysis,
+            report,
+            data["method"],
+            data["n_topics"],
+            data["n_words"],
+            data["start_date"],
+            data["end_date"],
+            hook=execution_hook,
+        )
+        return Response(status=201)
 
     @action(detail=True, methods=["get"])
     def download_patents_excel(self, request, pk):
@@ -133,7 +164,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         """
 
         paginator = BasicPagination()
-        patents = self.get_object().get_patents().order_by("id")
+        patents = self.get_object().get_patents()
         field_names = [
             [
                 field.name.replace("_", " ").title()

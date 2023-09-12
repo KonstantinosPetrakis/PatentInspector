@@ -28,10 +28,14 @@ const chartOptions = computed(() => {
 
 const chartData = computed(() => {
     return {
-        labels: props.data.slice(1).map(val => val[0].slice(0, 15)),
+        labels: props.data
+            .slice(1)
+            .map((val) =>
+                val[0].length > 30 ? val[0].slice(0, 30) + "..." : val[0]
+            ),
         datasets: [
             {
-                data: props.data.slice(1).map(val => val[1]),
+                data: props.data.slice(1).map((val) => val[1]),
                 backgroundColor: colors[0],
                 borderColor: "black",
                 borderWidth: 1,
@@ -41,7 +45,6 @@ const chartData = computed(() => {
         ],
     };
 });
-
 </script>
 
 <template>

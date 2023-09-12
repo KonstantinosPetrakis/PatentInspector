@@ -879,7 +879,15 @@ class Report(models.Model):
     datetime_analysis_started = models.DateTimeField(null=True, blank=True)
     datetime_analysis_ended = models.DateTimeField(null=True, blank=True)
     executed_successfully = models.BooleanField(null=True, blank=True)
-
+    status = models.CharField(
+        choices=(
+            ("idle", "Idle"),
+            ("waiting_for_analysis", "Waiting For Execute"),
+            ("waiting_for_topic_analysis", "Waiting For Topic Analysis"),
+        ),
+        max_length=100,
+        default="waiting_for_analysis",
+    )
     # Filters
     patent_office = models.CharField(
         choices=Patent.office_choices,
@@ -1021,9 +1029,13 @@ class Report(models.Model):
             "assignees__location__point", self.assignee_location
         )
 
-        return Patent.objects.filter(
-            patent_query, cpc_query, pct_query, inventor_query, assignee_query
-        ).distinct("id")
+        return (
+            Patent.objects.filter(
+                patent_query, cpc_query, pct_query, inventor_query, assignee_query
+            )
+            .distinct("id")
+            .order_by("id")
+        )
 
     @property
     def excel_file(self) -> str:
@@ -1043,6 +1055,9 @@ class Report(models.Model):
 
     @results.setter
     def results(self, results):
+        if not os.path.exists(os.path.dirname(self.results_file)):
+            os.makedirs(os.path.dirname(self.results_file))
+
         with open(self.results_file, "w") as f:
             json.dump(results, f, default=str)
 

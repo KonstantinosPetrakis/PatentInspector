@@ -206,7 +206,6 @@ class Command(BaseCommand):
             },
             # Patents are big, so we will split them into small chunks
             chunksize=CHUNK_SIZE / 50,
-            nrows=(CHUNK_SIZE / 50) * 2,
         )
 
         application = pd.read_csv(
@@ -281,10 +280,18 @@ class Command(BaseCommand):
             # Remove patents with invalid years
             patent_chunk.drop(
                 patent_chunk[
-                    (~patent_chunk["granted_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR)) |
-                    (~patent_chunk["application_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR))
+                    (
+                        ~patent_chunk["granted_year"].between(
+                            USPTO_CREATION_YEAR, CURRENT_YEAR
+                        )
+                    )
+                    | (
+                        ~patent_chunk["application_year"].between(
+                            USPTO_CREATION_YEAR, CURRENT_YEAR
+                        )
+                    )
                 ].index,
-                inplace=True
+                inplace=True,
             )
 
             patent_chunk["years_to_get_granted"] = (
@@ -616,9 +623,11 @@ class Command(BaseCommand):
             # Remove rows with invalid citation years
             citations_chunk.drop(
                 citations_chunk[
-                    ~citations_chunk["citation_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR)
+                    ~citations_chunk["citation_year"].between(
+                        USPTO_CREATION_YEAR, CURRENT_YEAR
+                    )
                 ].index,
-                inplace=True
+                inplace=True,
             )
 
             citations_chunk.to_csv(
@@ -682,9 +691,11 @@ class Command(BaseCommand):
             # Remove rows with invalid citation years
             citation_chunk.drop(
                 citation_chunk[
-                    ~citation_chunk["citation_year"].between(USPTO_CREATION_YEAR, CURRENT_YEAR)
+                    ~citation_chunk["citation_year"].between(
+                        USPTO_CREATION_YEAR, CURRENT_YEAR
+                    )
                 ].index,
-                inplace=True
+                inplace=True,
             )
 
             citation_chunk.to_csv(

@@ -6,19 +6,18 @@ import {
     reportToSubmittedFilters,
     dateTimeToString,
 } from "../utils";
-import CopyTable from "../components/CopyTable.vue";
+
 import Tabs from "../components/Tabs.vue";
 import TabItem from "../components/TabItem.vue";
-import TableLine from "../components/charts/TableLine.vue";
-import TableBar from "../components/charts/TableBar.vue";
-import TableHeatmap from "../components/charts/TableHeatmap.vue";
-import Pagination from "../components/Pagination.vue";
+import DescriptiveAnalysis from "../components/view-report/DescriptiveAnalysis.vue";
+import Filters from "../components/view-report/Filters.vue";
+import Patents from "../components/view-report/Patents.vue";
+import NetworkAnalysis from "../components/view-report/NetworkAnalysis.vue";
+import ThematicAnalysis from "../components/ThematicAnalysis.vue";
 
 const router = useRouter();
 const props = defineProps(["id", "page"]);
-const patentsPerPage = 10;
 const data = ref();
-const patents = ref();
 const loading = ref(true);
 
 const getData = async () => {
@@ -31,129 +30,10 @@ const getData = async () => {
     data.value = responseData;
 };
 
-const getPatents = async () => {
-    const response = await authFetch(
-        `/report/${props.id}/get_patents?page=${props.page}&page_size=${patentsPerPage}`
-    );
-    if (!response.ok) router.replace({ name: "notFound" });
-    const responseData = await response.json();
-    patents.value = responseData;
-};
-
-const downloadExcel = async () => {
-    const response = await authFetch(
-        `/report/${props.id}/download_patents_excel`
-    );
-    const data = await response.blob();
-    const file = window.URL.createObjectURL(data);
-    window.location.assign(file);
-};
-
-const filtersAsTable = computed(() => {
-    if (!data.value) return [null, null];
-
-    const table = [["Filter", "Value"]];
-    for (const [key, value] of Object.entries(data.value.filters)) {
-        table.push([key, value]);
-    }
-    return table;
-});
-
-const patentCount = computed(() => {
-    if (!data.value || !data.value.results) return "N/A";
-    return data.value.results.patents_count;
-});
-
-const gotResults = computed(() => {
-    return (
-        !data.value ||
-        !data.value.results ||
-        Object.keys(data.value.results).length !== 0
-    );
-});
-
-const timeSeries = computed(() => {
-    if (!data.value || !data.value.results) return [];
-    return [
-        {
-            title: "Applications per year",
-            data: data.value.results.timeseries.applications_per_year,
-        },
-        {
-            title: "Granted patents per year",
-            data: data.value.results.timeseries.granted_per_year,
-        },
-        {
-            title: "Granted patents per type",
-            data: data.value.results.timeseries.granted_per_type_year,
-        },
-        {
-            title: "Granted patents per office",
-            data: data.value.results.timeseries.granted_per_office_per_year,
-        },
-        {
-            title: "PCT protected patents per year",
-            data: data.value.results.timeseries.pct_protected_per_year,
-        },
-        {
-            title: "Granted patents per CPC",
-            data: data.value.results.timeseries.granted_per_cpc_year,
-        },
-        {
-            title: "Citations made per year",
-            data: data.value.results.timeseries.citations_made_per_year,
-        },
-        {
-            title: "Citations received per year",
-            data: data.value.results.timeseries.citations_received_per_year,
-        },
-    ];
-});
-
-const entity = computed(() => {
-    if (!data.value || !data.value.results) return [];
-    return {
-        patent: [
-            {
-                title: "PCT Distribution",
-                data: data.value.results.entity.patent.pct,
-            },
-            {
-                title: "Type Distribution",
-                data: data.value.results.entity.patent.type,
-            },
-            {
-                title: "Patent Office Distribution",
-                data: data.value.results.entity.patent.office,
-            },
-        ],
-        cpc: [
-            {
-                title: "CPC Section Distribution",
-                data: data.value.results.entity.cpc.section,
-            },
-            {
-                title: "Top 5 CPC Classes",
-                data: data.value.results.entity.cpc.top5_classes,
-            },
-            {
-                title: "Top 5 CPC Subclasses",
-                data: data.value.results.entity.cpc.top5_subclasses,
-            },
-            {
-                title: "Top 5 CPC groups",
-                data: data.value.results.entity.cpc.top5_groups,
-            },
-        ],
-    };
-});
-
 onMounted(async () => {
-    await Promise.all([getData(), getPatents()]);
+    await getData();
     loading.value = false;
 });
-
-watch(() => props.page, getPatents);
 </script>
 
 <template>
@@ -165,7 +45,7 @@ watch(() => props.page, getPatents);
                 <div class="spinner-border"></div>
             </div>
         </div>
-        <div v-else-if="!gotResults">
+        <div v-else-if="data.status == 'waiting_for_analysis'">
             <h1 class="h1 text-center">PatentAnalyzer</h1>
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="text-center">
@@ -201,7 +81,7 @@ watch(() => props.page, getPatents);
                 </span>
                 <span class="badge text-bg-secondary fs-6 m-2">
                     Patents Analyzed:
-                    {{ patentCount }}
+                    {{ data.results.patents_count }}
                 </span>
             </div>
             <div>
@@ -230,146 +110,23 @@ watch(() => props.page, getPatents);
                     ]"
                 >
                     <TabItem>
-                        <Tabs
-                            :links="[
-                                { title: 'Basic statistical measures' },
-                                { title: 'Variables over time' },
-                                { title: 'Information for each entity' },
-                            ]"
-                        >
-                            <TabItem>
-                                <CopyTable :data="data.results.statistics" />
-                            </TabItem>
-                            <TabItem>
-                                <div class="row">
-                                    <TableLine
-                                        v-for="item in timeSeries"
-                                        class="col-lg-6 col-12 m-0 p-0"
-                                        :title="item.title"
-                                        :data="item.data"
-                                    />
-                                </div>
-                            </TabItem>
-                            <TabItem>
-                                <Tabs
-                                    :links="[
-                                        { title: 'Patent' },
-                                        { title: 'Inventor' },
-                                        { title: 'Assignee' },
-                                        { title: 'CPC' },
-                                    ]"
-                                >
-                                    <TabItem>
-                                        <div class="row">
-                                            <TableBar
-                                                v-for="item in entity.patent"
-                                                :title="item.title"
-                                                :data="item.data"
-                                                class="col-lg-6 col-12"
-                                            />
-                                        </div>
-                                    </TabItem>
-                                    <TabItem>
-                                        <div class="row">
-                                            <TableBar
-                                                class="col-lg-6 col-12"
-                                                title="10 most productive inventors"
-                                                :data="
-                                                    data.results.entity.inventor
-                                                        .top10
-                                                "
-                                            />
-                                            <TableHeatmap
-                                                class="col-12"
-                                                title="Inventor Location Distribution"
-                                                :data="
-                                                    data.results.entity.inventor
-                                                        .locations
-                                                "
-                                            />
-                                        </div>
-                                    </TabItem>
-                                    <TabItem>
-                                        <div class="row">
-                                            <TableBar
-                                                class="col-lg-6 col-12"
-                                                title="10 most prominent assignees"
-                                                :data="
-                                                    data.results.entity
-                                                        .assignees.top10
-                                                "
-                                            />
-                                            <TableBar
-                                                class="col-lg-6 col-12"
-                                                title="Assignee Types"
-                                                :data="
-                                                    data.results.entity
-                                                        .assignees.type
-                                                "
-                                            />
-                                            <TableHeatmap
-                                                class="col-12"
-                                                title="Assignee Location Distribution"
-                                                :data="
-                                                    data.results.entity
-                                                        .assignees.locations
-                                                "
-                                            />
-                                        </div>
-                                    </TabItem>
-                                    <TabItem>
-                                        <div class="row">
-                                            <TableBar
-                                                v-for="item in entity.cpc"
-                                                :title="item.title"
-                                                :data="item.data"
-                                                class="col-lg-6 col-12"
-                                            />
-                                        </div>
-                                    </TabItem>
-                                </Tabs>
-                            </TabItem>
-                        </Tabs>
-                    </TabItem>
-                    <TabItem> Thematic Analysis </TabItem>
-                    <TabItem>
-                        <div class="row">
-                            <TableBar
-                                title="Most cited patents locally"
-                                :data="data.results.citations.most_cited_local"
-                                class="col-lg-6 col-12"
-                            />
-                            <TableBar
-                                title="Most cited patents globally"
-                                :data="data.results.citations.most_cited_global"
-                                class="col-lg-6 col-12"
-                            />
-                        </div>
+                        <DescriptiveAnalysis :results="data.results" />
                     </TabItem>
                     <TabItem>
-                        <div class="d-flex align-items-center">
-                            <button
-                                class="btn btn-secondary m-1"
-                                @click="downloadExcel"
-                            >
-                                Download Excel
-                            </button>
-                            <p class="ms-1 mb-0">
-                                The excel file contains more information that
-                                table below.
-                            </p>
-                        </div>
-                        <CopyTable :data="patents.results" />
-                        <Pagination
-                            :page="page"
-                            :total-items="patents.count"
-                            :items-per-page="patentsPerPage"
-                            urlName="report"
-                            :use-query="true"
+                        <ThematicAnalysis
+                            :topicModeling="data.results.topic_modeling"
+                            :status="data.status"
+                            :id="id"
                         />
                     </TabItem>
                     <TabItem>
-                        <CopyTable :data="filtersAsTable" />
+                        <NetworkAnalysis :citations="data.results.citations" />
+                    </TabItem>
+                    <TabItem>
+                        <Patents :id="id" :page="page" />
+                    </TabItem>
+                    <TabItem>
+                        <Filters :filters="data.filters" />
                     </TabItem>
                 </Tabs>
             </div>

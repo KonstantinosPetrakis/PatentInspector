@@ -1,9 +1,16 @@
+from datetime import timedelta, date
+
 from django.db.models import QuerySet
-from django.core import serializers
 from django.utils import timezone
 from django.conf import settings
 from django_q.tasks import Task
 import pandas as pd
+import tomotopy as tp
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import NMF
+from tomotopy.utils import Corpus
+from numpy import argmax
+
 
 from main.helpers import construct_statistics, format_statistics
 from main.models import *
@@ -37,10 +44,11 @@ def process_report(report: Report):
     patent_ids = list(patents.values_list("id", flat=True))
     patents = Patent.objects.filter(id__in=patent_ids)
 
-    print("got patents")
-    local_network_ids = list(PatentCitation.objects.filter(
-        citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids
-    ).values_list("id", flat=True))
+    local_network_ids = list(
+        PatentCitation.objects.filter(
+            citing_patent_id__in=patent_ids, cited_patent_id__in=patent_ids
+        ).values_list("id", flat=True)
+    )
 
     _create_excel(report, patents)
 
@@ -81,7 +89,7 @@ def process_report(report: Report):
                 "top5_groups": Patent.top_5_cpc_groups(patents),
             },
         },
-        "topic_modeling": None,
+        "topic_modeling": _execute_topic_analysis(patents, patent_ids),
         "citations": {
             "graph": PatentCitation.local_network_graph(local_network_ids),
             "most_cited_local": PatentCitation.most_cited_patents_local(
@@ -92,37 +100,57 @@ def process_report(report: Report):
     }
 
 
-def execute_topic_modeling(
+def topic_analysis(
     report: Report,
     method: str = "LDA",
     n_topics: int = 10,
     n_words: int = 10,
-    start_date: str = None,
-    end_date: str = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ):
     """
-    This function executes the topic modeling for the given report.
+    Executes topic analysis and sets the results to the report.
 
     Args:
-        report (Report): The report to execute the topic modeling for.
-        method (str, optional): The topic analysis method. Defaults to "LDA".
-        n_topics (int, optional): The topics to be generated. Defaults to 10.
-        n_words (int, optional): The words per topic to be displayed. Defaults to 10.
-        start_date (str, optional): The start date used for CAGR classification. Defaults to None.
-        end_date (str, optional):  The end date used for CAGR classification. Defaults to None.
-
-    Returns:
-        _type_: _description_
+        report (Report): The report to execute the topic analysis for.
+        method (str, optional): The topic analysis method that will be used. Defaults to "LDA".
+        n_topics (int, optional): The numbers of topics that will be generated. Defaults to 10.
+        n_words (int, optional): The number of words per each topic. Defaults to 10.
+        start_date (str | None, optional): The start date used for cagr calculation. Defaults to None.
+        end_date (str | None, optional): The end date used for cagr calculation. Defaults to None.
     """
 
+    # Check if the report still exists.
+    if not Report.objects.filter(id=report.id).exists():
+        return
+
+    results = report.results
+    topic_results = results.get("topic_modeling", None)
+
+    # First analysis must be executed
+    if topic_results is None:
+        return
+
+    # Check if the topic analysis was already executed with the same parameters.
     if (
-        method == "LDA"
-        and n_topics == 10
-        and n_words == 10
-        and start_date is None
-        and end_date is None
+        method == topic_results["method"]
+        and n_topics == topic_results["n_topics"]
+        and n_words == topic_results["n_words"]
+        and start_date == topic_results["start_date"]
+        and end_date == topic_results["end_date"]
     ):
-        return  # No need to execute topic modeling if the parameters are the same as the default ones.
+        return
+
+    report.datetime_analysis_started = timezone.now()
+    report.save()
+    patents = report.get_patents()
+    patent_ids = list(patents.values_list("id", flat=True))
+
+    results["topic_modeling"] = _execute_topic_analysis(
+        patents, patent_ids, method, n_topics, n_words, start_date, end_date
+    )
+
+    report.results = results
 
 
 def execution_hook(task: Task):
@@ -149,6 +177,7 @@ def execution_hook(task: Task):
             "error": "An unexpected error occurred while processing the report."
         }
 
+    report.status = "idle"
     report.datetime_analysis_ended = timezone.now()
     report.save()
 
@@ -165,6 +194,8 @@ def _create_excel(report: Report, patents: QuerySet = None):
     patents = patents if patents is not None else report.get_patents()
 
     df = pd.DataFrame(Patent.fetch_representation(patents).values())
+    if not os.path.exists(os.path.dirname(report.excel_file)):
+        os.makedirs(os.path.dirname(report.excel_file))
     df.to_excel(report.excel_file, index=False)
     report.save()
 
@@ -196,3 +227,218 @@ def _calculate_statistics(patents: QuerySet):
         statistics.update(construct_statistics(field))
 
     return format_statistics(patents.aggregate(**statistics))
+
+
+def _execute_topic_analysis(
+    patents: QuerySet,
+    patent_ids: List[int],
+    method: str = "LDA",
+    n_topics: int = 10,
+    n_words: int = 10,
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> Dict:
+    """
+    This function executes the topic modeling for the given report.
+
+    Args:
+        patents (Iterable[Patent]): The patents to execute the topic modeling for.
+        patent_ids (List[int]): The ids of the patents, passed for performance reasons
+        (e.g when they are already fetched)
+        method (str, optional): The topic analysis method. Defaults to "LDA".
+        n_topics (int, optional): The topics to be generated. Defaults to 10.
+        n_words (int, optional): The words per topic to be displayed. Defaults to 10.
+        start_date (str | None, optional): The start date used for CAGR classification. Defaults to None.
+        end_date (str | None, optional):  The end date used for CAGR classification. Defaults to None.
+
+    Returns:
+        Dict: The results of the topic analysis (words, weights, ratio
+        and cagr per topic) and the coherence score
+    """
+
+    if end_date is None:
+        end_date = patents.aggregate(max_date=Max("granted_date"))["max_date"]
+    else:
+        end_date = date.fromisoformat(end_date)
+
+    if start_date is None:
+        start_date = end_date - timedelta(days=365)
+    else:
+        start_date = date.fromisoformat(start_date)
+
+    years_diff = (end_date - start_date).days / 365
+
+    args = [patents, patent_ids, n_topics, n_words]
+    results, patents_per_topic = (
+        _topic_analysis_nmf(*args) if method == "NMF" else _topic_analysis_lda(*args)
+    )
+
+    # Calculate the ratio and cagr of patents per topic
+    for i, patents in enumerate(patents_per_topic):
+        patents_in_end_year = Patent.objects.filter(
+            id__in=patents,
+            granted_date__gte=end_date - timedelta(days=365),
+            granted_date__lte=end_date,
+        ).count()
+        patents_in_start_year = Patent.objects.filter(
+            id__in=patents,
+            granted_date__gte=start_date - timedelta(days=365),
+            granted_date__lte=start_date,
+        ).count()
+        results["topics"][i]["ratio"] = len(patents) / len(patent_ids)
+        # The +1 is to avoid division by zero
+        results["topics"][i]["cagr"] = (
+            patents_in_end_year / (patents_in_start_year + 1)
+        ) ** (1 / years_diff) - 1
+
+    results["method"] = method
+    results["n_topics"] = n_topics
+    results["n_words"] = n_words
+    results["start_date"] = start_date
+    results["end_date"] = end_date
+
+    return results
+
+
+def _topic_analysis_lda(
+    patents: QuerySet,
+    patent_ids: List[int],
+    n_topics: int,
+    n_words: int,
+) -> Tuple[Dict, List[List[int]]]:
+    """
+    This function executes topic modeling for the given patents using LDA.
+
+    Args:
+        patents (QuerySet): The patents to execute the topic modeling for.
+        patent_ids (List[int]): The ids of the patents, passed for performance reasons.
+        n_topics (int): The number of topics to be generated.
+        n_words (int): The number of words per topic to be displayed.
+
+    Returns:
+        Tuple[Dict, List[List[int]]]: The results of the topic analysis
+        (words and weights per topic) and the patents per topic.
+    """
+
+    docs = patents.annotate(
+        doc=Func(
+            Concat(
+                "title_processed",
+                Value(" "),
+                "abstract_processed",
+                output_field=fields.TextField(),
+            ),
+            Value(" "),
+            function="string_to_array",
+            output_field=ArrayField(models.CharField()),
+        )
+    ).values_list("doc", flat=True)
+
+    lda = tp.LDAModel(k=n_topics)
+    corpus = Corpus()
+    for doc in docs:
+        corpus.add_doc(doc)
+    lda.add_corpus(corpus)
+    lda.train(iter=1000)
+
+    patents_per_topic = [[] for _ in range(lda.k)]
+    results = _format_topic_analysis_results_tomotopy(lda, n_words)
+    # Group patents by topic
+    corpus = lda.infer(corpus)[0]
+    for i, doc in enumerate(corpus):
+        patents_per_topic[doc.get_topics(top_n=n_words)[0][0]].append(patent_ids[i])
+
+    return results, patents_per_topic
+
+
+def _topic_analysis_nmf(
+    patents: QuerySet,
+    patent_ids: List[int],
+    n_topics: int,
+    n_words: int,
+) -> Tuple[Dict, List[List[int]]]:
+    """
+    This function executes topic modeling for the given patents using NMF.
+
+    Args:
+        patents (QuerySet): The patents to execute the topic modeling for.
+        patent_ids (List[int]): The ids of the patents, passed for performance reasons.
+        n_topics (int): How many topics to generate.
+        n_words (int): How many words per topic to display.
+    Returns:
+        Tuple[Dict, List[List[int]]]: The results of the topic analysis
+        (words and weights per topic) and the patents per topic.
+    """
+
+    text_columns = patents.annotate(
+        text=Concat(
+            "title_processed",
+            Value(" "),
+            "abstract_processed",
+            output_field=TextField(),
+        )
+    ).values_list("text", flat=True)
+
+    tfidf_vectorizer = TfidfVectorizer(max_features=1000000)
+    tfidf = tfidf_vectorizer.fit_transform(text_columns)
+    nmf = NMF(n_components=n_topics, init="nndsvd", max_iter=8000).fit(tfidf)
+
+    # Group patents by topic
+    topics = tfidf_vectorizer.get_feature_names_out()
+    patents_per_topic = [[] for _ in range(n_topics)]
+    results = _format_topic_analysis_results_sklearn(nmf, topics, n_words)
+    patent_topics = argmax(
+        nmf.transform(tfidf_vectorizer.transform(text_columns)), axis=1
+    )
+
+    for i, topic in enumerate(patent_topics):
+        patents_per_topic[topic].append(patent_ids[i])
+
+    return results, patents_per_topic
+
+
+def _format_topic_analysis_results_sklearn(
+    model: NMF, feature_names: Iterable[str], n_words: int
+) -> Dict:
+    """
+    This function formats the results of a topic analysis model when sklearn is used.
+
+    Args:
+        model (NMF): The sklearn model.
+        feature_names (Iterable[str]): The feature names.
+        n_words (int): The number of words per topic to be displayed.
+    """
+
+    # Check https://scikit-learn.org/stable/auto_examples/applications/plot_topics_extraction_with_nmf_lda.html
+
+    topics = []
+    for topic in model.components_:
+        top_features_ind = topic.argsort()[: -n_words - 1 : -1]
+        top_features = [feature_names[i] for i in top_features_ind]
+        weights = topic[top_features_ind]
+        topics.append({"words": top_features, "weights": weights.tolist()})
+    return {"topics": topics, "coherence": "N/A"}
+
+
+def _format_topic_analysis_results_tomotopy(model: Any, n_words: int) -> Dict:
+    """
+    This function formats the results of a topic analysis model when tomotopy is used.
+
+    Args:
+        model (Any): The tomotopy model.
+        n_words (int): The number of words per topic to be displayed.
+    """
+
+    topics = []
+    for k in range(model.k):
+        topic_words = model.get_topic_words(k, top_n=n_words)
+        topics.append(
+            {
+                "words": [word for word, _ in topic_words],
+                "weights": [weight for _, weight in topic_words],
+            }
+        )
+    return {
+        "topics": topics,
+        "coherence": f"{tp.coherence.Coherence(model, coherence='c_v', top_n=n_words).get_score():.3f}",
+    }

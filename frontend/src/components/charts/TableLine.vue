@@ -25,7 +25,12 @@ const groupingIndex = computed(() => {
 });
 
 // The labels for the x-axis
-const labels = computed(() => props.data.slice(1).map((row) => row[labelIndex.value]));
+const labels = computed(() =>
+    props.data.slice(1).map((row) => row[labelIndex.value])
+);
+
+const minLabel = computed(() => Math.min(...labels.value));
+const maxLabel = computed(() => Math.max(...labels.value));
 
 // The data reformed as array of objects with x and y properties put into a list of datasets with labels.
 const datasets = computed(() => {
@@ -67,13 +72,28 @@ const chartOptions = computed(() => {
                 display: true,
                 text: props.title,
             },
+            tooltip: {
+                callbacks: {
+                    title: (context) => context[0].label.replace(",", ""),
+                },
+            },
         },
+        scales: {
+            x: {
+                type: "linear",
+                min: minLabel.value,
+                max: maxLabel.value,
+                ticks: {
+                    callback: (value) => value.toString(),
+                },
+            },
+        },
+        clip: false
     };
 });
 
 const chartData = computed(() => {
     return {
-        labels: labels.value,
         datasets: datasets.value.map((dataset, i) => {
             return {
                 label: dataset.label,
