@@ -86,21 +86,13 @@ STATIC_URL = "static/"
 ROOT_URLCONF = "PatentAnalyzer.urls"
 
 REST_FRAMEWORK = {
-    # "DEFAULT_RENDERER_CLASSES": (
-    #     "djangorestframework_camel_case.render.CamelCaseJSONRenderer",
-    #     "djangorestframework_camel_case.render.CamelCaseBrowsableAPIRenderer",
-    # ),
-    # "DEFAULT_PARSER_CLASSES": (
-    #     "djangorestframework_camel_case.parser.CamelCaseFormParser",
-    #     "djangorestframework_camel_case.parser.CamelCaseMultiPartParser",
-    #     "djangorestframework_camel_case.parser.CamelCaseJSONParser",
-    # ),
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.TokenAuthentication",
     ),
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
 SWAGGER_SETTINGS = {
+    'DEFAULT_AUTO_SCHEMA_CLASS': 'main.schema.ReadWriteAutoSchema',
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
         "DRF Token": {"type": "apiKey", "name": "Authorization", "in": "header"},
@@ -168,7 +160,15 @@ Q_CLUSTER = {
     "name": "PatentAnalyzer",
     "orm": "default",
     "timeout": 60 * 60, # 1 hour
-    "retry": 60 * 60 * 24, # 1 day
+    "retry": 1.5 * 60 * 60 * 24, # 1.5 days
     "max_attempts": 1,
     "save_limit": 100,
+    "workers": 2 # to avoid unresponsive server 
 }
+
+# Email configuration
+EMAIL_USE_TLS=env("EMAIL_USE_TLS")
+EMAIL_HOST=env("EMAIL_HOST")
+EMAIL_PORT=env("EMAIL_PORT")
+EMAIL_HOST_USER=env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD=env("EMAIL_HOST_PASSWORD")

@@ -1,11 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from "vue";
 import { useRouter } from "vue-router";
-import {
-    authFetch,
-    reportToSubmittedFilters,
-    dateTimeToString,
-} from "../utils";
+import { authFetch, dateTimeToString } from "../utils";
 
 import Tabs from "../components/Tabs.vue";
 import TabItem from "../components/TabItem.vue";
@@ -23,11 +19,7 @@ const loading = ref(true);
 const getData = async () => {
     const response = await authFetch(`/report/${props.id}`);
     if (!response.ok) router.replace({ name: "notFound" });
-
-    const responseData = await response.json();
-    const dataCopy = JSON.parse(JSON.stringify(responseData));
-    responseData.filters = reportToSubmittedFilters(dataCopy);
-    data.value = responseData;
+    data.value = await response.json();
 };
 
 onMounted(async () => {
@@ -61,6 +53,18 @@ onMounted(async () => {
                 </h4>
                 <p>
                     {{ data.results.error }}
+                </p>
+            </div>
+        </div>
+        <div v-else-if="data.results.info">
+            <h1 class="h1 text-center">PatentAnalyzer</h1>
+            <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
+            <div class="alert alert-info">
+                <h4 class="alert-heading">
+                    Zero patents were found matching these filters.
+                </h4>
+                <p>
+                    Please try a more general search by removing some filters.
                 </p>
             </div>
         </div>

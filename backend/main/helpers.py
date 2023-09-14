@@ -88,21 +88,20 @@ def list_iregex_query(field: str, value: Iterable) -> Q:
     )
 
 
-def location_query(field: str, value: str) -> Q:
+def location_query(field: str, location: Dict | None) -> Q:
     """
     Create a location query for the given field and value.
 
     Args:
         field (str): The name of the field.
-        value (str): The json string containing the attributes lat, lng and radius.
+        location (Dict | None): A dictionary containing the attributes lat, lng and radius.
 
     Returns:
         Q: The database query.
     """
 
-    if value:
-        location = json.loads(value)
-        return Q(
+    return (
+        Q(
             **{
                 f"{field}__distance_lte": (
                     Point(location["lng"], location["lat"]),
@@ -110,7 +109,9 @@ def location_query(field: str, value: str) -> Q:
                 )
             }
         )
-    return Q()
+        if location
+        else Q()
+    )
 
 
 def format_statistics(result: QuerySet) -> List[List]:

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, onMounted } from "vue";
+import { RouterLink } from "vue-router";
 import { logIn, getCompleteUrl } from "../utils";
-
 
 const email = ref("");
 const password = ref("");
@@ -69,11 +69,17 @@ const login = async () => {
             </div>
             <button
                 type="submit"
-                class="btn btn-secondary"
+                class="mx-2 btn btn-secondary"
                 @click.prevent="login"
             >
                 Login
             </button>
+            <router-link
+                class="mx-2 btn btn-secondary"
+                :to="{ name: 'requestResetPassword' }"
+            >
+                Reset password
+            </router-link>
         </form>
     </div>
 </template>

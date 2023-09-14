@@ -18,6 +18,8 @@ const data = reactive({
     cagr_dates: null,
 });
 
+const errors = reactive({});
+
 const waitingForTopicAnalysis = ref(
     props.status == "waiting_for_topic_analysis"
 );
@@ -37,6 +39,8 @@ const topicsAsTables = computed(() => {
 });
 
 const submitTopicAnalysis = async () => {
+    if (Object.keys(errors).length) return;
+
     const response = await authFetch(`/report/${props.id}/topic_analysis`, {
         method: "POST",
         body: JSON.stringify({
@@ -109,6 +113,14 @@ onMounted(() => {
                         :active="false"
                     >
                         <form>
+                            <div v-if="Object.keys(errors).length">
+                                <div
+                                    v-for="(error, field) of errors"
+                                    class="alert alert-danger p-2"
+                                >
+                                    {{ field }}: {{ error }}
+                                </div>
+                            </div>
                             <label class="d-flex align-items-center">
                                 Method
                                 <div class="ms-2">
@@ -139,6 +151,9 @@ onMounted(() => {
                                 <div class="ms-2">
                                     <MinMaxDateInput
                                         v-model="data.cagr_dates"
+                                        field-label="Classification Dates"
+                                        :display-label="false"
+                                        :errors="errors"
                                     />
                                 </div>
                             </label>

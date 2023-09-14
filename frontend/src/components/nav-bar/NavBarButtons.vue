@@ -57,7 +57,18 @@ window.addEventListener("logOut", () => (loggedIn.value = false));
                 <template v-if="useText"> View reports </template>
             </RouterLink>
 
-            <button class="btn fs-5 mx-0 mx-md-2 p-0 text-center" @click="logOut">
+            <RouterLink
+                class="text-decoration-none text-body fs-5 mx-0 mx-md-2"
+                :to="{ name: 'settings' }"
+            >
+                <i class="bi bi-gear-fill"></i>
+                <template v-if="useText"> Settings </template>
+            </RouterLink>
+
+            <button
+                class="btn fs-5 mx-0 mx-md-2 p-0 text-center"
+                @click="logOut"
+            >
                 <i class="bi bi-door-closed-fill w-100"></i>
                 <template v-if="useText"> Logout </template>
             </button>

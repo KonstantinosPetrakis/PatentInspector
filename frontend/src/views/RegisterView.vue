@@ -5,7 +5,7 @@ import { getCompleteUrl } from "../utils";
 
 const email = ref("");
 const password = ref("");
-const passwordAgain = ref("");
+const passwordConfirm = ref("");
 const emailElement = ref(null);
 const errors = reactive([]);
 
@@ -16,7 +16,7 @@ const register = async () => {
     if (email.value === "" || !email.value.includes("@"))
         errors.push("Valid email is required");
     if (password.value === "") errors.push("Password is required");
-    if (password.value !== passwordAgain.value)
+    if (password.value !== passwordConfirm.value)
         errors.push("Passwords do not match");
     if (errors.length > 0) return;
 
@@ -73,8 +73,8 @@ const register = async () => {
                 <input
                     type="password"
                     class="form-control"
-                    placeholder="Password again"
-                    v-model="passwordAgain"
+                    placeholder="Password confirmation"
+                    v-model="passwordConfirm"
                 />
             </div>
             <button

@@ -1,5 +1,6 @@
 from datetime import timedelta, date
 
+from django.core.mail import send_mail
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.conf import settings
@@ -10,7 +11,6 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import NMF
 from tomotopy.utils import Corpus
 from numpy import argmax
-
 
 from main.helpers import construct_statistics, format_statistics
 from main.models import *
@@ -32,16 +32,23 @@ def process_report(report: Report):
     report.save()
 
     patents = report.get_patents()
+    patent_count = patents.count()
 
-    if not settings.DEBUG and (count := patents.count()) > 40000:
+    if not settings.DEBUG and patent_count > 40000:
         report.results = {
-            "error": f"Too many patents ({count}) to process, please narrow down your search."
+            "error": f"Too many patents ({patent_count}) to process, please narrow down your search."
         }
 
         raise ValueError("Too many patents to process, please narrow down your search.")
 
+    if patent_count == 0:
+        report.results = {"info": "No patents found."}
+        return
+
     # Need to filter again because distinct + annotate is not supported by Django.
     patent_ids = list(patents.values_list("id", flat=True))
+    report.patent_ids = patent_ids
+    report.save()
     patents = Patent.objects.filter(id__in=patent_ids)
 
     local_network_ids = list(
@@ -180,6 +187,19 @@ def execution_hook(task: Task):
     report.status = "idle"
     report.datetime_analysis_ended = timezone.now()
     report.save()
+
+    if report.user.wants_emails and settings.EMAIL_HOST_USER:
+        filter_string = "Report Filters:\n"
+        for filter, value in report.filters.items():
+            filter_string += f"* {filter}: {value}\n"
+
+        send_mail(
+            subject="PatentAnalyzer: Your report is ready!",
+            message=f"Your report with the following filters is ready! "
+            + f"Visit PatentAnalyzer to view it. \n\n{filter_string}\n\n",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[report.user.email],
+        )
 
 
 def _create_excel(report: Report, patents: QuerySet = None):

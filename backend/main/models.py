@@ -1,11 +1,15 @@
 from typing import List, Tuple
 import contextlib
+import threading
 import os
+import secrets
 
+from django.db.backends.postgresql.psycopg_any import NumericRange, DateRange
 from django.db.models import Value, F, Q, Func, Q, OuterRef, Exists, TextField, fields
 from django.contrib.postgres.aggregates import StringAgg
 from django.contrib.postgres.fields import ArrayField, IntegerRangeField, DateRangeField
 from django.contrib.auth.models import AbstractBaseUser
+from django.core.mail import send_mail
 from django.db.models.functions import Concat, Substr
 from django.core.exceptions import ValidationError
 from django.db.models.functions import Substr
@@ -867,9 +871,32 @@ class User(AbstractBaseUser):
     email = models.EmailField(
         unique=True, error_messages={"unique": "A user with that email already exists."}
     )
+    wants_emails = models.BooleanField(default=True)
 
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["password"]
+
+
+class ResetPasswordToken(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True)
+    token = models.CharField(max_length=32, default=lambda: secrets.token_hex(8))
+    is_used = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        if not self.pk:
+            getting_created = True
+        super().save(*args, **kwargs)
+
+        if getting_created:
+            threading.Thread(
+                lambda: send_mail(
+                    subject="PatentAnalyzer: Reset Password",
+                    message=f"Your reset password token is {self.token}. It will expire in 5 minutes.",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[self.user.email],
+                )
+            ).start()
 
 
 class Report(models.Model):
@@ -887,6 +914,12 @@ class Report(models.Model):
         ),
         max_length=100,
         default="waiting_for_analysis",
+    )
+    # Optimization
+    patent_ids = ArrayField(
+        models.IntegerField(),
+        null=True,
+        blank=True,
     )
     # Filters
     patent_office = models.CharField(
@@ -977,6 +1010,9 @@ class Report(models.Model):
     assignee_location = models.JSONField(null=True, blank=True)
 
     def get_patents(self):
+        if self.patent_ids:
+            return Patent.objects.filter(id__in=self.patent_ids).order_by("id")
+
         patent_query = exact_query("office", self.patent_office)
         patent_query &= exact_query("type", self.patent_type)
         patent_query &= exact_query("withdrawn", self.patent_withdrawn)
@@ -989,7 +1025,10 @@ class Report(models.Model):
         patent_query &= range_query("claims_count", self.patent_claims_count)
         patent_query &= range_query("sheets_count", self.patent_sheets_count)
         if self.patent_keywords:
-            keywords = self.patent_keywords_logic.join(self.patent_keywords)
+            # Keywords must be full words e.g 'cat' shouldn't be matched in 'category'
+            keywords = self.patent_keywords_logic.join(
+                [f"(\\y{keyword}\\y)" for keyword in self.patent_keywords]
+            )
             patent_query &= Q(title_processed__iregex=keywords) | Q(
                 abstract_processed__iregex=keywords
             )
@@ -1067,6 +1106,63 @@ class Report(models.Model):
             os.remove(self.results_file)
 
         super().delete(*args, **kwargs)
+
+    @property
+    def filters(self):
+        def cast_value(value):
+            value_type = type(value)
+            if value_type == list:
+                return ", ".join(value)
+            elif value_type == dict:
+                s = ""
+                for key, value in value.items():
+                    s += f"{key}: {value}, "
+                return s[:-2]
+            elif value_type in [NumericRange, DateRange]:
+                return f"{value.lower} - {value.upper}"
+            elif value_type == bool:
+                return "Yes" if value else "No"
+            return value
+
+        filters = (
+            Report.objects.filter(id=self.id)
+            .values(
+                "patent_office",
+                "patent_type",
+                "patent_keywords",
+                "patent_keywords_logic",
+                "patent_application_filed_date",
+                "patent_granted_date",
+                "patent_figures_count",
+                "patent_claims_count",
+                "patent_sheets_count",
+                "patent_withdrawn",
+                "cpc_section",
+                "cpc_class",
+                "cpc_subclass",
+                "cpc_group",
+                "pct_application_date",
+                "pct_granted",
+                "inventor_first_name",
+                "inventor_last_name",
+                "inventor_location",
+                "assignee_first_name",
+                "assignee_last_name",
+                "assignee_organization",
+                "assignee_location",
+            )
+            .first()
+        )
+
+        return {
+            name.replace("_", " ").title(): cast_value(value)
+            for name, value in filters.items()
+            if value is not None
+            and value != ""
+            and value != []
+            and value != NumericRange(0, 100)
+            and value != "&"
+        }
 
 
 # ----- Application Related Models And Validators -----

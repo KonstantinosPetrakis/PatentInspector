@@ -12,6 +12,7 @@ import { authFetch } from "../utils";
 import router from "../router";
 
 const messages = ref([]);
+const errors = reactive({});
 const patentKeywordOptions = ref([]);
 
 const data = reactive({
@@ -63,6 +64,11 @@ const addTagToKeywordOptions = (tag) => {
 };
 
 const createReport = async () => {
+    if (Object.keys(errors).length) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+    }
+
     const reportData = toRaw(data);
     for (let key of [
         "patent_keywords_logic",
@@ -99,12 +105,21 @@ const createReport = async () => {
             resulted set exceeds a certain size (online version).
         </p>
         <form class="border shadow">
-            <div class="messages">
+            <div class="messages m-2">
                 <div
                     v-for="message of messages"
-                    :class="`alert m-2 p-3 alert-${message.type}`"
+                    :class="`alert p-3 alert-${message.type}`"
                 >
                     {{ message.message }}
+                </div>
+                <div v-if="Object.keys(errors).length">
+                    <b> Please correct these errors: </b>
+                    <div
+                        v-for="(error, field) of errors"
+                        class="alert alert-danger p-3"
+                    >
+                        {{ field }}: {{ error }}
+                    </div>
                 </div>
             </div>
             <Accordion id="form-accordion">
@@ -149,11 +164,13 @@ const createReport = async () => {
                         field-label="Application Filed Date"
                         field-info="The range of dates the patent application was filed."
                         v-model="data.patent_application_filed_date"
+                        v-model:errors="errors"
                     />
                     <MinMaxDateInput
                         field-label="Patent Granted Date"
                         field-info="The range of dates the patent was granted."
                         v-model="data.patent_granted_date"
+                        v-model:errors="errors"
                     />
                     <MinMaxIntInput
                         field-label="Figure Count"
@@ -189,7 +206,7 @@ const createReport = async () => {
                         :fetch-before="true"
                         url="/cpc/classes"
                         :customLabel="processCpcData"
-                        track-by="Class"
+                        track-by="_class"
                         label="title"
                     />
                     <TaggingAsyncInput
@@ -213,6 +230,7 @@ const createReport = async () => {
                     <MinMaxDateInput
                         field-label="Application Filed Date"
                         v-model="data.pct_application_date"
+                        v-model:errors="errors"
                     />
                     <SingleChoiceInput
                         field-label="Granted"

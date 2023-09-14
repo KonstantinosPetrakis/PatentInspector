@@ -9,11 +9,14 @@ class PrimitiveSerializer(serializers.BaseSerializer):
         return obj
 
 
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = ("email", "password")
-        write_only_fields = ("password",)
+class UserSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    wants_emails = serializers.BooleanField(required=True)
+
+
+class UserRegisterSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
 
     def validate_password(self, value):
         if len(value) < 8:
@@ -23,16 +26,58 @@ class UserSerializer(serializers.ModelSerializer):
         return value
 
 
-class ReportSerializer(serializers.ModelSerializer):
+class UserLoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+    token = serializers.CharField(read_only=True)
+
+
+class UpdateUserEmailSerializer(serializers.Serializer):
+    new_email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True, write_only=True)
+
+
+class UpdateUserPasswordSerializer(serializers.Serializer):
+    new_password = serializers.CharField(required=True, write_only=True)
+    old_password = serializers.CharField(required=True, write_only=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "New password must be at least 8 characters long"
+            )
+        return value
+
+
+class UpdateUserWantsEmailsSerializer(serializers.Serializer):
+    wants_emails = serializers.BooleanField(required=True)
+
+
+class AskResetPasswordSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+class ResetPasswordSerializer(serializers.Serializer):
+    token = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+
+    def validate_new_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError(
+                "New password must be at least 8 characters long"
+            )
+        return value
+
+
+class CreateReportSerializer(serializers.ModelSerializer):
     class Meta:
         model = Report
-        fields = "__all__"
+        exclude = ("user", "patent_ids")
         read_only_fields = (
             "datetime_analysis_started",
             "datetime_analysis_ended",
-            "user",
             "results",
-            "status"
+            "status",
         )
 
     patent_application_filed_date = DateRangeField(required=False)
@@ -42,6 +87,26 @@ class ReportSerializer(serializers.ModelSerializer):
     patent_sheets_count = IntegerRangeField(required=False)
     pct_application_date = DateRangeField(required=False)
     results = serializers.JSONField(required=False)
+    filters = serializers.JSONField(required=False)
+
+
+class ViewReportSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Report
+        fields = (
+            "id",
+            "datetime_created",
+            "datetime_analysis_started",
+            "datetime_analysis_ended",
+            "executed_successfully",
+            "status",
+            "filters",
+            "results",
+        )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        setattr(self.Meta, "read_only_fields", [*self.fields])
 
 
 class ListReportSerializer(serializers.Serializer):

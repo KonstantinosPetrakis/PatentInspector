@@ -1,7 +1,8 @@
+from datetime import timedelta
+
 from drf_yasg.utils import swagger_auto_schema
-from rest_framework import permissions
-from rest_framework import generics
-from rest_framework import viewsets
+from rest_framework import permissions, generics, viewsets
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -11,11 +12,12 @@ from django.http import HttpResponse
 from django_filters.rest_framework import DjangoFilterBackend
 from django_filters import rest_framework as filters
 from django_q.tasks import async_task
-import drf_yasg.openapi as openapi
+from django.utils import timezone
 
 from main.helpers import remove_redundant_cpc_entities
 from main.tasks import process_report, topic_analysis, execution_hook
 from main import serializers
+from main import schema
 from main.models import *
 
 
@@ -34,18 +36,41 @@ def django_filter_warning(get_queryset_func):
 
 
 class BasicPagination(PageNumberPagination):
-    page_size = 10
+    page_size = 50
     page_size_query_param = "page_size"
-    max_page_size = 25
+    max_page_size = 50
 
 
 class UserViewSet(viewsets.ModelViewSet):
     """
-    API endpoint that allows user creation and login.
+    API endpoint that allows user creation, login and data retrieval.
     """
 
-    serializer_class = serializers.UserSerializer
-    http_method_names = ["post"]
+    http_method_names = ["post", "get"]
+
+    def get_serializer_class(self, *args, **kwargs):
+        return {
+            "get_data": serializers.UserSerializer,
+            "create": serializers.UserRegisterSerializer,
+            "login": serializers.UserLoginSerializer,
+            "update_email": serializers.UpdateUserEmailSerializer,
+            "update_password": serializers.UpdateUserPasswordSerializer,
+            "update_wants_emails": serializers.UpdateUserWantsEmailsSerializer,
+            "ask_reset_password": serializers.AskResetPasswordSerializer,
+            "reset_password": serializers.ResetPasswordSerializer,
+        }.get(self.action)
+
+    @django_filter_warning
+    def get_queryset(self):
+        return User.objects.filter(email=self.request.user.email).first()
+
+    @swagger_auto_schema(auto_schema=None)
+    def list(self, request, *args, **kwargs):
+        raise MethodNotAllowed(request.method)
+
+    @swagger_auto_schema(auto_schema=None)
+    def retrieve(self, request):
+        raise MethodNotAllowed(request.method)
 
     def perform_create(self, serializer):
         """
@@ -74,6 +99,86 @@ class UserViewSet(viewsets.ModelViewSet):
             {"token": Token.objects.get(user=user).key, "email": user.email}
         )
 
+    @swagger_auto_schema(**schema.update_email)
+    @action(detail=False, methods=["post"])
+    def update_email(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        data = serializer.validated_data
+
+        if not request.user.check_password(data["password"]):
+            return Response({"error": "Invalid password"}, status=400)
+
+        request.user.email = data["new_email"]
+        request.user.save()
+        return Response(status=200)
+
+    @swagger_auto_schema(**schema.update_password)
+    @action(detail=False, methods=["post"])
+    def update_password(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors["new_password"][0]}, status=400)
+        data = serializer.validated_data
+
+        if not request.user.check_password(data["old_password"]):
+            return Response({"error": "Invalid old password"}, status=400)
+
+        request.user.set_password(data["new_password"])
+        request.user.save()
+        return Response(status=200)
+
+    @swagger_auto_schema(**schema.update_wants_emails)
+    @action(detail=False, methods=["post"])
+    def update_wants_emails(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+        data = serializer.validated_data
+
+        request.user.wants_emails = data["wants_emails"]
+        request.user.save()
+        return Response(status=200)
+
+    @action(detail=False, methods=["get"])
+    def get_data(self, request):
+        serializer = self.get_serializer(request.user)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=["post"])
+    def ask_reset_password(self, request):
+        data = request.data
+        user = User.objects.filter(email=data["email"]).first()
+        if user is None:
+            return Response({"error": "Invalid email"}, status=400)
+
+        ResetPasswordToken.objects.create(user=user)
+        return Response(status=200)
+
+    @action(detail=False, methods=["post"])
+    def reset_password(self, request):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({"error": serializer.errors["new_password"][0]}, status=400)
+        data = serializer.validated_data
+
+        token = ResetPasswordToken.objects.filter(
+            token=data["token"],
+            is_used=False,
+            created__gte=timezone.now() - timedelta(minutes=5),
+        ).first()
+
+        if token is None:
+            return Response({"error": "Invalid token"}, status=400)
+
+        token.user.set_password(data["new_password"])
+        token.user.save()
+        token.is_used = True
+        token.save()
+
+        return Response(status=200)
+
 
 class ReportViewSet(viewsets.ModelViewSet):
     """
@@ -98,7 +203,9 @@ class ReportViewSet(viewsets.ModelViewSet):
             return serializers.ListReportSerializer
         if self.action == "topic_analysis":
             return serializers.TopicAnalysisSerializer
-        return serializers.ReportSerializer
+        if self.action == "retrieve":
+            return serializers.ViewReportSerializer
+        return serializers.CreateReportSerializer
 
     def perform_create(self, serializer):
         """
@@ -109,20 +216,10 @@ class ReportViewSet(viewsets.ModelViewSet):
         report = serializer.save(user=self.request.user)
         async_task(process_report, report, hook=execution_hook)
 
-    @swagger_auto_schema(
-        responses={
-            201: openapi.Response(
-                description="The topic analysis task was successfully created",
-            ),
-            400: openapi.Response(
-                description="The request body was invalid",
-            ),
-        }
-    )
+    @swagger_auto_schema(**schema.topic_analysis)
     @action(detail=True, methods=["post"])
     def topic_analysis(self, request, pk):
         report = self.get_object()
-
         serializer = self.get_serializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)
@@ -142,6 +239,7 @@ class ReportViewSet(viewsets.ModelViewSet):
         )
         return Response(status=201)
 
+    @swagger_auto_schema(**schema.patents_excel)
     @action(detail=True, methods=["get"])
     def download_patents_excel(self, request, pk):
         """
@@ -157,6 +255,7 @@ class ReportViewSet(viewsets.ModelViewSet):
                 },
             )
 
+    @swagger_auto_schema(**schema.get_patents)
     @action(detail=True, methods=["get"])
     def get_patents(self, request, pk):
         """
@@ -183,7 +282,7 @@ class CPCSectionListView(generics.ListAPIView):
     API endpoint that allows CPC sections to be viewed.
     """
 
-    queryset = CPCSection.objects.all()
+    queryset = CPCSection.objects.all().order_by("section")
     serializer_class = serializers.CPCSectionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -193,7 +292,7 @@ class CPCClassListView(generics.ListAPIView):
     API endpoint that allows CPC classes to be viewed.
     """
 
-    queryset = CPCClass.objects.all()
+    queryset = CPCClass.objects.all().order_by("_class")
     serializer_class = serializers.CPCClassSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -202,7 +301,7 @@ class CPCSubclassListView(generics.ListAPIView):
     """
     API endpoint that allows CPC subclasses to be viewed.
     Pagination and query filtering are supported.
-    Pagination is limited to 100 items per page.
+    Pagination is limited to 50 items per page.
     """
 
     class filterset_class(filters.FilterSet):
@@ -212,7 +311,7 @@ class CPCSubclassListView(generics.ListAPIView):
             label="The beginning of the subclass code",
         )
 
-    queryset = CPCSubclass.objects.all()
+    queryset = CPCSubclass.objects.all().order_by("subclass")
     serializer_class = serializers.CPCSubclassSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = BasicPagination
@@ -223,7 +322,7 @@ class CPCGroupListView(generics.ListAPIView):
     """
     API endpoint that allows CPC groups to be viewed.
     Pagination and query filtering are supported.
-    Pagination is limited to 100 items per page.
+    Pagination is limited to 50 items per page.
     """
 
     class filterset_class(filters.FilterSet):
@@ -233,7 +332,7 @@ class CPCGroupListView(generics.ListAPIView):
             label="The beginning of the group code",
         )
 
-    queryset = CPCGroup.objects.all()
+    queryset = CPCGroup.objects.all().order_by("group")
     serializer_class = serializers.CPCGroupSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = BasicPagination
@@ -244,7 +343,7 @@ class InventorFieldView(generics.ListAPIView):
     """
     API endpoint that allows inventor first names or last names to be viewed
     based on a query parameter.
-    Pagination is limited to 100 items per page.
+    Pagination is limited to 50 items per page.
     You can filter by first name or last name, but not both and not neither.
     """
 
@@ -284,7 +383,7 @@ class AssigneeFieldView(generics.ListAPIView):
     """
     API endpoint that allows assignee first names or last names or organization
     names to be viewed based on a query parameter.
-    Pagination is limited to 100 items per page.
+    Pagination is limited to 50 items per page.
     You can filter by first name, last name and organization, you can use only one filter at a time.
     """
 

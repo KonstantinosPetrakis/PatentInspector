@@ -21,6 +21,21 @@ const router = createRouter({
             component: () => import("../views/RegisterView.vue"),
         },
         {
+            path: "/request-reset-password",
+            name: "requestResetPassword",
+            component: () => import("../views/RequestResetPasswordView.vue"),
+        },
+        {
+            path: "/reset-password",
+            name: "resetPassword",
+            component: () => import("../views/ResetPasswordView.vue"),
+        },
+        {
+            path: "/settings",
+            name: "settings",
+            component: () => import("../views/SettingsView.vue"),
+        },
+        {
             path: "/create-report",
             name: "createReport",
             component: () => import("../views/CreateReportView.vue"),
@@ -29,14 +44,16 @@ const router = createRouter({
             path: "/report/:id",
             name: "report",
             component: () => import("../views/SeeReportView.vue"),
-            props: route => ({id: route.params.id, page: route.query.page || 1})
+            props: (route) => ({
+                id: route.params.id,
+                page: route.query.page || 1,
+            }),
         },
         {
             path: "/list-reports/:page?",
             name: "listReports",
             component: () => import("../views/ListReportsView.vue"),
-            props: route => ({page: route.params.page || 1})
-
+            props: (route) => ({ page: route.params.page || 1 }),
         },
         {
             path: "/not-found",
@@ -51,10 +68,17 @@ const router = createRouter({
     ],
 });
 
+const authViewRouteNames = [
+    "login",
+    "register",
+    "resetPassword",
+    "requestResetPassword",
+];
+const notRestrictedViewRouteNames = ["home", ...authViewRouteNames];
 router.beforeEach((to) => {
     const loggedIn = isLoggedIn();
-    const restrictedView = !["home", "login", "register"].includes(to.name);
-    const authView = ["login", "register"].includes(to.name);
+    const restrictedView = !notRestrictedViewRouteNames.includes(to.name);
+    const authView = authViewRouteNames.includes(to.name);
 
     if (!loggedIn && restrictedView) return { name: "login" };
     if (loggedIn && authView) return { name: "home" };

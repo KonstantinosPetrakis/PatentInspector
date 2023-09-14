@@ -1,9 +1,9 @@
 <script setup>
-import { isLoggedIn } from "../utils";
 import { RouterLink } from "vue-router";
+import { isLoggedIn, getUserEmail } from "../utils";
 
+const email = getUserEmail();
 const loggedIn = isLoggedIn();
-const email = localStorage.getItem("email");
 </script>
 
 <template>
@@ -14,10 +14,16 @@ const email = localStorage.getItem("email");
                 Welcome back {{ email }}, what would you like to do?
             </p>
             <div class="d-flex justify-content-center mt-4">
-                <RouterLink class="btn btn-outline-secondary mx-2" :to="{'name': 'createReport'}">
+                <RouterLink
+                    class="btn btn-outline-secondary mx-2"
+                    :to="{ name: 'createReport' }"
+                >
                     Create new report
                 </RouterLink>
-                <RouterLink class="btn btn-outline-secondary mx-2" :to="{'name': 'listReports'}">
+                <RouterLink
+                    class="btn btn-outline-secondary mx-2"
+                    :to="{ name: 'listReports' }"
+                >
                     See all reports
                 </RouterLink>
             </div>

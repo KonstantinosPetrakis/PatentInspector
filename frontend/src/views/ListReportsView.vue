@@ -69,7 +69,7 @@ watch(() => props.page, updateData);
                     <th class="text-center">Inspect</th>
                     <th class="text-center">Created</th>
                     <th class="text-center">Analysis started</th>
-                    <th class="text-center">Analysis finished</th>
+                    <th class="text-center">Analysis ended</th>
                     <th class="text-center">Analysis duration</th>
                     <th class="text-center">Delete</th>
                 </thead>

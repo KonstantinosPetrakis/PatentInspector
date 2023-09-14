@@ -19,6 +19,16 @@ export const logOut = () => {
     router.push({ name: "login" });
 };
 
+export const getUserData = async () => {
+    const response = await authFetch("/user/get_data");
+    const data = await response.json();
+    return data;
+};
+
+export const getUserEmail = () => localStorage.getItem("email");
+
+export const setUserEmail = (email) => localStorage.setItem("email", email);
+
 export const getCompleteUrl = (url) => `${apiUrl}${url}`;
 
 export const authFetch = (url, options) => {
@@ -41,73 +51,9 @@ export const dateTimeToString = (
 export const dateToString = (date, nullMessage) =>
     date ? new Date(date).toLocaleDateString() : nullMessage;
 
-// Not so proud of this one but gets the job done.
-export const reportToSubmittedFilters = (report) => {
-    if (!report) return report;
-
-    // Remove unnecessary attributes
-    const notNeededAttrs = [
-        "id",
-        "datetime_created",
-        "datetime_analysis_started",
-        "datetime_analysis_ended",
-        "user",
-        "results",
-        "status",
-    ];
-    for (let attr of notNeededAttrs) delete report[attr];
-
-    // Remove attributes if they have default values
-    // and transform the others to a user friendly string
-    for (let attr of Object.keys(report)) {
-        // Remove null, empty array and default range values
-        let data = report[attr];
-
-        if (data === null || Object.keys(data).length === 0)
-            delete report[attr];
-        else if (Array.isArray(data) && data.length == 0) delete report[attr];
-        else if (
-            typeof data == "object" &&
-            ((data.lower == 0 && data.upper == 100) ||
-                (data.lower === null && data.upper === null))
-        )
-            delete report[attr];
-        // Cast date and count ranges to a user friendly string
-        else if (
-            (attr.endsWith("date") || attr.endsWith("count")) &&
-            typeof data == "object" &&
-            data != null
-        ) {
-            report[attr] = `${data.lower || "-∞"} - ${data.upper || "∞"}`;
-        }
-
-        // Cast lists to a user friendly string
-        else if (Array.isArray(data) && data.length > 0)
-            report[attr] = data.join(", ");
-        //  Cast object to a user friendly string
-        else if (typeof data == "object" && data != null) {
-            let strRepresentation = "";
-            for (let [key, value] of Object.entries(data))
-                strRepresentation += `${key}: ${value}, `;
-            report[attr] = strRepresentation.slice(0, -2);
-        }
-    }
-
-    // Remove default keywords logic and transform it to a user friendly string
-    if (report.patent_keywords_logic == "|")
-        report.patent_keywords_logic = "OR";
-    else delete report.patent_keywords_logic;
-
-    // Make attrs more user friendly
-    for (let attr of Object.keys(report)) {
-        report[startCase(attr)] = report[attr];
-        delete report[attr];
-    }
-
-    return report;
-};
-
 export const dateTimeDiff = (date1, date2) => {
+    if (!date1 || !date2) return "N/A";
+
     const padNumber = (number) => (number < 10 ? `0${number}` : number);
     let diff = Math.abs(new Date(date1) - new Date(date2)) / 1000;
 
