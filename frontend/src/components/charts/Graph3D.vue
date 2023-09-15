@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch, computed } from "vue";
+import { ref, onMounted, watch, computed, onUnmounted } from "vue";
 import { getColorMode } from "../../utils";
 import ForceGraph3D from "3d-force-graph";
 
@@ -67,7 +67,7 @@ const createGraph = () => {
         .linkDirectionalArrowLength(3.5)
         .linkDirectionalArrowRelPos(1)
         .linkCurvature(0.25)
-        .width(graphElement.value.offsetWidth)
+        .width(graphElement.value?.offsetWidth)
         .height(window.screen.height * 0.8)
         .backgroundColor(colors.value.background)
         .linkColor(() => colors.value.link)
@@ -84,7 +84,7 @@ const createGraph = () => {
     }).observe(graphElement.value);
 
     resizeObserver = new ResizeObserver(() =>
-        graph.width(graphElement.value.offsetWidth)
+        graph.width(graphElement.value?.offsetWidth)
     ).observe(graphElement.value);
 };
 
@@ -104,6 +104,11 @@ window.addEventListener("themeChanged", () => {
 });
 
 onMounted(() => (shouldCreateGraph.value = props.data.length < 5000));
+
+onUnmounted(() => {
+    if (mutationObserver) mutationObserver.disconnect();
+    if (resizeObserver) resizeObserver.disconnect();
+});
 </script>
 
 <template>

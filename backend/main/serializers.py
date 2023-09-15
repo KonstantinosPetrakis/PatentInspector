@@ -25,6 +25,11 @@ class UserRegisterSerializer(serializers.Serializer):
             )
         return value
 
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already exists")
+        return value
+
 
 class UserLoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
@@ -35,6 +40,11 @@ class UserLoginSerializer(serializers.Serializer):
 class UpdateUserEmailSerializer(serializers.Serializer):
     new_email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
+
+    def validate_new_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("Email already exists")
+        return value
 
 
 class UpdateUserPasswordSerializer(serializers.Serializer):

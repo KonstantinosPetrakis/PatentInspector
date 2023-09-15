@@ -2,6 +2,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import VOtpInput from "vue3-otp-input";
+import { getCompleteUrl } from "../utils";
 
 const token = ref("");
 const newPassword = ref("");
@@ -9,7 +10,34 @@ const confirmNewPassword = ref("");
 const errors = ref([]);
 const router = useRouter();
 
-const resetPassword = () => {};
+const resetPassword = async () => {
+    if (!token.value || !newPassword.value || !confirmNewPassword.value) {
+        errors.value.push("Please fill in all fields.");
+        return;
+    }
+
+    if (newPassword.value !== confirmNewPassword.value) {
+        errors.value.push("Passwords do not match.");
+        return;
+    }
+
+    if (token.value.length !== 8) {
+        errors.value.push("Invalid token.");
+        return;
+    }
+
+    const response = await fetch(getCompleteUrl("/user/reset_password"), {
+        method: "POST",
+        body: JSON.stringify({
+            token: token.value,
+            new_password: newPassword.value,
+        }),
+        headers: { "Content-Type": "application/json" },
+    });
+
+    if (response.ok) router.push({ name: "login" });
+    else errors.value.push((await response.json()).error);
+};
 </script>
 
 <template>
@@ -38,7 +66,7 @@ const resetPassword = () => {};
                 class="otp-input"
                 value=""
                 :should-auto-focus="true"
-                v-model="token"
+                v-model:value="token"
                 :num-inputs="8"
                 input-type="letter-numeric"
                 separator="&nbsp-&nbsp"

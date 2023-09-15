@@ -45,6 +45,8 @@ def process_report(report: Report):
         report.results = {"info": "No patents found."}
         return
 
+    print(f"processing {patent_count} patents")
+
     # Need to filter again because distinct + annotate is not supported by Django.
     patent_ids = list(patents.values_list("id", flat=True))
     report.patent_ids = patent_ids

@@ -146,7 +146,7 @@ onMounted(() => {
                                     v-model="data.n_words"
                                 />
                             </label>
-                            <label class="d-flex align-items-center my-2">
+                            <label class="d-flex align-items-center flex-wrap my-2">
                                 Dates for classification
                                 <div class="ms-2">
                                     <MinMaxDateInput

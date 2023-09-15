@@ -1,6 +1,6 @@
 <script setup>
 import FieldWrapper from "./FieldWrapper.vue";
-import { onMounted, computed } from "vue";
+import { onMounted, computed, onUnmounted } from "vue";
 
 const props = defineProps(["modelValue", "fieldLabel"]);
 const emit = defineEmits(["update:modelValue"]);
@@ -11,6 +11,7 @@ const value = computed({
 });
 
 const id = props.fieldLabel.replace(/\s+/g, "-").toLowerCase();
+let observer;
 
 onMounted(() => {
     const map = L.map(id).setView([30, -20], 2.2);
@@ -58,9 +59,13 @@ onMounted(() => {
     map.on(L.Draw.Event.DELETED, () => (value.value = null));
 
     // Invalidate the size of the map every time intersection observer fires
-    new IntersectionObserver(() => map.invalidateSize()).observe(
+    observer = new IntersectionObserver(() => map.invalidateSize()).observe(
         document.querySelector(`#${id}`)
     );
+});
+
+onUnmounted(() => {
+    if (observer) observer.disconnect();
 });
 </script>
 

@@ -9,8 +9,6 @@ If you want to inspect PatentAnalyzer please use the 'paper' branch.
 https://github.com/KonstantinosPetrakis/PatentAnalyzer/tree/paper
 
 # TODO
--   Finish forgot password functionality
--   Make a cool homepage
--   Test (user actions [login, register, reset pass, ...], main form, filtering)
--   Upload data to cloud and make docker image valid again [Make django q and gunicorn use env files for configuration]
+
+-   Upload data to cloud (clean db from trash first) and make docker image valid again (Make django q and gunicorn use env files for configuration)
 -   Update readme (explain almost everything)

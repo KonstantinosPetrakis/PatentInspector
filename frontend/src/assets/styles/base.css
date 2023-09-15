@@ -32,6 +32,10 @@ body,
     }
 }
 
+img.logo {
+    width: 50px;
+}
+
 /* Vue multiselect customization */
 .multiselect__tags {
     border-color: var(--bs-secondary-bg) !important;

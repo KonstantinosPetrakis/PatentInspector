@@ -131,3 +131,25 @@ patents_excel = {
         ),
     }
 }
+
+ask_reset_password = {
+    "responses": {
+        200: openapi.Response(
+            description="The password reset email was successfully sent",
+        ),
+        400: openapi.Response(
+            description="The request body was invalid",
+        ),
+    }
+}
+
+reset_password = {
+    "responses": {
+        200: openapi.Response(
+            description="The password was successfully reset",
+        ),
+        400: openapi.Response(
+            description="The request body was invalid or the token was invalid",
+        ),
+    }
+}

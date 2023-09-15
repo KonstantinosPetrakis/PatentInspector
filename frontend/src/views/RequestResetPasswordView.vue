@@ -1,13 +1,31 @@
 <script setup>
 import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
+import { getCompleteUrl } from "../utils";
 
 const emailElement = ref(null);
 const email = ref("");
 const errors = ref([]);
 const router = useRouter();
 
-const requestResetPassword = () => {};
+const requestResetPassword = async () => {
+    if (!email.value.includes("@")) {
+        errors.value.push("Invalid email address.");
+        return;
+    }
+
+    const response = await fetch(getCompleteUrl("/user/ask_reset_password"), {
+        method: "POST",
+        body: JSON.stringify({ email: email.value }),
+        headers: { "Content-Type": "application/json" },
+    });
+
+    if (response.ok) router.push({ name: "resetPassword" });
+    else {
+        errors.value.push("A user with this email address does not exist.");
+        console.error(await response.json());
+    }
+};
 
 onMounted(() => emailElement.value.focus());
 </script>
@@ -18,7 +36,7 @@ onMounted(() => emailElement.value.focus());
     >
         <h2 class="h2">PatentAnalyzer</h2>
         <p>
-            Enter your email address bellow and we will send you an
+            Enter your email address below and we will send you an
             one-time-password to reset your password.
         </p>
         <div

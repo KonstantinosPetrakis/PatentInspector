@@ -46,11 +46,13 @@ const changeEmail = async () => {
         emailForm.newEmail = "";
         emailForm.password = "";
     } else {
-        messages.push({
-            type: "danger",
-            text: "Your email could not be updated, you must have entered an incorrect password.",
-        });
-        console.error(await response.json());
+        const errors = await response.json();
+        for (let message of Object.values(errors)) {
+            messages.push({
+                type: "danger",
+                text: Array.isArray(message) ? message[0] : message,
+            });
+        }
     }
 };
 
@@ -218,7 +220,7 @@ onMounted(
                         type="checkbox"
                         v-model="receiveEmails"
                     />
-                    Receive emails
+                    Receive emails when my reports are ready
                 </label>
                 <button
                     class="btn btn-secondary mt-3"

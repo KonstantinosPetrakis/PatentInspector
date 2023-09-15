@@ -46,7 +46,7 @@ onMounted(getPatents);
                     Download Excel
                 </button>
                 <p class="ms-1 mb-0">
-                    The excel file contains more information that table below.
+                    The excel file contains more information than the table below.
                 </p>
             </div>
             <CopyTable :data="patents.results" />

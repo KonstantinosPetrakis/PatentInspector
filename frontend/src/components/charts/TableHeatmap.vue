@@ -1,14 +1,15 @@
 <script setup>
-import { onMounted, computed, inject } from "vue";
+import { onMounted, computed, inject, onUnmounted } from "vue";
 import CopyTable from "../CopyTable.vue";
 import Tabs from "../Tabs.vue";
 import TabItem from "../TabItem.vue";
 
 const props = defineProps(["title", "data"]);
-const HeatmapOverlay  = inject("HeatmapOverlay");
+const HeatmapOverlay = inject("HeatmapOverlay");
 
 const id = `heatmap-${Number.parseInt(Math.random() * 10000000)}`;
 const max = computed(() => Math.max(...props.data.slice(1).map((d) => d[3])));
+let observer;
 
 const transformedData = computed(() =>
     props.data.slice(1).map((d) => {
@@ -41,9 +42,13 @@ onMounted(() => {
     });
 
     // Invalidate the size of the map every time intersection observer fires
-    new IntersectionObserver(() => map.invalidateSize()).observe(
+    observer = new IntersectionObserver(() => map.invalidateSize()).observe(
         document.getElementById(id)
     );
+});
+
+onUnmounted(() => {
+    if (observer) observer.disconnect();
 });
 </script>
 
@@ -51,7 +56,7 @@ onMounted(() => {
     <div>
         <Tabs :links="[{ title: 'Chart' }, { title: 'Table' }]">
             <TabItem>
-                <div class="text-center p-0"> {{ title }} </div>
+                <div class="text-center p-0">{{ title }}</div>
                 <div :id="id"></div>
             </TabItem>
             <TabItem>

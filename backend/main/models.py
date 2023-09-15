@@ -79,6 +79,10 @@ def append_title_to_cpc_entity(results: List[Tuple]) -> List[List]:
     ]
 
 
+def create_token():
+    return secrets.token_hex(4)
+
+
 class CPCSection(models.Model):
     section = models.CharField(
         primary_key=True,
@@ -880,17 +884,18 @@ class User(AbstractBaseUser):
 class ResetPasswordToken(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     created = models.DateTimeField(auto_now_add=True)
-    token = models.CharField(max_length=32, default=lambda: secrets.token_hex(8))
+    token = models.CharField(max_length=32, default=create_token)
     is_used = models.BooleanField(default=False)
 
     def save(self, *args, **kwargs):
+        getting_created = False
         if not self.pk:
             getting_created = True
         super().save(*args, **kwargs)
 
         if getting_created:
             threading.Thread(
-                lambda: send_mail(
+                target=lambda: send_mail(
                     subject="PatentAnalyzer: Reset Password",
                     message=f"Your reset password token is {self.token}. It will expire in 5 minutes.",
                     from_email=settings.EMAIL_HOST_USER,

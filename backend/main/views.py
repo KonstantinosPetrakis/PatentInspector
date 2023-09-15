@@ -78,6 +78,7 @@ class UserViewSet(viewsets.ModelViewSet):
         """
 
         data = serializer.validated_data
+
         user = User(email=data["email"])
         user.set_password(data["password"])
         user.save()
@@ -146,6 +147,7 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
+    @swagger_auto_schema(**schema.ask_reset_password)
     @action(detail=False, methods=["post"])
     def ask_reset_password(self, request):
         data = request.data
@@ -156,6 +158,7 @@ class UserViewSet(viewsets.ModelViewSet):
         ResetPasswordToken.objects.create(user=user)
         return Response(status=200)
 
+    @swagger_auto_schema(**schema.reset_password)
     @action(detail=False, methods=["post"])
     def reset_password(self, request):
         serializer = self.get_serializer(data=request.data)
