@@ -23,7 +23,7 @@ ADMIN_ENABLED = False
 
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
-    CORS_ALLOW_ALL_ORIGINS = True # for vue
+    CORS_ALLOW_ALL_ORIGINS = True  # for vue
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     CSRF_TRUSTED_ORIGINS = ["https://*.127.0.0.1", "https://*.localhost"]
@@ -92,7 +92,7 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ["django_filters.rest_framework.DjangoFilterBackend"],
 }
 SWAGGER_SETTINGS = {
-    'DEFAULT_AUTO_SCHEMA_CLASS': 'main.schema.ReadWriteAutoSchema',
+    "DEFAULT_AUTO_SCHEMA_CLASS": "main.schema.ReadWriteAutoSchema",
     "USE_SESSION_AUTH": False,
     "SECURITY_DEFINITIONS": {
         "DRF Token": {"type": "apiKey", "name": "Authorization", "in": "header"},
@@ -159,16 +159,19 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 Q_CLUSTER = {
     "name": "PatentAnalyzer",
     "orm": "default",
-    "timeout": 60 * 60, # 1 hour
-    "retry": 1.5 * 60 * 60 * 24, # 1.5 days
+    "timeout": 60 * 60,  # 1 hour
+    "retry": 1.5 * 60 * 60 * 24,  # 1.5 days
     "max_attempts": 1,
     "save_limit": 100,
-    "workers": 2 # to avoid unresponsive server 
+    "workers": 2,  # to avoid unresponsive server
 }
 
 # Email configuration
-EMAIL_USE_TLS=env("EMAIL_USE_TLS")
-EMAIL_HOST=env("EMAIL_HOST")
-EMAIL_PORT=env("EMAIL_PORT")
-EMAIL_HOST_USER=env("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD=env("EMAIL_HOST_PASSWORD")
+EMAIL_USE_TLS = env("EMAIL_USE_TLS")
+EMAIL_HOST = env("EMAIL_HOST")
+EMAIL_PORT = env("EMAIL_PORT")
+EMAIL_HOST_USER = env("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
+
+# Performance settings
+MAX_PATENTS_PER_REPORT = env("MAX_PATENTS_PER_REPORT")
