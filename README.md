@@ -137,7 +137,3 @@ The `load_database` command is used to load the database from a file stored in a
 ```shell
 python manage.py load_database
 ```
-
-```
-
-```
