@@ -1,3 +1,6 @@
 postgres-data/
 env/
 dump
+node_modules/
+dist/
+frontend-dist/

@@ -132,7 +132,7 @@ DATABASES = {
         "PASSWORD": env("POSTGRES_PASSWORD"),
         "HOST": env("POSTGRES_HOST") if DEBUG else "postgres",
         "PORT": env("POSTGRES_PORT"),
-        "CONN_MAX_AGE": 600,  # 10 minutes
+        "CONN_MAX_AGE": 300 # 5 minutes,
     }
 }
 
@@ -159,11 +159,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 Q_CLUSTER = {
     "name": "PatentAnalyzer",
     "orm": "default",
-    "timeout": 60 * 60,  # 1 hour
-    "retry": 1.5 * 60 * 60 * 24,  # 1.5 days
-    "max_attempts": 1,
-    "save_limit": 100,
-    "workers": 2,  # to avoid unresponsive server
+    "timeout": env.int("DJANGO_Q_TIMEOUT"), 
+    "retry": env.int("DJANGO_Q_RETRY"),
+    "max_attempts": env.int("DJANGO_Q_MAX_ATTEMPTS"),
+    "save_limit": env.int("DJANGO_Q_SAVE_LIMIT"),
+    "workers": env.int("DJANGO_Q_WORKERS"),
 }
 
 # Email configuration
@@ -174,4 +174,4 @@ EMAIL_HOST_USER = env("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD")
 
 # Performance settings
-MAX_PATENTS_PER_REPORT = env("MAX_PATENTS_PER_REPORT")
+MAX_PATENTS_PER_REPORT = env.int("MAX_PATENTS_PER_REPORT")

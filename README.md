@@ -1,6 +1,6 @@
 # PatentAnalyzer
 
-PatentAnalyzer is an open-source tool that analyzes patent data. Its backend is implemented in Python using the Django framework, and its frontend is based on Vue. The tool is designed to be user-friendly and easily extendable, making it accessible to a wide range of users.
+PatentAnalyzer is an open-source tool that analyzes patent data. Its backend is implemented in Python using the Django framework, and its frontend is based on Vue. The tool is designed to be user-friendly and easily extensible, making it accessible to a wide range of users.
 
 You can use PatentAnalyzer in the following URL, please note that our resources are limited: https://patentanalyzer.csd.auth.gr/
 
@@ -20,24 +20,27 @@ Your reports are securely saved, accessible whenever you need them, ensuring you
 
 ![patent report list](frontend/src/assets/images/reports-light.png)
 
-
 #### Statistical Measures
+
 Quickly grasp the patent landscape with statistical metrics such as the average number of claims.
 
 ![patent statistics table](frontend/src/assets/images/stats-light.png)
 
 #### Time Series Analysis
+
 Dive into how variables change over time with intuitive time series plots, helping you identify trends and patterns.
 
 ![time series chart](frontend/src/assets/images/timeseries-light.png)
 
 #### Interactive Exploration
-Explore the patent landscape from various aspects with interactive plots, including bar charts and heat maps, to uncover hidden insights.
+
+Explore the patent landscape from different angles with interactive plots, including bar charts and heat maps, to uncover hidden insights.
 
 ![patent bar chart](frontend/src/assets/images/assignee-light.png)
 ![patent heat map](frontend/src/assets/images/map-light.png)
 
 #### Thematic Analysis
+
 Gain an understanding of the main topics within the patent landscape and their significance through visually engaging bar charts and scatter plots in the thematic analysis section.
 
 ![topic analysis parameters form](frontend/src/assets/images/topic-form-light.png)
@@ -45,28 +48,36 @@ Gain an understanding of the main topics within the patent landscape and their s
 ![topic analysis scatter plot](frontend/src/assets/images/topics-light.png)
 
 #### Citation Analysis
+
 Visualize the citation network of patents in your reports and discover the most cited patents.
 
 ![3D citation network](frontend/src/assets/images/graph-light.gif)
 ![most cited patents](frontend/src/assets/images/cited-light.png)
 
 #### Quickly export charts
+
 Each chart in PatentAnalyzer comes with a corresponding table that can be effortlessly copied with a single
 click and seamlessly pasted into your spreadsheet of choice.
 
 ![copy table widget](frontend/src/assets/images/topic-table-light.png)
 
 #### Download the filtered topics in excel format
+
 PatentAnalyzer empowers you to export filtered topics in Excel format, providing you with the freedom to conduct further in-depth analyses on your terms.
 
 ![download topics](frontend/src/assets/images/patents-light.png)
 
 ## How to run locally via docker (ideal for production)
 
+It should take about 1-2 hours to download the dump and insert it to the database. The dump is ~4GB and the database is ~40GB.
+
+Docker will create some dummy certificates for https, if you want to use your own just put the ssl key as `server.key` and the ssl certificate as `server.crt` in the index/project directory.
+
 Install [Docker](https://docs.docker.com/engine/install/) if you haven't already. Then run the following commands:
 
 ```shell
-
+cp .env.example .env # defaults are ok for personal use
+sudo docker compose up
 ```
 
 ## How to run locally without docker (ideal for development)
@@ -74,13 +85,13 @@ Install [Docker](https://docs.docker.com/engine/install/) if you haven't already
 ### Backend (cd to backend directory)
 
 1. Install `python`, `pip` and `virtualenv`.
-2. Install `postgresql`, ideally version 15 and create an admin user.
+2. Install `postgresql` and create an admin user.
 3. Create a `.env` file based on the `.env.example` file
 4. Create a database named to whatever `POSTGRES_DB` is set in your `.env` file and install the `postgis` and `pg_trgm` extensions to it. Most likely postgis has system dependencies that you need to install.
 5. Create a virtualenv and activate it
 6. Install the `requirements.txt` file using pip.
-7.  - Run the `uspto` and `index` management commands to download data from the USPTO website and insert it to the database and index it
-    - Or run the `load_database` management command to load the indexed database from a file stored in a remote server
+7.  - Run the `uspto` and `index` management commands to download data from the USPTO website, pre-process it and insert it to the database and index it (about 10 hours)
+    - Or run the `load_database` management command to load the indexed database from a file stored in a remote server (about 1 hour)
 8. Run the server with `python manage.py runserver`
 
 ### Frontend (cd to frontend directory)
@@ -127,6 +138,6 @@ The `load_database` command is used to load the database from a file stored in a
 python manage.py load_database
 ```
 
-# TODO
+```
 
--   Create docker image (Make django q and gunicorn use env files for configuration)
+```

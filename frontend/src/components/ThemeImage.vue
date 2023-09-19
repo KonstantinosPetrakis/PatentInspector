@@ -11,11 +11,21 @@ const props = defineProps({
         type: String,
         default: "",
     },
+    type: {
+        type: String,
+        default: "png",
+    },
 });
 
 const colorMode = ref(getColorMode());
 
-const src = computed(() => `/src/assets/images/${props.srcName}-${colorMode.value}.png`);
+const src = computed(
+    () =>
+        new URL(
+            `../assets/images/${props.srcName}-${colorMode.value}.${props.type}`,
+            import.meta.url
+        ).href
+);
 
 window.addEventListener(
     "themeChanged",

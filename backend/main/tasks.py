@@ -36,9 +36,9 @@ def process_report(report: Report):
 
     if not settings.DEBUG and patent_count > settings.MAX_PATENTS_PER_REPORT:
         report.results = {
-            "error": f"Too many patents ({patent_count}) to process "
-            + "please narrow down your search. The maximum number of " +
-            + f"patents the server will process is {settings.MAX_PATENTS_PER_REPORT}."
+            "error": f"Too many patents ({patent_count}) to process " \
+            "please narrow down your search. The maximum number of " \
+            f"patents the server will process is {settings.MAX_PATENTS_PER_REPORT}."
         }
 
         raise ValueError("Too many patents to process, please narrow down your search.")

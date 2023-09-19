@@ -1,6 +1,5 @@
-import { startCase } from "lodash";
 import router from "./router";
-import { apiUrl } from "./main";
+import { apiUrl, debug } from "./main";
 
 export const isLoggedIn = () => !!localStorage.getItem("token");
 
@@ -29,7 +28,7 @@ export const getUserEmail = () => localStorage.getItem("email");
 
 export const setUserEmail = (email) => localStorage.setItem("email", email);
 
-export const getCompleteUrl = (url) => `${apiUrl}${url}`;
+export const getCompleteUrl = (url) => `${debug ? "http" : "https"}://${apiUrl}${url}`;
 
 export const authFetch = (url, options) => {
     if (!url.includes(apiUrl)) url = getCompleteUrl(url);

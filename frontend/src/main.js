@@ -25,3 +25,4 @@ app.use(router);
 app.mount("#app");
 
 export const apiUrl = config.API_URL;
+export const debug = config.DEBUG;

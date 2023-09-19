@@ -3,7 +3,6 @@ import { RouterLink } from "vue-router";
 import { isLoggedIn, getUserEmail } from "../utils";
 import MovingContainer from "../components/MovingContainer.vue";
 import ThemeImage from "../components/ThemeImage.vue";
-import ThemeVideo from "../components/ThemeVideo.vue";
 
 const email = getUserEmail();
 const loggedIn = isLoggedIn();
@@ -160,11 +159,12 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                         reports and discover the most cited patents.
                     </p>
                     <hr />
-                    <ThemeVideo
+                    <ThemeImage
                         srcName="graph"
                         alt="An interactive 3D citation network"
+                        type="gif"
                     />
-                    <hr />
+                <hr />
                     <ThemeImage
                         class="d-block"
                         srcName="cited"

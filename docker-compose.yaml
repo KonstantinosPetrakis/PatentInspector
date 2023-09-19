@@ -4,63 +4,59 @@ services:
         build:
             context: .
             dockerfile: database.dockerfile
-        container_name: postgres
         restart: always
         shm_size: 2gb
-        environment:
-            - POSTGRES_USER
-            - POSTGRES_PASSWORD
-            - POSTGRES_DB
-            - DOWNLOAD_BACKUP_URL1
-            - DOWNLOAD_BACKUP_URL2
+        env_file:
+            - ./backend/.env
         volumes:
             - ./deploy/pg-init.sh:/docker-entrypoint-initdb.d/pg-init.sh
-            - ./main/management/backup_helper.py:/backup_helper.py
+            - ./backend/main/management/backup_helper.py:/backup_helper.py
             - ./postgres-data:/var/lib/postgresql/data
-        command: "postgres -c max_connections=40 -c shared_buffers=2GB 
-            -c effective_cache_size=6GB -c maintenance_work_mem=1GB
-            -c checkpoint_completion_target=0.9 -c wal_buffers=16MB
-            -c default_statistics_target=500 -c random_page_cost=1.1
-            -c effective_io_concurrency=200 -c work_mem=13107kB
-            -c huge_pages=off -c min_wal_size=4GB -c max_wal_size=16GB
-            -c max_worker_processes=4 -c max_parallel_workers_per_gather=2
-            -c max_parallel_workers=4 -c max_parallel_maintenance_workers=2
-            -c wal_level=minimal -c max_wal_senders=0 -c fsync=false"
-            
+
     backend:
-        container_name: backend
-        build: 
+        build:
             context: .
             dockerfile: backend.dockerfile
         restart: always
-        environment:
-            - POSTGRES_USER
-            - POSTGRES_PASSWORD
-            - POSTGRES_DB
-            - POSTGRES_PORT
-            - DJANGO_SECRET_KEY
-            - DJANGO_DEBUG
-            - DOMAIN
+        env_file:
+            - ./backend/.env
         volumes:
-            - ./:/patentanalyzer
+            - ./backend/:/patentanalyzer
         depends_on:
             - postgres
         links:
             - postgres
 
+    certs:
+        image: ubuntu
+        volumes:
+            - .:/app
+        command: bash -c 'cd app && ./deploy/dummy-certs.sh'
+
+    frontend:
+        build:
+            context: .
+            dockerfile: frontend.dockerfile
+        env_file:
+            - ./backend/.env
+        volumes:
+            - ./frontend-dist/:/frontend/dist
+
     nginx:
         image: nginx
-        container_name: nginx
         restart: always
         ports:
             - "443:443"
             - "80:80"
         volumes:
-            - ./main/static/main:/static/main
             - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
-            - ./server.crt:/certs/server.crt:ro
-            - ./server.key:/certs/server.key:ro
+            - .:/app
         depends_on:
-            - backend
+            certs:
+                condition: service_completed_successfully
+            frontend:
+                condition: service_completed_successfully
+            backend:
+                condition: service_started
         links:
             - backend

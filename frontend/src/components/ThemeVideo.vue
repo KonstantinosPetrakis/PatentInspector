@@ -16,7 +16,8 @@ const props = defineProps({
 const colorMode = ref(getColorMode());
 
 const src = computed(
-    () => `/src/assets/videos/${props.srcName}-${colorMode.value}.webm`
+    
+    () => require(`../assets/videos/${props.srcName}-${colorMode.value}.webm`)
 );
 
 window.addEventListener(

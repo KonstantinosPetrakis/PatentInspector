@@ -1,4 +1,4 @@
-postgres-data
+postgres-data/
 server.crt
-server.csr
 server.key
+frontend-dist/
