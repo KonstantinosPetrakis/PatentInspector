@@ -61,9 +61,9 @@ click and seamlessly pasted into your spreadsheet of choice.
 
 ![copy table widget](frontend/src/assets/images/topic-table-light.png)
 
-#### Download the filtered topics in excel format
+#### Download the filtered patents in excel format
 
-PatentAnalyzer empowers you to export filtered topics in Excel format, providing you with the freedom to conduct further in-depth analyses on your terms.
+PatentAnalyzer empowers you to export filtered patents in Excel format, providing you with the freedom to conduct further in-depth analyses on your terms.
 
 ![download topics](frontend/src/assets/images/patents-light.png)
 

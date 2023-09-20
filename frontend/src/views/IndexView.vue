@@ -189,10 +189,10 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     />
                 </MovingContainer>
                 <MovingContainer
-                    title="Download the filtered topics in excel format"
+                    title="Download the filtered patents in excel format"
                 >
                     <p>
-                        PatentAnalyzer empowers you to export filtered topics in
+                        PatentAnalyzer empowers you to export filtered patents in
                         Excel format, providing you with the freedom to conduct
                         further in-depth analyses on your terms.
                     </p>
