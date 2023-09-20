@@ -76,7 +76,7 @@ Docker will create some dummy certificates for https, if you want to use your ow
 Install [Docker](https://docs.docker.com/engine/install/) if you haven't already. Then run the following commands:
 
 ```shell
-cp .env.example .env # defaults are ok for personal use
+cp ./backend/.env.example ./backend/.env # defaults are ok for personal use
 sudo docker compose up
 ```
 
