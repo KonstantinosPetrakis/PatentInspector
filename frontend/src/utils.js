@@ -28,7 +28,8 @@ export const getUserEmail = () => localStorage.getItem("email");
 
 export const setUserEmail = (email) => localStorage.setItem("email", email);
 
-export const getCompleteUrl = (url) => `${debug ? "http" : "https"}://${apiUrl}${url}`;
+export const getCompleteUrl = (url) =>
+    `${debug ? "http" : "https"}://${apiUrl}${url}`;
 
 export const authFetch = (url, options) => {
     if (!url.includes(apiUrl)) url = getCompleteUrl(url);
@@ -78,6 +79,16 @@ export const createAlert = (type, message) => {
     body.appendChild(alert);
     setTimeout(() => alert.remove(), 1000);
 };
+
+export const queryGooglePatents = (query) =>
+    window
+        .open(`https://patents.google.com/?${query.replace(",", "")}`, "_blank")
+        .focus();
+
+export const sendToGooglePatents = (patentCode) =>
+    window
+        .open(`https://patents.google.com/patent/${patentCode}`, "_blank")
+        .focus();
 
 // Colors used for the charts
 export const colors = [

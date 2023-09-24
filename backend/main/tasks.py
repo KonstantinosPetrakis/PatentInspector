@@ -36,8 +36,8 @@ def process_report(report: Report):
 
     if not settings.DEBUG and patent_count > settings.MAX_PATENTS_PER_REPORT:
         report.results = {
-            "error": f"Too many patents ({patent_count}) to process " \
-            "please narrow down your search. The maximum number of " \
+            "error": f"Too many patents ({patent_count}) to process "
+            "please narrow down your search. The maximum number of "
             f"patents the server will process is {settings.MAX_PATENTS_PER_REPORT}."
         }
 
@@ -46,8 +46,6 @@ def process_report(report: Report):
     if patent_count == 0:
         report.results = {"info": "No patents found."}
         return
-
-    print(f"processing {patent_count} patents")
 
     # Need to filter again because distinct + annotate is not supported by Django.
     patent_ids = list(patents.values_list("id", flat=True))
@@ -197,10 +195,14 @@ def execution_hook(task: Task):
         for filter, value in report.filters.items():
             filter_string += f"* {filter}: {value}\n"
 
+        mail_url = (
+            "http://" if settings.DEBUG else "https://"
+        ) + f"{settings.FRONT_END_DOMAIN}/report/{report.id}"
+
         send_mail(
             subject="PatentAnalyzer: Your report is ready!",
             message=f"Your report with the following filters is ready! "
-            + f"Visit PatentAnalyzer to view it. \n\n{filter_string}\n\n",
+            + f"Visit PatentAnalyzer ({mail_url}) to view it. \n\n{filter_string}\n\n",
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[report.user.email],
         )

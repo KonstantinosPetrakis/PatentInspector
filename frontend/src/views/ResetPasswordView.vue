@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
-import VOtpInput from "vue3-otp-input";
+import OTPInput from "../components/form-widgets/OTPInput.vue";
 import { getCompleteUrl } from "../utils";
 
 const token = ref("");
@@ -42,6 +42,7 @@ const resetPassword = async () => {
 
 <template>
     <form
+        @keydown.enter.prevent="resetPassword"
         class="d-flex flex-column align-items-center mt-4 mx-auto col-lg-6 col-12 border rounded shadow p-2 text-center"
     >
         <h2 class="h2">PatentAnalyzer</h2>
@@ -62,15 +63,7 @@ const resetPassword = async () => {
         </div>
         <label class="my-2">
             One Time Password
-            <VOtpInput
-                class="otp-input"
-                value=""
-                :should-auto-focus="true"
-                v-model:value="token"
-                :num-inputs="8"
-                input-type="letter-numeric"
-                separator="&nbsp-&nbsp"
-            />
+            <OTPInput v-model="token" />
         </label>
         <label class="my-2">
             New Password

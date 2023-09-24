@@ -21,15 +21,22 @@ SECRET_KEY = env("DJANGO_SECRET_KEY")
 DEBUG = True if env("DJANGO_DEBUG") == "True" else False
 ADMIN_ENABLED = False
 
+DOMAIN = env("DOMAIN", default=None)
+FRONT_END_DOMAIN = env("FRONT_END_DOMAIN", default=None)
+
 if DEBUG:
     ALLOWED_HOSTS = ["*"]
     CORS_ALLOW_ALL_ORIGINS = True  # for vue
 else:
     ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
     CSRF_TRUSTED_ORIGINS = ["https://*.127.0.0.1", "https://*.localhost"]
-    if DOMAIN := env("DOMAIN", default=None):
+    if DOMAIN:
         ALLOWED_HOSTS.append(DOMAIN)
         CSRF_TRUSTED_ORIGINS.append(f"https://{DOMAIN}")
+    if FRONT_END_DOMAIN:
+        ALLOWED_HOSTS.append(FRONT_END_DOMAIN)
+        CSRF_TRUSTED_ORIGINS.append(f"https://{FRONT_END_DOMAIN}")
+ 
     CSRF_COOKIE_SECURE = True
     SESSION_COOKIE_SECURE = True
 
