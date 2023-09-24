@@ -1127,6 +1127,8 @@ class Report(models.Model):
                 return f"{value.lower} - {value.upper}"
             elif value_type == bool:
                 return "Yes" if value else "No"
+            elif value == "|":
+                return "at least one of"
             return value
 
         filters = (
