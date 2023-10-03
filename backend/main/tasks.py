@@ -116,6 +116,8 @@ def topic_analysis(
     n_words: int = 10,
     start_date: str | None = None,
     end_date: str | None = None,
+    rm_top: int | None = 20,
+    max_df: float | None = 0.8,
 ):
     """
     Executes topic analysis and sets the results to the report.
@@ -127,6 +129,8 @@ def topic_analysis(
         n_words (int, optional): The number of words per each topic. Defaults to 10.
         start_date (str | None, optional): The start date used for cagr calculation. Defaults to None.
         end_date (str | None, optional): The end date used for cagr calculation. Defaults to None.
+        rm_top (int | None, optional): The number of most frequent words to be removed (only works for LDA). Defaults to 20.
+        max_df (float | None, optional): The maximum document frequency for the tfidf vectorizer (only works for NMF). Defaults to 0.8.
     """
 
     # Check if the report still exists.
@@ -147,6 +151,8 @@ def topic_analysis(
         and n_words == topic_results["n_words"]
         and start_date == topic_results["start_date"]
         and end_date == topic_results["end_date"]
+        and rm_top == topic_results["rm_top"]
+        and max_df == topic_results["max_df"]
     ):
         return
 
@@ -156,7 +162,15 @@ def topic_analysis(
     patent_ids = list(patents.values_list("id", flat=True))
 
     results["topic_modeling"] = _execute_topic_analysis(
-        patents, patent_ids, method, n_topics, n_words, start_date, end_date
+        patents,
+        patent_ids,
+        method,
+        n_topics,
+        n_words,
+        start_date,
+        end_date,
+        rm_top,
+        max_df,
     )
 
     report.results = results
@@ -263,6 +277,8 @@ def _execute_topic_analysis(
     n_words: int = 10,
     start_date: str | None = None,
     end_date: str | None = None,
+    rm_top: int | None = 20,
+    max_df: float | None = 0.8,
 ) -> Dict:
     """
     This function executes the topic modeling for the given report.
@@ -276,6 +292,8 @@ def _execute_topic_analysis(
         n_words (int, optional): The words per topic to be displayed. Defaults to 10.
         start_date (str | None, optional): The start date used for CAGR classification. Defaults to None.
         end_date (str | None, optional):  The end date used for CAGR classification. Defaults to None.
+        rm_top (int | None, optional): The number of most frequent words to be removed (only works for LDA). Defaults to 20.
+        max_df (float | None, optional): The maximum document frequency for the tfidf vectorizer (only works for NMF). Defaults to 0.8.
 
     Returns:
         Dict: The results of the topic analysis (words, weights, ratio
@@ -283,7 +301,9 @@ def _execute_topic_analysis(
     """
 
     if end_date is None:
-        end_date = patents.aggregate(max_date=Max("granted_date"))["max_date"]
+        end_date = patents.aggregate(max_date=Max("granted_date"))[
+            "max_date"
+        ] - timedelta(days=365 * 3)
     else:
         end_date = date.fromisoformat(end_date)
 
@@ -294,13 +314,17 @@ def _execute_topic_analysis(
 
     years_diff = (end_date - start_date).days / 365
 
-    args = [patents, patent_ids, n_topics, n_words]
+    arguments = [patents, patent_ids, n_topics, n_words]
     results, patents_per_topic = (
-        _topic_analysis_nmf(*args) if method == "NMF" else _topic_analysis_lda(*args)
+        _topic_analysis_nmf(*arguments, max_df)
+        if method == "NMF"
+        else _topic_analysis_lda(*arguments, rm_top)
     )
 
     # Calculate the ratio and cagr of patents per topic
     for i, patents in enumerate(patents_per_topic):
+        results["topics"][i]["count"] = len(patents)
+
         patents_in_end_year = Patent.objects.filter(
             id__in=patents,
             granted_date__gte=end_date - timedelta(days=365),
@@ -322,15 +346,14 @@ def _execute_topic_analysis(
     results["n_words"] = n_words
     results["start_date"] = start_date
     results["end_date"] = end_date
+    results["rm_top"] = rm_top
+    results["max_df"] = max_df
 
     return results
 
 
 def _topic_analysis_lda(
-    patents: QuerySet,
-    patent_ids: List[int],
-    n_topics: int,
-    n_words: int,
+    patents: QuerySet, patent_ids: List[int], n_topics: int, n_words: int, rm_top: int
 ) -> Tuple[Dict, List[List[int]]]:
     """
     This function executes topic modeling for the given patents using LDA.
@@ -340,6 +363,7 @@ def _topic_analysis_lda(
         patent_ids (List[int]): The ids of the patents, passed for performance reasons.
         n_topics (int): The number of topics to be generated.
         n_words (int): The number of words per topic to be displayed.
+        rm_top (int): The number of most frequent words to be removed.
 
     Returns:
         Tuple[Dict, List[List[int]]]: The results of the topic analysis
@@ -360,12 +384,12 @@ def _topic_analysis_lda(
         )
     ).values_list("doc", flat=True)
 
-    lda = tp.LDAModel(k=n_topics)
+    lda = tp.LDAModel(k=n_topics, rm_top=rm_top)
     corpus = Corpus()
     for doc in docs:
         corpus.add_doc(doc)
     lda.add_corpus(corpus)
-    lda.train(iter=1000)
+    lda.train(iter=3000)
 
     patents_per_topic = [[] for _ in range(lda.k)]
     results = _format_topic_analysis_results_tomotopy(lda, n_words)
@@ -378,10 +402,7 @@ def _topic_analysis_lda(
 
 
 def _topic_analysis_nmf(
-    patents: QuerySet,
-    patent_ids: List[int],
-    n_topics: int,
-    n_words: int,
+    patents: QuerySet, patent_ids: List[int], n_topics: int, n_words: int, max_df: float
 ) -> Tuple[Dict, List[List[int]]]:
     """
     This function executes topic modeling for the given patents using NMF.
@@ -391,6 +412,7 @@ def _topic_analysis_nmf(
         patent_ids (List[int]): The ids of the patents, passed for performance reasons.
         n_topics (int): How many topics to generate.
         n_words (int): How many words per topic to display.
+        max_df (float): The maximum document frequency for the tfidf vectorizer.
     Returns:
         Tuple[Dict, List[List[int]]]: The results of the topic analysis
         (words and weights per topic) and the patents per topic.
@@ -405,9 +427,9 @@ def _topic_analysis_nmf(
         )
     ).values_list("text", flat=True)
 
-    tfidf_vectorizer = TfidfVectorizer(max_features=1000000)
+    tfidf_vectorizer = TfidfVectorizer(max_features=1000000, max_df=max_df)
     tfidf = tfidf_vectorizer.fit_transform(text_columns)
-    nmf = NMF(n_components=n_topics, init="nndsvd", max_iter=8000).fit(tfidf)
+    nmf = NMF(n_components=n_topics, init="nndsvd", max_iter=10000).fit(tfidf)
 
     # Group patents by topic
     topics = tfidf_vectorizer.get_feature_names_out()

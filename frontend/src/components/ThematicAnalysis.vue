@@ -16,6 +16,8 @@ const data = reactive({
     n_topics: null,
     method: null,
     cagr_dates: null,
+    max_df: null,
+    rm_top: null,
 });
 
 const errors = reactive({});
@@ -49,6 +51,8 @@ const submitTopicAnalysis = async () => {
             method: data.method,
             start_date: data.cagr_dates.lower,
             end_date: data.cagr_dates.upper,
+            max_df: data.max_df,
+            rm_top: data.rm_top,
         }),
     });
 
@@ -63,6 +67,8 @@ onMounted(() => {
         lower: props.topicModeling.start_date,
         upper: props.topicModeling.end_date,
     };
+    data.max_df = props.topicModeling.max_df;
+    data.rm_top = props.topicModeling.rm_top;
 });
 </script>
 
@@ -93,6 +99,23 @@ onMounted(() => {
                 classification are the following:
                 <b> {{ dateToString(topicModeling.start_date, "N/A") }} </b> -
                 <b> {{ dateToString(topicModeling.end_date, "N/A") }} </b>.
+                <InfoPopover
+                    message="When an end date is not specified, it
+                defaults to three years prior to the latest grant date within
+                the set. This approach ensures that the classification
+                encompasses the majority of granted patents. We recommend
+                setting the end date to be at least 3 years before the latest
+                grant date."
+                />
+            </p>
+            <p v-if="topicModeling.method == 'LDA'">
+                The <b> {{ topicModeling.rm_top }}</b> most common words were
+                removed.
+            </p>
+            <p v-else>
+                Documents with frequency greater than
+                <b> {{ topicModeling.max_df }} </b>
+                were removed.
             </p>
             <p>
                 Coherence score: <b> {{ topicModeling.coherence }} </b>
@@ -136,6 +159,7 @@ onMounted(() => {
                                     class="ms-3 small-input form-control"
                                     type="number"
                                     v-model="data.n_topics"
+                                    min="1"
                                 />
                             </label>
                             <label class="d-flex align-items-center my-2">
@@ -144,9 +168,12 @@ onMounted(() => {
                                     class="ms-3 small-input form-control"
                                     type="number"
                                     v-model="data.n_words"
+                                    min="1"
                                 />
                             </label>
-                            <label class="d-flex align-items-center flex-wrap my-2">
+                            <label
+                                class="d-flex align-items-center flex-wrap my-2"
+                            >
                                 Dates for classification
                                 <div class="ms-2">
                                     <MinMaxDateInput
@@ -156,6 +183,28 @@ onMounted(() => {
                                         :errors="errors"
                                     />
                                 </div>
+                            </label>
+                            <label class="d-flex align-items-center my-2">
+                                <template v-if="data.method == 'LDA'">
+                                    Remove most common words
+                                    <input
+                                        class="ms-3 small-input form-control"
+                                        type="number"
+                                        v-model="data.rm_top"
+                                        min="0"
+                                    />
+                                </template>
+                                <template v-else>
+                                    Remove words with frequency greater than
+                                    <input
+                                        class="ms-3 small-input form-control"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="1"
+                                        v-model="data.max_df"
+                                    />
+                                </template>
                             </label>
                             <button
                                 class="btn btn-secondary"
@@ -173,12 +222,13 @@ onMounted(() => {
             <TopicScatter :topics="props.topicModeling.topics" />
             <h6 class="text-center mt-3">Topics</h6>
             <div class="row">
-                <TableBar
+                <div
                     v-for="(topic, i) of topicsAsTables"
-                    :title="`Topic ${i + 1}`"
-                    :data="topic"
                     class="col-lg-6 col-12 m-0 p-0"
-                />
+                >
+                    Contains {{ topicModeling.topics[i].count }} patents.
+                    <TableBar :title="`Topic ${i + 1}`" :data="topic" />
+                </div>
             </div>
         </div>
     </div>

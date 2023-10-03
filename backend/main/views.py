@@ -238,6 +238,8 @@ class ReportViewSet(viewsets.ModelViewSet):
             data["n_words"],
             data["start_date"],
             data["end_date"],
+            data["rm_top"],
+            data["max_df"],
             hook=execution_hook,
         )
         return Response(status=201)
@@ -267,6 +269,11 @@ class ReportViewSet(viewsets.ModelViewSet):
 
         paginator = BasicPagination()
         patents = self.get_object().get_patents()
+        sort_by = request.query_params.get("sort_by", None).lower().replace(" ", "_")
+        sort_desc = request.query_params.get("sort_desc", False) == "true"
+        if sort_by is not None:
+            patents = patents.order_by(f"-{sort_by}" if sort_desc else sort_by)
+
         field_names = [
             [
                 field.name.replace("_", " ").title()

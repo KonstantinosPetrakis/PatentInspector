@@ -101,6 +101,20 @@ topic_analysis = {
 }
 
 get_patents = {
+    "manual_parameters": [
+        openapi.Parameter(
+            "sort_by",
+            openapi.IN_QUERY,
+            description="The column to sort by as returned in the tabular response",
+            type=openapi.TYPE_STRING,
+        ),
+        openapi.Parameter(
+            "sort_desc",
+            openapi.IN_QUERY,
+            description="Whether to sort in descending order",
+            type=openapi.TYPE_BOOLEAN,
+        ),
+    ],
     "responses": {
         200: openapi.Response(
             description="The patents were successfully retrieved",
@@ -111,13 +125,12 @@ get_patents = {
                     title="Patent row",
                     type=openapi.TYPE_ARRAY,
                     items=openapi.Schema(
-                        title="Patent column",
-                        type=openapi.TYPE_STRING
-                    )
-                )
-            )
+                        title="Patent column", type=openapi.TYPE_STRING
+                    ),
+                ),
+            ),
         ),
-    }
+    },
 }
 
 patents_excel = {
@@ -127,7 +140,7 @@ patents_excel = {
             schema=openapi.Schema(
                 title="Patents excel file",
                 type=openapi.TYPE_FILE,
-            )
+            ),
         ),
     }
 }

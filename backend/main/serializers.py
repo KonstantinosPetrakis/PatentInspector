@@ -156,3 +156,6 @@ class TopicAnalysisSerializer(serializers.Serializer):
     n_words = serializers.IntegerField(default=10)
     start_date = serializers.DateField(default=None)
     end_date = serializers.DateField(default=None)
+    max_df = serializers.FloatField(default=0.8)
+    rm_top = serializers.IntegerField(default=20)
+    

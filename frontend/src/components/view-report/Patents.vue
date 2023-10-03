@@ -8,11 +8,13 @@ const patentsPerPage = 10;
 const props = defineProps(["id", "page"]);
 const patents = ref();
 const loading = ref(true);
+const sortBy = ref("Id");
+const sortDesc = ref(false);
 
 const getPatents = async () => {
     loading.value = true;
     const response = await authFetch(
-        `/report/${props.id}/get_patents?page=${props.page}&page_size=${patentsPerPage}`
+        `/report/${props.id}/get_patents?page=${props.page}&page_size=${patentsPerPage}&sort_by=${sortBy.value}&sort_desc=${sortDesc.value}`
     );
     if (!response.ok) router.replace({ name: "notFound" });
     const responseData = await response.json();
@@ -30,6 +32,7 @@ const downloadExcel = async () => {
 };
 
 watch(() => props.page, getPatents);
+watch([sortBy, sortDesc], getPatents);
 
 onMounted(getPatents);
 </script>
@@ -46,10 +49,16 @@ onMounted(getPatents);
                     Download Excel
                 </button>
                 <p class="ms-1 mb-0">
-                    The excel file contains more information than the table below.
+                    The excel file contains more information than the table
+                    below.
                 </p>
             </div>
-            <CopyTable :data="patents.results" />
+            <CopyTable
+                :data="patents.results"
+                :sortable="true"
+                v-model:sortBy="sortBy"
+                v-model:sortDesc="sortDesc"
+            />
             <Pagination
                 :page="page"
                 :total-items="patents.count"

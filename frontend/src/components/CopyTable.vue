@@ -2,7 +2,27 @@
 import { ref } from "vue";
 import { createAlert } from "../utils";
 
-const props = defineProps(["data"]);
+const props = defineProps({
+    data: {
+        type: Array,
+        required: true,
+    },
+    sortable: {
+        type: Boolean,
+        default: false,
+    },
+    sortBy: {
+        type: String,
+        default: "Id",
+    },
+    sortDesc: {
+        type: Boolean,
+        default: false,
+    },
+});
+
+const emits = defineEmits(["update:sortBy", "update:sortDesc"]);
+
 const table = ref(null);
 
 const formatCell = (c) =>
@@ -35,10 +55,33 @@ table .cell {
             </button>
         </div>
         <div class="table-responsive">
-            <table class="border border-1 table table-striped align-middle" ref="table">
+            <table
+                class="border border-1 table table-striped align-middle"
+                ref="table"
+            >
                 <thead>
                     <th v-for="head of data[0]">
-                        {{ head }}
+                        <button
+                            class="btn d-flex align-items-center"
+                            @click="emits('update:sortBy', head)"
+                        >
+                            {{ head }}
+                            <span
+                                v-if="sortable && head == sortBy"
+                                class="m-0 p-0 ms-2"
+                            >
+                                <i
+                                    class="bi bi-sort-down"
+                                    v-if="sortDesc"
+                                    @click="emits('update:sortDesc', false)"
+                                ></i>
+                                <i
+                                    class="bi bi-sort-up"
+                                    v-else
+                                    @click="emits('update:sortDesc', true)"
+                                ></i>
+                            </span>
+                        </button>
                     </th>
                 </thead>
                 <tbody>
