@@ -37,7 +37,7 @@ class DateRangeField(serializers.Field):
         return {"lower": value.lower, "upper": value.upper}
 
     def to_internal_value(self, data):
-        if not data["lower"] and not data["upper"]:
+        if not data or (not data["lower"] and not data["upper"]):
             return None
 
         if data["lower"]:
@@ -69,6 +69,6 @@ class IntegerRangeField(serializers.Field):
         return {"lower": value.lower, "upper": value.upper}
 
     def to_internal_value(self, data):
-        if not data["lower"] and not data["upper"]:
+        if not data or (not data["lower"] and not data["upper"]):
             return None
         return NumericRange(data["lower"], data["upper"])

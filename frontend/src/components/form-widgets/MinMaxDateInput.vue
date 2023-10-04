@@ -26,20 +26,27 @@ const errors = computed({
 });
 
 const value = computed({
-    get: () => props.modelValue,
+    get: () => {
+        if (props.modelValue == null) return { lower: null, upper: null };
+        return props.modelValue;
+    },
     set: (val) => {
         if (val.lower && val.upper && val.lower > val.upper)
             errors.value[props.fieldLabel] =
                 "Lower date must be before upper date";
         else if (Object.hasOwn(errors.value, props.fieldLabel))
             delete errors.value[props.fieldLabel];
+        
+        // Set empty dates to null so they're more concise.
+        if (!val.lower) val.lower = null;
+        if (!val.upper) val.upper = null;
+        if (val.lower == null && val.upper == null) val = null;
         emit("update:modelValue", val);
     },
 });
 
 const passedLabel = computed(() => props.displayLabel ? props.fieldLabel : "");
 
-if (value.value == null) value.value = { lower: null, upper: null };
 </script>
 
 <template>

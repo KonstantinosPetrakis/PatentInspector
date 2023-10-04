@@ -90,14 +90,12 @@ class CreateReportSerializer(serializers.ModelSerializer):
             "status",
         )
 
-    patent_application_filed_date = DateRangeField(required=False)
-    patent_granted_date = DateRangeField(required=False)
-    patent_figures_count = IntegerRangeField(required=False)
-    patent_claims_count = IntegerRangeField(required=False)
-    patent_sheets_count = IntegerRangeField(required=False)
-    pct_application_date = DateRangeField(required=False)
-    results = serializers.JSONField(required=False)
-    filters = serializers.JSONField(required=False)
+    patent_application_filed_date = DateRangeField(required=False, allow_null=True)
+    patent_granted_date = DateRangeField(required=False, allow_null=True)
+    patent_figures_count = IntegerRangeField(required=False, allow_null=True)
+    patent_claims_count = IntegerRangeField(required=False, allow_null=True)
+    patent_sheets_count = IntegerRangeField(required=False, allow_null=True)
+    pct_application_date = DateRangeField(required=False, allow_null=True)
 
 
 class ViewReportSerializer(serializers.ModelSerializer):

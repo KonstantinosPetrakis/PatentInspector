@@ -1167,7 +1167,6 @@ class Report(models.Model):
             if value is not None
             and value != ""
             and value != []
-            and value != NumericRange(0, 100)
             and value != "&"
         }
 
