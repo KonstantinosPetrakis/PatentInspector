@@ -308,11 +308,9 @@ def _execute_topic_analysis(
         end_date = date.fromisoformat(end_date)
 
     if start_date is None:
-        start_date = end_date - timedelta(days=365)
+        start_date = end_date - timedelta(days=365 * 5)
     else:
         start_date = date.fromisoformat(start_date)
-
-    years_diff = (end_date - start_date).days / 365
 
     arguments = [patents, patent_ids, n_topics, n_words]
     results, patents_per_topic = (
@@ -321,24 +319,31 @@ def _execute_topic_analysis(
         else _topic_analysis_lda(*arguments, rm_top)
     )
 
-    # Calculate the ratio and cagr of patents per topic
+    # Calculate the ratio and ratio cagr of patents per topic
+    years_diff = (end_date - start_date).days / 365
+    (
+        total_patents_in_start_year,
+        total_patents_in_end_year,
+    ) = Patent.patent_count_in_2_dates(patents, start_date, end_date)
+
     for i, patents in enumerate(patents_per_topic):
         results["topics"][i]["count"] = len(patents)
+        patents = Patent.objects.filter(id__in=patents)
 
-        patents_in_end_year = Patent.objects.filter(
-            id__in=patents,
-            granted_date__gte=end_date - timedelta(days=365),
-            granted_date__lte=end_date,
-        ).count()
-        patents_in_start_year = Patent.objects.filter(
-            id__in=patents,
-            granted_date__gte=start_date - timedelta(days=365),
-            granted_date__lte=start_date,
-        ).count()
+        (
+            patents_in_start_year,
+            patents_in_end_year,
+        ) = Patent.patent_count_in_2_dates(patents, start_date, end_date)
+
+        # Add 1 to avoid division by zero
+        patent_share_in_start_year = patents_in_start_year / (
+            total_patents_in_start_year + 1
+        )
+        patent_share_in_end_year = patents_in_end_year / (total_patents_in_end_year + 1)
+
         results["topics"][i]["ratio"] = len(patents) / len(patent_ids)
-        # The +1 is to avoid division by zero
         results["topics"][i]["cagr"] = (
-            patents_in_end_year / (patents_in_start_year + 1)
+            patent_share_in_end_year / (patent_share_in_start_year)
         ) ** (1 / years_diff) - 1
 
     results["method"] = method

@@ -3,6 +3,7 @@ import contextlib
 import threading
 import os
 import secrets
+from datetime import datetime
 
 from django.db.backends.postgresql.psycopg_any import NumericRange, DateRange
 from django.db.models import Value, F, Q, Func, Q, OuterRef, Exists, TextField, fields
@@ -625,6 +626,33 @@ class Patent(models.Model):
         data.insert(0, ["CPC Group", "Count"])
         return append_title_to_cpc_entity(data)
 
+    @staticmethod
+    def patent_count_in_2_dates(
+        patents: models.QuerySet, date1: datetime.date, date2: datetime.date
+    ) -> tuple[int, int]:
+        """
+        This function will return the following numbers:
+        1. Number of patents granted in the range 0000-01-01 - date1
+        2. Number of patents granted in the range 0000-01-01 - date2
+        It just uses an efficient way of counting the number of patents in a date range.
+
+        Args:
+            patents (models.QuerySet): The patents to count.
+            date1 (datetime.date): The first date.
+            date2 (datetime.date): The second date.
+
+        Returns:
+            tuple[int, int]: The counts of patents till date1 and till date2.
+        """
+
+        patents_in_date1 = patents.filter(granted_date__lte=date1).count()
+        patents_in_date2 = (
+            patents.filter(granted_date__gt=date1, granted_date__lte=date2).count()
+            + patents_in_date1
+        )
+
+        return patents_in_date1, patents_in_date2
+
 
 class PatentCPCGroup(models.Model):
     class Meta:
@@ -1164,10 +1192,7 @@ class Report(models.Model):
         return {
             name.replace("_", " ").title(): cast_value(value)
             for name, value in filters.items()
-            if value is not None
-            and value != ""
-            and value != []
-            and value != "&"
+            if value is not None and value != "" and value != [] and value != "&"
         }
 
 
