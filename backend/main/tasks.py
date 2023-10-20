@@ -343,7 +343,7 @@ def _execute_topic_analysis(
 
         results["topics"][i]["ratio"] = len(patents) / len(patent_ids)
         results["topics"][i]["cagr"] = (
-            patent_share_in_end_year / (patent_share_in_start_year)
+            patent_share_in_end_year / (patent_share_in_start_year + 1e-9)
         ) ** (1 / years_diff) - 1
 
     results["method"] = method
