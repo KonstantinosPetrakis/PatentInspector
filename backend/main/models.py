@@ -338,6 +338,18 @@ class Patent(models.Model):
         )
 
     @staticmethod
+    def fetch_title_representation(patents: models.QuerySet) -> List[str]:
+        return list(patents.annotate(
+            text=Concat(
+                F("office"),
+                F("office_patent_id"),
+                Value(" - "),
+                F("title"),
+                output_field=TextField(),
+            )
+        ).values_list("text", flat=True))
+
+    @staticmethod
     def applications_per_year(patents: models.QuerySet) -> List[Tuple]:
         data = list(
             patents.values("application_year")

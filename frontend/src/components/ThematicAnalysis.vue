@@ -8,7 +8,7 @@ import TopicScatter from "./charts/TopicScatter.vue";
 import Accordion from "./Accordion.vue";
 import AccordionItem from "./AccordionItem.vue";
 
-import { authFetch, dateToString } from "../utils";
+import { authFetch, dateToString, codeFromRepresentation } from "../utils";
 
 const props = defineProps(["topicModeling", "status", "id"]);
 const data = reactive({
@@ -222,12 +222,32 @@ onMounted(() => {
             <TopicScatter :topics="props.topicModeling.topics" />
             <h6 class="text-center mt-3">Topics</h6>
             <div class="row">
-                <div
-                    v-for="(topic, i) of topicsAsTables"
-                    class="col-lg-6 col-12 m-0 p-0"
-                >
-                    Contains {{ topicModeling.topics[i].count }} patents.
-                    <TableBar :title="`Topic ${i + 1}`" :data="topic" />
+                <div v-for="(topic, i) of topicsAsTables" class="row m-0 p-0">
+                    <div class="row">
+                        Contains {{ topicModeling.topics[i].count }} patents.
+                    </div>
+                    <div class="row align-items-center">
+                        <div class="col-lg-6 col-12">
+                            <TableBar :title="`Topic ${i + 1}`" :data="topic" />
+                        </div>
+                        <ul class="list-group col-lg-6 col-12">
+                            Most representative patents:
+                            <li
+                                class="list-group-item"
+                                v-for="patent of topicModeling.topics[i]
+                                    .patents"
+                            >
+                                <a
+                                    :href="`https://patents.google.com/patent/${codeFromRepresentation(
+                                        patent
+                                    )}`"
+                                    target="_blank"
+                                >
+                                    {{ patent }}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>

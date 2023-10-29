@@ -16,6 +16,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+RANDOM_SEED = 50
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if env("DJANGO_DEBUG") == "True" else False

@@ -389,19 +389,32 @@ def _topic_analysis_lda(
         )
     ).values_list("doc", flat=True)
 
-    lda = tp.LDAModel(k=n_topics, rm_top=rm_top)
-    corpus = Corpus()
+    lda = tp.LDAModel(k=n_topics, rm_top=rm_top, seed=settings.RANDOM_SEED)
+    corpus = Corpus(stopwords=["", " "])
     for doc in docs:
         corpus.add_doc(doc)
-    lda.add_corpus(corpus)
-    lda.train(iter=3000)
+    corpus = lda.add_corpus(corpus)
+    lda.train(iter=5000, workers=1)  # workers=1 to for reproducibility
 
-    patents_per_topic = [[] for _ in range(lda.k)]
     results = _format_topic_analysis_results_tomotopy(lda, n_words)
-    # Group patents by topic
-    corpus = lda.infer(corpus)[0]
+
+    # Group patents by topic and find 10 most representative patents per topic
+    patents_per_topic = [[] for _ in range(lda.k)]
+    top_10_patents_per_topic = [[] for _ in range(lda.k)]
     for i, doc in enumerate(corpus):
-        patents_per_topic[doc.get_topics(top_n=n_words)[0][0]].append(patent_ids[i])
+        patent_topic = doc.get_topics(top_n=1)[0]
+        patents_per_topic[patent_topic[0]].append(patent_ids[i])
+        top_10_patents_per_topic[patent_topic[0]].append(
+            (patent_ids[i], patent_topic[1])
+        )
+
+    # Get the top 10 patents with the highest probability per topic
+    for i, topic in enumerate(top_10_patents_per_topic):
+        topic = sorted(topic, key=lambda x: x[1])[-10:]
+        topic = [patent_id for patent_id, _ in topic]
+        results["topics"][i]["patents"] = Patent.fetch_title_representation(
+            Patent.objects.filter(id__in=topic)
+        )
 
     return results, patents_per_topic
 
@@ -434,16 +447,29 @@ def _topic_analysis_nmf(
 
     tfidf_vectorizer = TfidfVectorizer(max_features=1000000, max_df=max_df)
     tfidf = tfidf_vectorizer.fit_transform(text_columns)
-    nmf = NMF(n_components=n_topics, init="nndsvd", max_iter=10000).fit(tfidf)
+    nmf = NMF(
+        n_components=n_topics,
+        init="nndsvd",
+        random_state=settings.RANDOM_SEED,
+        max_iter=10000,
+    ).fit(tfidf)
+
+    topics = tfidf_vectorizer.get_feature_names_out()
+    results = _format_topic_analysis_results_sklearn(nmf, topics, n_words)
+    doc_topics = nmf.transform(tfidf_vectorizer.transform(text_columns))
+
+    # Find most representative patents per topic
+    top_10_patents_per_topic = doc_topics.argsort(axis=0)[-10:].transpose().tolist()
+    # Convert patent ids to title representations
+    for i, topic in enumerate(top_10_patents_per_topic):
+        topic = [patent_ids[j] for j in topic]
+        results["topics"][i]["patents"] = Patent.fetch_title_representation(
+            Patent.objects.filter(id__in=topic)
+        )
 
     # Group patents by topic
-    topics = tfidf_vectorizer.get_feature_names_out()
+    patent_topics = argmax(doc_topics, axis=1)
     patents_per_topic = [[] for _ in range(n_topics)]
-    results = _format_topic_analysis_results_sklearn(nmf, topics, n_words)
-    patent_topics = argmax(
-        nmf.transform(tfidf_vectorizer.transform(text_columns)), axis=1
-    )
-
     for i, topic in enumerate(patent_topics):
         patents_per_topic[topic].append(patent_ids[i])
 

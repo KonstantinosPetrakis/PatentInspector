@@ -90,6 +90,8 @@ export const sendToGooglePatents = (patentCode) =>
         .open(`https://patents.google.com/patent/${patentCode}`, "_blank")
         .focus();
 
+export const codeFromRepresentation = (representation) => representation.split(" - ")[0];
+
 // Colors used for the charts
 export const colors = [
     "#1f77b4",
