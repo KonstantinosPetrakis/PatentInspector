@@ -38,14 +38,14 @@ onMounted(async () => {
             </div>
         </div>
         <div v-else-if="data.status == 'waiting_for_analysis'">
-            <h1 class="h1 text-center">PatentAnalyzer</h1>
+            <h1 class="h1 text-center">PatentInspector</h1>
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="text-center">
                 The report hasn't been generated yet. Please check back later.
             </div>
         </div>
         <div v-else-if="data.results.error">
-            <h1 class="h1 text-center">PatentAnalyzer</h1>
+            <h1 class="h1 text-center">PatentInspector</h1>
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="alert alert-danger">
                 <h4 class="alert-heading">
@@ -57,7 +57,7 @@ onMounted(async () => {
             </div>
         </div>
         <div v-else-if="data.results.info">
-            <h1 class="h1 text-center">PatentAnalyzer</h1>
+            <h1 class="h1 text-center">PatentInspector</h1>
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="alert alert-info">
                 <h4 class="alert-heading">
@@ -69,7 +69,7 @@ onMounted(async () => {
             </div>
         </div>
         <div v-else>
-            <h1 class="h1 text-center">PatentAnalyzer</h1>
+            <h1 class="h1 text-center">PatentInspector</h1>
             <h4 class="h4 text-center">Report #{{ data?.id }}</h4>
             <div class="text-center">
                 <span class="badge text-bg-secondary fs-6 m-2">

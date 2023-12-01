@@ -10,9 +10,9 @@ from main import views
 
 schema_view = get_schema_view(
     openapi.Info(
-        title="PatentAnalyzer API",
+        title="PatentInspector API",
         default_version="v1",
-        description="The API for the PatentAnalyzer app",
+        description="The API for the PatentInspector app",
         contact=openapi.Contact(email="petrakki@csd.auth.gr"),
         license=openapi.License(name="GNU General Public License"),
     ),
@@ -27,6 +27,7 @@ router.register(r"report/?", views.ReportViewSet, basename="report")
 
 urlpatterns = [
     path("api/", include(router.urls)),
+    # CPC
     path(
         "api/cpc/sections/", views.CPCSectionListView.as_view(), name="cpc-section-list"
     ),
@@ -37,9 +38,27 @@ urlpatterns = [
         name="cpc-subclass-list",
     ),
     path("api/cpc/groups/", views.CPCGroupListView.as_view(), name="cpc-group-list"),
+    # IPC
+    path(
+        "api/ipc/sections/", views.IPCSectionListView.as_view(), name="ipc-section-list"
+    ),
+    path("api/ipc/classes/", views.IPCClassListView.as_view(), name="ipc-class-list"),
+    path(
+        "api/ipc/subclasses/",
+        views.IPCSubclassListView.as_view(),
+        name="ipc-subclass-list",
+    ),
+    path("api/ipc/groups/", views.IPCGroupListView.as_view(), name="ipc-group-list"),
+    path(
+        "api/ipc/subgroups/",
+        views.IPCSubgroupListView.as_view(),
+        name="ipc-subgroup-list",
+    ),
+    # Inventor
     path(
         "api/inventors/", views.InventorFieldView.as_view(), name="inventor-field-list"
     ),
+    # Assignee
     path(
         "api/assignees/", views.AssigneeFieldView.as_view(), name="assignee-field-list"
     ),

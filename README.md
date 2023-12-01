@@ -1,10 +1,10 @@
-# PatentAnalyzer
+# PatentInspector
 
-PatentAnalyzer is an open-source tool that analyzes patent data. Its backend is implemented in Python using the Django framework, and its frontend is based on Vue. The tool is designed to be user-friendly and easily extensible, making it accessible to a wide range of users.
+PatentInspector is an open-source tool that analyzes patent data. Its backend is implemented in Python using the Django framework, and its frontend is based on Vue. The tool is designed to be user-friendly and easily extensible, making it accessible to a wide range of users.
 
-You can use PatentAnalyzer in the following URL, please note that our resources are limited: https://patentanalyzer.csd.auth.gr/
+You can use PatentInspector in the following URL, please note that our resources are limited: https://patentinspector.csd.auth.gr/
 
-## What PatentAnalyzer offers
+## What PatentInspector offers
 
 First you have to create an account and login and then you can use the tool.
 
@@ -56,14 +56,14 @@ Visualize the citation network of patents in your reports and discover the most 
 
 #### Quickly export charts
 
-Each chart in PatentAnalyzer comes with a corresponding table that can be effortlessly copied with a single
+Each chart in PatentInspector comes with a corresponding table that can be effortlessly copied with a single
 click and seamlessly pasted into your spreadsheet of choice.
 
 ![copy table widget](frontend/src/assets/images/topic-table-light.png)
 
 #### Download the filtered patents in excel format
 
-PatentAnalyzer empowers you to export filtered patents in Excel format, providing you with the freedom to conduct further in-depth analyses on your terms.
+PatentInspector empowers you to export filtered patents in Excel format, providing you with the freedom to conduct further in-depth analyses on your terms.
 
 ![download topics](frontend/src/assets/images/patents-light.png)
 

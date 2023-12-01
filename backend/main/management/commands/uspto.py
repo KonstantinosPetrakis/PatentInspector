@@ -328,12 +328,9 @@ class Command(BaseCommand):
 
         # Load data
         Patent.objects.from_csv(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv")
-        patent_id_map = {
-            patent["office_patent_id"]: patent["id"]
-            for patent in Patent.objects.filter(office="US").values(
-                "id", "office_patent_id"
-            )
-        }
+        patent_id_map = dict(
+            Patent.objects.filter(office="US").values_list("office_patent_id", "id")
+        )
 
         os.remove(f"{DATA_DIRECTORY}/g_patent_preprocessed.csv")
         os.remove(f"{DATA_DIRECTORY}/g_patent.tsv")
@@ -388,6 +385,115 @@ class Command(BaseCommand):
         os.remove(f"{DATA_DIRECTORY}/g_cpc_current_preprocessed.csv")
         os.remove(f"{DATA_DIRECTORY}/g_cpc_current.tsv")
         print("PatentCPCGroup table inserted successfully!")
+
+    def handle_ipc(self):
+        self.download_and_unzip("g_ipc_at_issue")
+
+        valid_sections = ["A", "B", "C", "D", "E", "F", "G", "H"]
+
+        df = pd.read_csv(
+            f"{DATA_DIRECTORY}/g_ipc_at_issue.tsv",
+            sep="\t",
+            usecols=[
+                "patent_id",
+                "section",
+                "ipc_class",
+                "subclass",
+                "main_group",
+                "subgroup",
+            ],
+            dtype=str
+        )
+
+        # Preprocess
+        df = df[df["section"].isin(valid_sections)]
+        df.dropna(inplace=True)
+
+        # A portion of subgroup and main_group contains "/" but not all of them.
+        df["subgroup"] = df["subgroup"].str.replace("/", "")
+        df["main_group"] = df["main_group"].str.replace("/", "")
+        df["ipc_class"] = df["section"] + df["ipc_class"]
+        df["subclass"] = df["ipc_class"] + df["subclass"]
+        df["main_group"] = df["subclass"] + " " + df["main_group"]
+        df["subgroup"] = df["main_group"] + "/" + df["subgroup"]
+
+        # There are some duplicates, so we need to remove them
+        df["merged"] = df["patent_id"] + df["subgroup"]
+        df.drop_duplicates(subset=["merged"], inplace=True)
+        df.drop(columns=["merged"], inplace=True)
+
+        # Create IPC data
+        sections = [IPCSection(section=sec) for sec in valid_sections]
+        IPCSection.objects.bulk_create(sections)
+
+        classes = (
+            df.groupby("ipc_class", as_index=False)
+            .agg(lambda x: x.iloc[0])
+            .apply(
+                lambda row: IPCClass(
+                    section_id=row["section"], _class=row["ipc_class"]
+                ),
+                axis=1,
+            )
+            .to_list()
+        )
+        IPCClass.objects.bulk_create(classes)
+
+        subclasses = (
+            df.groupby("subclass", as_index=False)
+            .agg(lambda x: x.iloc[0])
+            .apply(
+                lambda row: IPCSubclass(
+                    _class_id=row["ipc_class"], subclass=row["subclass"]
+                ),
+                axis=1,
+            )
+            .to_list()
+        )
+        IPCSubclass.objects.bulk_create(subclasses)
+
+        groups = (
+            df.groupby("main_group", as_index=False)
+            .agg(lambda x: x.iloc[0])
+            .apply(
+                lambda row: IPCGroup(
+                    subclass_id=row["subclass"], group=row["main_group"]
+                ),
+                axis=1,
+            )
+            .to_list()
+        )
+        IPCGroup.objects.bulk_create(groups)
+
+        subgroups = (
+            df.groupby("subgroup", as_index=False)
+            .agg(lambda x: x.iloc[0])
+            .apply(
+                lambda row: IPCSubgroup(
+                    group_id=row["main_group"], subgroup=row["subgroup"]
+                ),
+                axis=1,
+            )
+            .to_list()
+        )
+        IPCSubgroup.objects.bulk_create(subgroups)
+
+        # Create PatentIPCSubgroup
+        df.rename(columns={"subgroup": "ipc_subgroup_id"}, inplace=True)
+
+        # Map the office IDs to database IDs
+        df["patent_id"] = df["patent_id"].map(patent_id_map).astype("Int64")
+        df.dropna(inplace=True)
+        df.to_csv(
+            f"{DATA_DIRECTORY}/patent_ipc_subgroup.csv",
+            index=False,
+            columns=["patent_id", "ipc_subgroup_id"],
+        )
+        PatentIPCSubgroup.objects.from_csv(f"{DATA_DIRECTORY}/patent_ipc_subgroup.csv")
+
+        os.remove(f"{DATA_DIRECTORY}/patent_ipc_subgroup.csv")
+        os.remove(f"{DATA_DIRECTORY}/g_ipc_at_issue.tsv")
+        print("IPCData tables and PatentIPCSubgroup inserted successfully!")
 
     def handle_pct(self):
         self.download_and_unzip("g_pct_data")
@@ -723,6 +829,13 @@ class Command(BaseCommand):
                 .values("count"),
                 output_field=IntegerField(),
             ),
+            ipc_subgroups_count=Subquery(
+                PatentIPCSubgroup.objects.filter(patent_id=OuterRef("id"))
+                .values("patent_id")
+                .annotate(count=Count("patent_id"))
+                .values("count"),
+                output_field=IntegerField(),
+            ),
             assignee_count=Subquery(
                 Assignee.objects.filter(patent_id=OuterRef("id"))
                 .values("patent_id")
@@ -759,6 +872,7 @@ class Command(BaseCommand):
         self.handle_cpc()
         self.handle_patent()
         self.handle_patent_cpc_group()
+        self.handle_ipc()
         self.handle_pct()
         self.handle_inventor()
         self.handle_assignee()

@@ -97,6 +97,13 @@ def process_report(report: Report):
                 "top5_subclasses": Patent.top_5_cpc_subclasses(patents),
                 "top5_groups": Patent.top_5_cpc_groups(patents),
             },
+            "ipc": {
+                "section": Patent.ipc_sections(patents),
+                "top5_classes": Patent.top_5_ipc_classes(patents),
+                "top5_subclasses": Patent.top_5_ipc_subclasses(patents),
+                "top5_groups": Patent.top_5_ipc_groups(patents),
+                "top5_subgroups": Patent.top_5_ipc_subgroups(patents),
+            }
         },
         "topic_modeling": _execute_topic_analysis(patents, patent_ids),
         "citations": {
@@ -214,9 +221,9 @@ def execution_hook(task: Task):
         ) + f"{settings.FRONT_END_DOMAIN}/report/{report.id}"
 
         send_mail(
-            subject="PatentAnalyzer: Your report is ready!",
+            subject="PatentInspector: Your report is ready!",
             message=f"Your report with the following filters is ready! "
-            + f"Visit PatentAnalyzer ({mail_url}) to view it. \n\n{filter_string}\n\n",
+            + f"Visit PatentInspector ({mail_url}) to view it. \n\n{filter_string}\n\n",
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[report.user.email],
         )
@@ -259,6 +266,7 @@ def _calculate_statistics(patents: QuerySet):
         "abstract_word_count_without_processing",
         "abstract_word_count_with_processing",
         "cpc_groups_count",
+        "ipc_subgroups_count",
         "assignee_count",
         "inventor_count",
         "incoming_citations_count",
@@ -394,7 +402,7 @@ def _topic_analysis_lda(
     for doc in docs:
         corpus.add_doc(doc)
     corpus = lda.add_corpus(corpus)
-    lda.train(iter=5000, workers=1)  # workers=1 to for reproducibility
+    lda.train(iter=2500, workers=1)  # workers=1 to for reproducibility
 
     results = _format_topic_analysis_results_tomotopy(lda, n_words)
 
@@ -451,7 +459,7 @@ def _topic_analysis_nmf(
         n_components=n_topics,
         init="nndsvd",
         random_state=settings.RANDOM_SEED,
-        max_iter=10000,
+        max_iter=5000,
     ).fit(tfidf)
 
     topics = tfidf_vectorizer.get_feature_names_out()

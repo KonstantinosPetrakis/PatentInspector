@@ -2,6 +2,7 @@ from datetime import timedelta
 
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import permissions, generics, viewsets
+from rest_framework.views import APIView
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.decorators import action
@@ -345,6 +346,82 @@ class CPCGroupListView(generics.ListAPIView):
     queryset = CPCGroup.objects.all().order_by("group")
     serializer_class = serializers.CPCGroupSerializer
     permission_classes = [permissions.IsAuthenticated]
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+
+class IPCSectionListView(generics.ListAPIView):
+    """
+    API endpoint that allows IPC sections to be viewed.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = IPCSection.objects.all().order_by("section").values_list("section", flat=True)
+    serializer_class = serializers.PrimitiveSerializer
+
+
+class IPCClassListView(generics.ListAPIView):
+    """
+    API endpoint that allows IPC classes to be viewed.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = IPCClass.objects.all().order_by("_class").values_list("_class", flat=True)
+    serializer_class = serializers.PrimitiveSerializer
+
+
+class IPCSubclassListView(generics.ListAPIView):
+    """
+    API endpoint that allows IPC subclasses to be viewed.
+    """
+
+    class filterset_class(filters.FilterSet):
+        q = filters.CharFilter(
+            field_name="subclass",
+            lookup_expr="istartswith",
+            label="The beginning of the subclass code",
+        )
+
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = IPCSubclass.objects.all().order_by("subclass").values_list("subclass", flat=True)
+    serializer_class = serializers.PrimitiveSerializer
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+
+class IPCGroupListView(generics.ListAPIView):
+    """
+    API endpoint that allows IPC groups to be viewed.
+    """
+
+    class filterset_class(filters.FilterSet):
+        q = filters.CharFilter(
+            field_name="group",
+            lookup_expr="istartswith",
+            label="The beginning of the group code",
+        )
+
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = IPCGroup.objects.all().order_by("group").values_list("group", flat=True)
+    serializer_class = serializers.PrimitiveSerializer
+    pagination_class = BasicPagination
+    filter_backends = [DjangoFilterBackend]
+
+class IPCSubgroupListView(generics.ListAPIView):
+    """
+    API endpoint that allows IPC subgroups to be viewed.
+    """
+
+    class filterset_class(filters.FilterSet):
+        q = filters.CharFilter(
+            field_name="subgroup",
+            lookup_expr="istartswith",
+            label="The beginning of the subgroup code",
+        )
+
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = IPCSubgroup.objects.all().order_by("subgroup").values_list("subgroup", flat=True)
+    serializer_class = serializers.PrimitiveSerializer
     pagination_class = BasicPagination
     filter_backends = [DjangoFilterBackend]
 

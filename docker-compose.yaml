@@ -21,7 +21,7 @@ services:
         env_file:
             - ./backend/.env
         volumes:
-            - ./backend/:/patentanalyzer
+            - ./backend/:/patentinspector
         depends_on:
             - postgres
         links:

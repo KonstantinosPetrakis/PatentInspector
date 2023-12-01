@@ -34,7 +34,7 @@ onMounted(() => emailElement.value.focus());
     <form
         class="d-flex flex-column align-items-center mt-4 mx-auto col-lg-6 col-12 border rounded shadow p-2 text-center"
     >
-        <h2 class="h2">PatentAnalyzer</h2>
+        <h2 class="h2">PatentInspector</h2>
         <p>
             Enter your email address below and we will send you an
             one-time-password to reset your password.

@@ -138,6 +138,70 @@ class CPCGroup(models.Model):
         return self.group
 
 
+class IPCSection(models.Model):
+    section = models.CharField(
+        primary_key=True,
+        max_length=100,
+    )
+
+    def __str__(self):
+        return self.section
+
+
+class IPCClass(models.Model):
+    section = models.ForeignKey(
+        IPCSection, on_delete=models.PROTECT, related_name="classes"
+    )
+
+    _class = models.CharField(
+        "class",
+        primary_key=True,
+        max_length=100,
+    )
+
+    def __str__(self):
+        return self._class
+
+
+class IPCSubclass(models.Model):
+    _class = models.ForeignKey(
+        IPCClass, on_delete=models.PROTECT, related_name="subclasses"
+    )
+    subclass = models.CharField(
+        primary_key=True,
+        max_length=100,
+    )
+
+    def __str__(self):
+        return self.subclass
+
+
+class IPCGroup(models.Model):
+    subclass = models.ForeignKey(
+        IPCSubclass, on_delete=models.PROTECT, related_name="groups"
+    )
+    group = models.CharField(
+        primary_key=True,
+        max_length=100,
+    )
+
+    def __str__(self):
+        return self.group
+
+
+class IPCSubgroup(models.Model):
+    group = models.ForeignKey(
+        IPCGroup, on_delete=models.PROTECT, related_name="subgroups"
+    )
+    subgroup = models.CharField(
+        primary_key=True,
+        max_length=100,
+    )
+
+    def __str__(self):
+        return self.subgroup
+
+
 class Patent(models.Model):
     type_choices = [
         ("utility", "Utility"),
@@ -218,6 +282,10 @@ class Patent(models.Model):
         null=True,
         default=None,
     )
+    ipc_subgroups_count = models.IntegerField(
+        null=True,
+        default=None,
+    )
     assignee_count = models.IntegerField(
         null=True,
         default=None,
@@ -272,6 +340,11 @@ class Patent(models.Model):
         return patents.annotate(
             cpc_groups_groups=StringAgg(
                 "cpc_groups__cpc_group__group", delimiter=", ", distinct=True
+            ),
+            ipc_subgroups_subgroups=StringAgg(
+                "ipc_subgroups__ipc_subgroup__subgroup",
+                delimiter=", ",
+                distinct=True,
             ),
             pct_documents=StringAgg(
                 "pct_data__representation",
@@ -329,6 +402,7 @@ class Patent(models.Model):
             "claims_count",
             "figures_count",
             "sheets_count",
+            "ipc_subgroups_count",
             "cpc_groups_count",
             "inventor_count",
             "assignee_count",
@@ -339,15 +413,17 @@ class Patent(models.Model):
 
     @staticmethod
     def fetch_title_representation(patents: models.QuerySet) -> List[str]:
-        return list(patents.annotate(
-            text=Concat(
-                F("office"),
-                F("office_patent_id"),
-                Value(" - "),
-                F("title"),
-                output_field=TextField(),
-            )
-        ).values_list("text", flat=True))
+        return list(
+            patents.annotate(
+                text=Concat(
+                    F("office"),
+                    F("office_patent_id"),
+                    Value(" - "),
+                    F("title"),
+                    output_field=TextField(),
+                )
+            ).values_list("text", flat=True)
+        )
 
     @staticmethod
     def applications_per_year(patents: models.QuerySet) -> List[Tuple]:
@@ -639,6 +715,69 @@ class Patent(models.Model):
         return append_title_to_cpc_entity(data)
 
     @staticmethod
+    def ipc_sections(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.annotate(ipc_section=Substr("ipc_subgroups__ipc_subgroup", 1, 1))
+            .filter(~Q(ipc_section=""))
+            .values("ipc_section")
+            .annotate(count=Count("id"))
+            .order_by("-count")
+            .values_list("ipc_section", "count")
+        )
+        data.insert(0, ["IPC Section", "Count"])
+        return data
+    
+    @staticmethod
+    def top_5_ipc_classes(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.annotate(_class=F("ipc_subgroups__ipc_subgroup__group__subclass___class"))
+            .filter(~Q(_class=""))
+            .values("_class")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:5]
+            .values_list("_class", "count")
+        )
+        data.insert(0, ["IPC Class", "Count"])
+        return data
+
+    @staticmethod
+    def top_5_ipc_subclasses(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.annotate(subclass=F("ipc_subgroups__ipc_subgroup__group__subclass"))
+            .filter(~Q(subclass=""))
+            .values("subclass")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:5]
+            .values_list("subclass", "count")
+        )
+        data.insert(0, ["IPC Subclass", "Count"])
+        return data
+    
+    def top_5_ipc_groups(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.annotate(group=F("ipc_subgroups__ipc_subgroup__group"))
+            .filter(~Q(group=""))
+            .values("group")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:5]
+            .values_list("group", "count")
+        )
+        data.insert(0, ["IPC Group", "Count"])
+        return data
+    
+    def top_5_ipc_subgroups(patents: models.QuerySet) -> List[Tuple]:
+        data = list(
+            patents.filter(ipc_subgroups__isnull=False)
+            .values("ipc_subgroups__ipc_subgroup")
+            .annotate(count=Count("id"))
+            .order_by("-count")[:5]
+            .values_list("ipc_subgroups__ipc_subgroup", "count")
+        )
+        data.insert(0, ["IPC Subgroup", "Count"])
+        return data
+
+
+    @staticmethod
     def patent_count_in_2_dates(
         patents: models.QuerySet, date1: datetime.date, date2: datetime.date
     ) -> tuple[int, int]:
@@ -675,6 +814,19 @@ class PatentCPCGroup(models.Model):
     )
     cpc_group = models.ForeignKey(
         CPCGroup, on_delete=models.PROTECT, related_name="patents"
+    )
+    objects = CopyManager()
+
+
+class PatentIPCSubgroup(models.Model):
+    class Meta:
+        unique_together = ("patent", "ipc_subgroup")
+
+    patent = models.ForeignKey(
+        Patent, on_delete=models.PROTECT, related_name="ipc_subgroups"
+    )
+    ipc_subgroup = models.ForeignKey(
+        IPCSubgroup, on_delete=models.PROTECT, related_name="patents"
     )
     objects = CopyManager()
 
@@ -936,7 +1088,7 @@ class ResetPasswordToken(models.Model):
         if getting_created:
             threading.Thread(
                 target=lambda: send_mail(
-                    subject="PatentAnalyzer: Reset Password",
+                    subject="PatentInspector: Reset Password",
                     message=f"Your reset password token is {self.token}. It will expire in 5 minutes.",
                     from_email=settings.EMAIL_HOST_USER,
                     recipient_list=[self.user.email],
@@ -1022,6 +1174,32 @@ class Report(models.Model):
         validators=[validate_cpc_groups],
     )
 
+    ipc_section = ArrayField(
+        models.CharField(max_length=100),
+        null=True,
+        blank=True,
+    )
+    ipc_class = ArrayField(
+        models.CharField(max_length=100),
+        null=True,
+        blank=True,
+    )
+    ipc_subclass = ArrayField(
+        models.CharField(max_length=100),
+        null=True,
+        blank=True,
+    )
+    ipc_group = ArrayField(
+        models.CharField(max_length=100),
+        null=True,
+        blank=True,
+    )
+    ipc_subgroup = ArrayField(
+        models.CharField(max_length=100),
+        null=True,
+        blank=True,
+    )
+
     pct_application_date = DateRangeField(null=True, blank=True)
     pct_granted = models.BooleanField(null=True, blank=True)
 
@@ -1083,7 +1261,13 @@ class Report(models.Model):
         cpc_query &= list_iregex_query(
             "cpc_groups__cpc_group__group", self.cpc_subclass
         )
-        cpc_query &= list_iregex_query("cpc_groups__cpc_group__group", self.cpc_group)
+        cpc_query &= exact_query("cpc_groups__cpc_group__group__in", self.cpc_group)
+
+        ipc_query = list_iregex_query("ipc_subgroups__ipc_subgroup__subgroup", self.ipc_section)
+        ipc_query &= list_iregex_query("ipc_subgroups__ipc_subgroup__subgroup", self.ipc_class)
+        ipc_query &= list_iregex_query("ipc_subgroups__ipc_subgroup__subgroup", self.ipc_subclass)
+        ipc_query &= list_iregex_query("ipc_subgroups__ipc_subgroup__subgroup", self.ipc_group)
+        ipc_query &= exact_query("ipc_subgroups__ipc_subgroup__subgroup__in", self.ipc_subgroup)
 
         pct_query = range_query(
             "pct_data__published_or_filed_date", self.pct_application_date
@@ -1115,7 +1299,7 @@ class Report(models.Model):
 
         return (
             Patent.objects.filter(
-                patent_query, cpc_query, pct_query, inventor_query, assignee_query
+                patent_query, cpc_query, ipc_query, pct_query, inventor_query, assignee_query
             )
             .distinct("id")
             .order_by("id")
@@ -1188,6 +1372,11 @@ class Report(models.Model):
                 "cpc_class",
                 "cpc_subclass",
                 "cpc_group",
+                "ipc_section",
+                "ipc_class",
+                "ipc_subclass",
+                "ipc_group",
+                "ipc_subgroup",
                 "pct_application_date",
                 "pct_granted",
                 "inventor_first_name",
@@ -1207,5 +1396,3 @@ class Report(models.Model):
             if value is not None and value != "" and value != [] and value != "&"
         }
 
-
-# ----- Application Related Models And Validators -----

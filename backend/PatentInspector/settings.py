@@ -91,7 +91,7 @@ MIDDLEWARE = [
 
 STATIC_URL = "static/"
 
-ROOT_URLCONF = "PatentAnalyzer.urls"
+ROOT_URLCONF = "PatentInspector.urls"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -126,7 +126,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "PatentAnalyzer.wsgi.application"
+WSGI_APPLICATION = "PatentInspector.wsgi.application"
 
 
 # Database
@@ -165,7 +165,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Django Q
 Q_CLUSTER = {
-    "name": "PatentAnalyzer",
+    "name": "PatentInspector",
     "orm": "default",
     "timeout": env.int("DJANGO_Q_TIMEOUT"), 
     "retry": env.int("DJANGO_Q_RETRY"),

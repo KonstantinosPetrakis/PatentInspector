@@ -18,10 +18,10 @@ watch(
                     class="text-decoration-none text-body"
                     :to="{ name: 'home' }"
                 >
-                    PatentAnalyzer
+                    PatentInspector
                 </RouterLink>
             </h1>
-            <p>A tool for easy, fast and open-source patent analysis.</p>
+            <p>A tool for easy and open-source patent analysis.</p>
         </div>
 
         <div class="ms-auto desktop-buttons d-none d-md-block">

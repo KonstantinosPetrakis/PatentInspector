@@ -39,7 +39,7 @@ const register = async () => {
 
 <template>
     <div class="small-box text-center">
-        <h1 class="h2">PatentAnalyzer</h1>
+        <h1 class="h2">PatentInspector</h1>
         <h3 class="h4">Register</h3>
         <div class="errors">
             <div

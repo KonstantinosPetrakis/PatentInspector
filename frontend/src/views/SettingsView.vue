@@ -139,7 +139,7 @@ onMounted(
 
 <template>
     <div class="container">
-        <h1 class="h1 text-center">PatentAnalyzer</h1>
+        <h1 class="h1 text-center">PatentInspector</h1>
         <h3 class="h3 text-center">Settings</h3>
         <div
             v-for="message of messages"

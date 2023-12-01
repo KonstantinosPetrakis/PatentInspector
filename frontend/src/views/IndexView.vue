@@ -13,7 +13,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
 <template>
     <div class="container overflow-x-hidden">
         <template v-if="loggedIn">
-            <h1 class="h1 text-center">PatentAnalyzer</h1>
+            <h1 class="h1 text-center">PatentInspector</h1>
             <p class="text-center h5">
                 Welcome back {{ email }}, what would you like to do?
             </p>
@@ -34,15 +34,15 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
         </template>
 
         <template v-else>
-            <h2 class="h2 text-center">PatentAnalyzer</h2>
+            <h2 class="h2 text-center">PatentInspector</h2>
             <h4 class="h4 text-center mb-5">
-                A tool for easy, fast and open-source patent analysis.
+                A tool for easy and open-source patent analysis.
             </h4>
             <div class="row my-5">
                 <div class="col-6 d-flex justify-content-center">
                     <a
                         class="btn btn-outline-secondary"
-                        href="https://github.com/KonstantinosPetrakis/PatentAnalyzer"
+                        href="https://github.com/KonstantinosPetrakis/PatentInspector"
                     >
                         View the source code on GitHub
                         <img
@@ -70,7 +70,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <hr />
                     <ThemeImage
                         srcName="form"
-                        alt="PatentAnalyzer report creating form"
+                        alt="PatentInspector report creating form"
                     />
                 </MovingContainer>
                 <MovingContainer title="View Reports Anytime" alignment="right">
@@ -82,7 +82,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <hr />
                     <ThemeImage
                         srcName="reports"
-                        alt="PatentAnalyzer list of reports page"
+                        alt="PatentInspector list of reports page"
                     />
                 </MovingContainer>
                 <MovingContainer title="Statistical Measures">
@@ -93,7 +93,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <hr />
                     <ThemeImage
                         srcName="stats"
-                        alt="PatentAnalyzer statistics"
+                        alt="PatentInspector statistics"
                     />
                 </MovingContainer>
                 <MovingContainer title="Time Series Analysis" alignment="right">
@@ -105,7 +105,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <hr />
                     <ThemeImage
                         srcName="timeseries"
-                        alt="PatentAnalyzer interactive timeseries plot"
+                        alt="PatentInspector interactive timeseries plot"
                     />
                 </MovingContainer>
                 <MovingContainer title="Interactive Exploration">
@@ -118,13 +118,13 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <ThemeImage
                         class="d-block"
                         srcName="assignee"
-                        alt="PatentAnalyzer interactive bar plot"
+                        alt="PatentInspector interactive bar plot"
                     />
                     <hr />
                     <ThemeImage
                         class="d-block"
                         srcName="map"
-                        alt="PatentAnalyzer interactive heatmap plot"
+                        alt="PatentInspector interactive heatmap plot"
                     />
                 </MovingContainer>
                 <MovingContainer title="Thematic Analysis" alignment="right">
@@ -138,19 +138,19 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <ThemeImage
                         class="d-block"
                         srcName="topic-form"
-                        alt="PatentAnalyzer topic form"
+                        alt="PatentInspector topic form"
                     />
                     <hr />
                     <ThemeImage
                         class="d-block"
                         srcName="topic-class"
-                        alt="PatentAnalyzer interactive scatter plot"
+                        alt="PatentInspector interactive scatter plot"
                     />
                     <hr />
                     <ThemeImage
                         class="d-block"
                         srcName="topics"
-                        alt="PatentAnalyzer interactive bar plots"
+                        alt="PatentInspector interactive bar plots"
                     />
                 </MovingContainer>
                 <MovingContainer title="Citation Analysis">
@@ -168,7 +168,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <ThemeImage
                         class="d-block"
                         srcName="cited"
-                        alt="PatentAnalyzer interactive bar plot"
+                        alt="PatentInspector interactive bar plot"
                     />
                 </MovingContainer>
                 <MovingContainer
@@ -176,7 +176,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     alignment="right"
                 >
                     <p>
-                        Each chart in PatentAnalyzer comes with a corresponding
+                        Each chart in PatentInspector comes with a corresponding
                         table that can be effortlessly copied with a single
                         click and seamlessly pasted into your spreadsheet of
                         choice.
@@ -185,14 +185,14 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <ThemeImage
                         class="d-block"
                         srcName="topic-table"
-                        alt="PatentAnalyzer table and copy button"
+                        alt="PatentInspector table and copy button"
                     />
                 </MovingContainer>
                 <MovingContainer
                     title="Download the filtered patents in excel format"
                 >
                     <p>
-                        PatentAnalyzer empowers you to export filtered patents in
+                        PatentInspector empowers you to export filtered patents in
                         Excel format, providing you with the freedom to conduct
                         further in-depth analyses on your terms.
                     </p>
@@ -200,7 +200,7 @@ const scrollToTop = () => window.scrollTo(0, 0, { behavior: "smooth" });
                     <ThemeImage
                         class="d-block"
                         srcName="patents"
-                        alt="PatentAnalyzer patent table and download button"
+                        alt="PatentInspector patent table and download button"
                     />
                 </MovingContainer>
                 <button

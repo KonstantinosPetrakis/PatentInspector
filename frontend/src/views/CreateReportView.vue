@@ -30,6 +30,11 @@ const data = reactive({
     cpc_class: [],
     cpc_subclass: [],
     cpc_group: [],
+    ipc_section: [],
+    ipc_class: [],
+    ipc_subclass: [],
+    ipc_group: [],
+    ipc_subgroup: [],
     pct_application_date: null,
     pct_granted: null,
     inventor_first_name: null,
@@ -97,7 +102,7 @@ const createReport = async () => {
 
 <template>
     <div class="container">
-        <h1 class="h1 text-center">PatentAnalyzer</h1>
+        <h1 class="h1 text-center">PatentInspector</h1>
         <h4 class="h4 text-center">Create Report</h4>
         <p>
             Try to keep your your search specific. Broad sets will take longer
@@ -224,6 +229,35 @@ const createReport = async () => {
                         :customLabel="processCpcData"
                         track-by="group"
                         label="title"
+                    />
+                </AccordionItem>
+                <AccordionItem title="IPC fields">
+                    <TaggingAsyncInput
+                        field-label="IPC Sections"
+                        v-model="data.ipc_section"
+                        :fetch-before="true"
+                        url="/ipc/sections"
+                    />
+                    <TaggingAsyncInput
+                        field-label="IPC Classes"
+                        v-model="data.ipc_class"
+                        :fetch-before="true"
+                        url="/ipc/classes"
+                    />
+                    <TaggingAsyncInput
+                        field-label="IPC Subclasses"
+                        v-model="data.ipc_subclass"
+                        url="/ipc/subclasses"
+                    />
+                    <TaggingAsyncInput
+                        field-label="IPC Groups"
+                        v-model="data.ipc_group"
+                        url="/ipc/groups"
+                    />
+                    <TaggingAsyncInput
+                        field-label="IPC Subgroups"
+                        v-model="data.ipc_subgroup"
+                        url="/ipc/subgroups"
                     />
                 </AccordionItem>
                 <AccordionItem title="PCT fields">

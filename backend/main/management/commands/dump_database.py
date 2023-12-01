@@ -26,7 +26,7 @@ class Command(BaseCommand):
 
         drive = GoogleDrive(login_with_service_account())
         if input("Do you want to delete old back ups: (y/n): ") == "y":
-            for file in drive.ListFile({"q": f"title = 'patentanalyzer'"}).GetList():
+            for file in drive.ListFile({"q": f"title = 'patentinspector'"}).GetList():
                 try:
                     file.Delete()
                 except Exception:

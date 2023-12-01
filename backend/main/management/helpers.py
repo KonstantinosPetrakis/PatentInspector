@@ -98,14 +98,14 @@ def login_with_service_account() -> GoogleAuth:
 
 
 def create_pubic_folder(
-    drive: GoogleDrive, folder_name: str = "patentanalyzer"
+    drive: GoogleDrive, folder_name: str = "patentinspector"
 ) -> GoogleDriveFile:
     """
     This function creates a public folder on Google Drive.
 
     Args:
         drive (GoogleDrive): The Google Drive service.
-        folder_name (str, optional): The name of the folder. Defaults to "patentanalyzer".
+        folder_name (str, optional): The name of the folder. Defaults to "patentinspector".
 
     Returns:
         GoogleDriveFile: The created folder.

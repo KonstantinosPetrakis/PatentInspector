@@ -45,7 +45,7 @@ const resetPassword = async () => {
         @keydown.enter.prevent="resetPassword"
         class="d-flex flex-column align-items-center mt-4 mx-auto col-lg-6 col-12 border rounded shadow p-2 text-center"
     >
-        <h2 class="h2">PatentAnalyzer</h2>
+        <h2 class="h2">PatentInspector</h2>
         <p>
             Enter the one-time-password you received in your email and a new
             password to reset your password.

@@ -33,7 +33,7 @@ const login = async () => {
 
 <template>
     <div class="small-box text-center">
-        <h1 class="h2">PatentAnalyzer</h1>
+        <h1 class="h2">PatentInspector</h1>
         <h3 class="h4">Login</h3>
         <form>
             <div class="errors">

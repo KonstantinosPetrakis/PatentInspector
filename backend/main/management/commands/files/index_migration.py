@@ -17,6 +17,18 @@ class Migration(Migration):
             reverse_code=lambda *_: print("CPCGroup indexes dropped."),
         ),
         RunSQL(
+            'CREATE INDEX main_ipcsubroup_subgroup_idx ON main_ipcsubgroup USING GIN ("subgroup" gin_trgm_ops);',
+            reverse_sql="DROP INDEX main_ipcsubroup_subgroup_idx;",
+        ),
+        RunSQL(
+            'CREATE INDEX main_ipcgroup_group_idx ON main_ipcgroup USING GIN ("group" gin_trgm_ops);',
+            reverse_sql="DROP INDEX main_ipcgroup_group_idx;",
+        ),
+        RunPython(
+            lambda *_: print("IPCGroup indexes created."),
+            reverse_code=lambda *_: print("IPCGroup indexes dropped."),
+        ),
+        RunSQL(
             "CREATE INDEX main_patent_title_abstract_idx ON main_patent USING GIN (title_processed gin_trgm_ops, abstract_processed gin_trgm_ops);",
             reverse_sql="DROP INDEX main_patent_title_abstract_idx;",
         ),

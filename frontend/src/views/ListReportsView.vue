@@ -47,7 +47,7 @@ watch(() => props.page, updateData);
 
 <template>
     <div class="container">
-        <h1 class="h1 text-center">PatentAnalyzer</h1>
+        <h1 class="h1 text-center">PatentInspector</h1>
         <h4 class="h4 text-center">All Reports</h4>
         <p class="fs-5 text-center">
             Showing {{ reports.count }} report(s) in total.

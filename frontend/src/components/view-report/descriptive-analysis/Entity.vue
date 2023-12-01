@@ -46,6 +46,28 @@ const computedEntities = computed(() => {
                 click: (name) => queryGooglePatents(`q=${findCPC(name)}`),
             },
         ],
+        ipc: [
+            {
+                title: "IPC Section Distribution",
+                data: props.entity.ipc.section,
+            },
+            {
+                title: "Top 5 IPC Classes",
+                data: props.entity.ipc.top5_classes,
+            },
+            {
+                title: "Top 5 IPC Subclasses",
+                data: props.entity.ipc.top5_subclasses,
+            },
+            {
+                title: "Top 5 IPC groups",
+                data: props.entity.ipc.top5_groups,
+            },
+            {
+                title: "Top 5 IPC subgroups",
+                data: props.entity.ipc.top5_subgroups,
+            }
+        ]
     };
 });
 
@@ -59,6 +81,7 @@ const findCPC = (label) => label.split("-")[0].trim();
             { title: 'Inventor' },
             { title: 'Assignee' },
             { title: 'CPC' },
+            { title: 'IPC'}
         ]"
     >
         <TabItem>
@@ -112,6 +135,18 @@ const findCPC = (label) => label.split("-")[0].trim();
             <div class="row">
                 <TableBar
                     v-for="item in computedEntities.cpc"
+                    :title="item.title"
+                    :data="item.data"
+                    :info="item?.info"
+                    @click="item?.click"
+                    class="col-lg-6 col-12"
+                />
+            </div>
+        </TabItem>
+        <TabItem>
+            <div class="row">
+                <TableBar
+                    v-for="item in computedEntities.ipc"
                     :title="item.title"
                     :data="item.data"
                     :info="item?.info"
